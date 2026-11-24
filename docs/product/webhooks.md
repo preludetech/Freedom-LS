@@ -1,6 +1,6 @@
 # Webhooks
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-24_
 
 ## Summary
 
@@ -20,7 +20,7 @@ Webhooks are an outbound data flow to third-party systems. These events ship by 
 - **Course completion** (`course.completed`). A learner completes every item in a course.
 - **Learner administration** (`learner.added`, `learner.deactivated`, `learner.reactivated`, `cohort_membership.added`, `cohort_membership.removed`). A learner is added to an organisation (the event says whether a new account was created), deactivated, reactivated, or added to or removed from a cohort. Moving a learner between cohorts sends a removal followed by an addition that share a move identifier, so a receiver can tell a move from two unrelated changes.
 - **Cohort course registration** (`cohort_registration.added`, `cohort_registration.reactivated`, `cohort_registration.deactivated`). A cohort is registered for a course, or its registration is reactivated or deactivated. These events name the cohort and course but no individual learner.
-- **Course pause and deadline extension** (`course.paused`, `course.resumed`, `deadline.extended`). Staff [pause a learner's course](./admin-interface.md#pausing-and-extending), the pause ends, or staff extend a learner's deadline. The resume event says how many days the learner's deadlines moved, and none of them carries the reason staff gave. A resume staff trigger sends its event straight away; a pause that ends on its planned resume date does not send one on that date (see [roadmap](./roadmap.md#deadlines)).
+- **Course pause and deadline extension** (`course.paused`, `course.resumed`, `deadline.extended`). Sent when a learner's course is paused or resumed or a deadline is extended. Nothing in the product can pause, resume or extend today, so these events are not sent (see [roadmap](./roadmap.md#deadlines)).
 
 The learner administration events come from the actions in [the educator interface](./educator-interface.md#learners), and fire whether the action ran from a web request or not. Every event type that the [audit log](./educator-interface.md#history) also records carries the same code and label there, so an integrator and an admin reading the history see one name for one change.
 

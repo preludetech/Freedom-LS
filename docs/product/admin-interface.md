@@ -1,20 +1,16 @@
 # Admin Interface
 
-_Last updated: 2026-11-22_
+_Last updated: 2026-11-24_
 
 ## Summary
 
 - The Django admin is enhanced with the Unfold UI framework, preserving all standard Django admin behaviour.
-- Educator roles are not assigned in the admin. A cohort's or organisation's permissions tab governs admin access only; educator-interface and report access come from [role assignments](./educator-interface.md#access-control).
+- Educator roles are not assigned in the admin. An organisation's permissions tab governs admin access only; educator-interface and report access come from [role assignments](./educator-interface.md#access-control).
 - Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge. An organisation can also have a profile logo and a short bio, both optional.
-- An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and deactivates a learner. Deactivation is soft — it switches off that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
-- A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
-- An administrator can override a due date or a course time limit for a cohort's course registration or for a single learner, including removing it. Each override records who set it and why, and is flagged when the content's own value has changed since. See [Deadline Overrides](#deadline-overrides).
-- An administrator can pause and resume a learner's course, and extend a learner's deadlines by a number of days or to a date. An extension adds to the deadline rather than replacing it. See [Pausing and extending](#pausing-and-extending).
+- The admin holds no learners, cohorts, course registrations, content or form definitions. Learners, cohorts and registrations are managed in the [educator interface](./educator-interface.md); content comes from the content repository only. See [Content and Forms Are Not in the Admin](#content-and-forms-are-not-in-the-admin).
+- Learner progress and form answers are view-only for every user, superusers included; submitted answers can still be read and answer files downloaded. See [Learner Progress](#learner-progress).
+- Deadline overrides, and pausing, resuming and extending a learner's course, have no screen anywhere in the product. Pauses and extensions already recorded stay readable. See [Pausing and extending](#pausing-and-extending).
 - An administrator sets a deadline policy per site, organisation, course, cohort or registration: whether the Missed deadline mark shows, whether items close and course access ends after a grace window, and what a learner whose access has ended can still see. See [Deadline policy](#deadline-policy).
-- A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
-- Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available. Articles are the one exception: they can be deleted.
-- Course categories can be seen and edited in the admin but not added or deleted, and any edit is overwritten the next time content is loaded — the category vocabulary belongs to the content repo.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
 - Course applications are read in the admin: a list to find one by applicant, course, state (Not submitted, Waiting for review, Approved, Declined or Withdrawn), verified or unverified email, and created date, and a page that shows the applicant's answers read-only, with any attached file downloadable. Applications from anonymous visitors appear as soon as they are submitted, flagged as unverified until the applicant follows their emailed link. Staff granted the standard view permissions can read them; nobody can add, edit or delete an application there. There is no review workflow yet.
 - The Users list and the Course applications list export to CSV, either the ticked rows or the whole filtered list, for staff who can view them. See [Exporting Users and Applications](#exporting-users-and-applications).
@@ -23,10 +19,11 @@ _Last updated: 2026-11-22_
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
 - Signup attribution records and the daily first-touch tally are read-only too, filterable by source, medium and campaign, and exportable to CSV.
 - Referral codes are managed in the admin: created and deactivated, but never deleted, with the code text locked once saved. Visits to a code are logged in a separate read-only list, and both lists export to CSV. See [referral codes](./referral-codes.md).
-- HR attributes are an optional extra. When that app is installed, the admin lists each organisation's job titles, departments and locations, which can be deactivated rather than deleted, and a learner's page records their job title, department, location and four start dates from their own organisation's entries. An entry a learner holds cannot be deleted. See [HR attributes](./hr-attributes.md).
-- Registration rules are an optional extra on top of HR attributes. When that app is installed, the admin has a Registration rules screen where an administrator sets, per organisation and course, who is registered automatically, with a preview before any change that affects who is registered. A course registration's admin page shows which rule made it. See [registration rules](./registration-rules.md).
+- HR attributes are an optional extra. When that app is installed, the admin lists each organisation's job titles, departments and locations, which can be deactivated rather than deleted. An entry a learner holds cannot be deleted. A learner's own job title, department, location and start dates have no edit screen. See [HR attributes](./hr-attributes.md).
+- Registration rules are an optional extra on top of HR attributes. When that app is installed, the admin has a Registration rules screen where an administrator sets, per organisation and course, who is registered automatically, with a preview before any change that affects who is registered. See [registration rules](./registration-rules.md).
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
 - API keys are issued and revoked in the admin. A key's text is shown once, when it is issued, and a key cannot be deleted. See [API Keys](#api-keys).
+- Erasing a user from the admin is refused while that user has course progress or form progress records.
 - Superusers can see outgoing email, with its status and last error but never its body, and resend one that failed. See [Outgoing Email](#outgoing-email).
 
 ## Unfold
@@ -35,33 +32,21 @@ The admin uses [Unfold](https://github.com/unfoldadmin/django-unfold) as a drop-
 
 Site-scoped admin pages are automatically filtered to the current site, consistent with [multi-tenancy and isolation](./multi-tenancy-and-isolation.md). Unfold's branding customisation (site title, header colour, logo) is present in settings but commented out, so admin branding is not configured in a default installation.
 
-## Cohort Permissions
+## Organisation Permissions
 
-Each cohort's and organisation's admin page carries a permissions tab. It governs what a staff user can do with that object in the admin, and nothing else: it does not grant access in the educator interface or to cohort reports. Those come from [role assignments](./educator-interface.md#access-control), which have no admin page. Organisation admins manage organisation and cohort roles from the educator interface's [Staff section](./educator-interface.md#staff-and-roles); site admin is assigned by a developer.
+Each organisation's admin page carries a permissions tab. It governs what a staff user can do with that object in the admin, and nothing else: it does not grant access in the educator interface or to cohort reports. Those come from [role assignments](./educator-interface.md#access-control), which have no admin page. Organisation admins manage organisation and cohort roles from the educator interface's [Staff section](./educator-interface.md#staff-and-roles); site admin is assigned by a developer.
 
 ## Organisation Management
 
-Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; it is optional, and no screen draws it yet. Two further optional fields shape how the organisation appears to learners: a profile logo, shown in a circle beside its name on course cards and the course page (without one, the light-background logo is shown), and a bio of up to 500 plain-text characters, shown on the course page. See [learner experience](./learner-experience.md) for where these appear. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). When the optional HR attributes app is installed, the page also carries an "HR settings" panel with one "Registration rules enabled" switch, off by default. With [registration rules](./registration-rules.md) installed, the switch decides whether the organisation's rules act at all. See [HR attributes](./hr-attributes.md).
+Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. An organisation can also supply a second, reversed logo for use on a strong colour fill; it is optional, and no screen draws it yet. Two further optional fields shape how the organisation appears to learners: a profile logo, shown in a circle beside its name on course cards and the course page (without one, the light-background logo is shown), and a bio of up to 500 plain-text characters, shown on the course page. See [learner experience](./learner-experience.md) for where these appear. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). When the optional HR attributes app is installed, the page also carries an "HR settings" panel with one "Registration rules enabled" switch, off by default. With [registration rules](./registration-rules.md) installed, the switch decides whether the organisation's rules act at all. See [HR attributes](./hr-attributes.md).
 
-There is no delete and no merge — both are refused outright. This is a deliberate limit for this release, not an oversight. There is also no bulk import, and no way to manage organisations outside the admin.
+There is no delete and no merge — both are refused outright. This is a deliberate limit for this release, not an oversight. There is also no bulk import, and no way to manage organisations outside the admin. An organisation's cohorts and learners are managed in the [educator interface](./educator-interface.md).
 
 Logo uploads accept PNG, JPEG, and WebP; SVG is rejected deliberately. A maximum file size and minimum and maximum pixel dimensions apply, and each upload is validated against its actual image bytes rather than trusted by filename — see [security and data handling](./security-and-data-handling.md).
 
-## Learner Rosters
-
-An organisation's roster — who belongs to it, independently of any enrolment — is curated in the Django admin, and only there; the educator interface's [Learners section](./educator-interface.md#learners) is read-only. An administrator associates an existing user with an organisation as one of its learners, and the same person can be a learner of more than one organisation on a site. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is.
-
-Deactivating a learner is soft: it switches off their access to courses held through that organisation, but never deletes or alters their cohort memberships, course registrations, or progress history, and leaves their standing in any other organisation untouched. Reactivating them restores access with nothing to rebuild. A learner cannot be deleted outright. With the optional HR attributes app installed, moving a learner to another organisation is refused until the job title, department and location they hold from the old organisation are cleared; see [HR attributes](./hr-attributes.md).
-
-The same restraint extends to course registrations: once a registration has recorded [progress](./learner-tracking.md), the admin refuses to delete it and lists the progress standing in the way. Deleting a cohort cascades to its registrations, so that delete is blocked too, and a course cannot be deleted here at all. Deactivating a registration or a learner, and removing a cohort member, all stay available and leave the recorded progress intact.
-
-There is no bulk add or remove, no CSV import, and no view showing one person's associations across every organisation at once.
-
 ## Learner Progress
 
-A learner's own admin page gathers their cohorts, their individual course registrations, and their progress through every course they can reach either way, with that course's topics and form attempts a click away — and separate links to their topic progress and form attempts across every course at once. The panels are read-only summaries; a progress record is corrected on its own page, not from here.
-
-The progress changelists ask the same questions across many learners at once, filtering by whether an item is finished, by learner, course, cohort and organisation, and by when it was finished. Course progress additionally filters by completion percentage and by when the learner was last active, for finding learners who have gone quiet. Form attempts sat outside any course are read on the form progress list, which names the course each was sat in, or nothing when it was sat on its own. Full tracking semantics — what a progress record means and how it is derived — are covered in [learner tracking](./learner-tracking.md).
+Topic progress, course progress and course form attempts are listed in the admin for reading only: nobody, superusers included, can add, change or delete one. The lists filter by whether an item is finished, by learner, course, cohort and organisation, and by when it was finished. Course progress also filters by completion percentage and by when the learner was last active, for finding learners who have gone quiet. A course progress record's page shows the learner's current deadlines, the deadline policy that applies and the topics and form attempts behind it. Form attempts sat outside any course are read on the form progress list, which names the course each was sat in, or nothing when it was sat on its own. Form progress, answers and answer files are read-only in the same way. Full tracking semantics — what a progress record means and how it is derived — are covered in [learner tracking](./learner-tracking.md).
 
 Course [applications](./learner-experience.md#applying-to-a-course) have their own read-only list in the admin, showing every application and its state: Not submitted, Waiting for review, Approved, Declined or Withdrawn. An administrator finds one by searching or filtering on applicant, course, state, verified email and created date, then opens it to read the applicant's answers page by page. Questions the applicant skipped are marked "Not answered", questions their answers never led them to are marked "Not asked", and an attached file appears with a download link. The form progress page shows the same answers the same way and links to its application.
 
@@ -78,29 +63,13 @@ The Users list and the Course applications list each export to CSV: the ticked r
 
 Exports are CSV only. Registration-form answers, consent records and signup attribution are not in the Users export; attribution has [its own export](./signup-attribution.md).
 
-## Deadline Overrides
+## Pausing and extending
 
-Course authors set due dates and time limits in the course content; see [content editing workflow](./content-editing-workflow.md#course-frontmatter-options). The admin is where an administrator changes one for particular people, without touching the content.
+Deadline overrides for a cohort's registration or a single learner, and pausing, resuming and extending a learner's course, cannot be done anywhere in the product: there is no screen for them in the admin or the [educator interface](./educator-interface.md). Pauses and extensions already recorded stay visible, read-only, on the learner's course progress page, with who made each and why, and the learner's current deadlines include them. What the learner sees is in [learner experience](./learner-experience.md#deadlines).
 
-- **Per cohort registration.** A cohort's course registration page lists its overrides. Each one replaces the due date of one topic or form in that course, or the course's time limit, for everyone in that cohort registered to the course.
-- **Per learner.** A learner's course progress page lists overrides for that one learner, and a read-only panel shows every due date and the time limit end that learner currently has, and where each comes from. A learner override takes precedence over a cohort one.
-- **"No deadline".** An override can remove a due date or time limit altogether, as well as set a fixed date (with optional time) or a number of days after registration.
-- **Who and why.** Each override shows who set it and carries a free-text reason, and a note appears if the content's own value changed after the override was saved, so an administrator can decide whether it still makes sense.
+## Deadline policy
 
-Overrides change a due date or time limit for particular people. They do not send reminders, and what happens once a deadline has passed is set by the policy below.
-
-### Pausing and extending
-
-A learner's course progress page also lets an administrator pause that learner's course or extend their deadlines.
-
-- **Pause and resume.** A pause needs a reason and may have a planned resume date; without one, the course stays paused until an administrator resumes it. While it is paused the learner cannot carry on and no deadline passes. When it ends, the learner's unmet deadlines and time limit move later by the days paused.
-- **Extend.** An extension moves one item's deadline, the course time limit, or every unmet deadline in the course later, by a number of days or to a given date. Unlike an override, extensions stack and add to whatever deadline applies, including an overridden one.
-- **History.** The page lists the record's pauses and extensions read-only, with who made each and why, and its current deadlines include them.
-- A course the learner has finished cannot be paused or extended.
-
-Each pause, resume and extension is written to the learner's [history](./educator-interface.md#history), [notifies the learner](./notifications.md) and sends a [webhook](./webhooks.md). What the learner sees is in [learner experience](./learner-experience.md#deadlines).
-
-### Deadline policy
+Course authors set due dates and time limits in the course content; see [content editing workflow](./content-editing-workflow.md#course-frontmatter-options).
 
 A deadline policy decides what a missed deadline leads to. Administrators set it for a site, an organisation, a course, a cohort, a cohort's course registration, or one learner's course registration, and each setting can inherit from the broader level.
 
@@ -112,7 +81,7 @@ A deadline policy decides what a missed deadline leads to. Administrators set it
 
 A learner's course progress page shows the policy that applies to them and which level set each value. With no policy set anywhere, nothing closes and no access ends; the deployment-wide default is described in [configuration and extension](./configuration-and-extension.md#deadline-policy). What learners see is covered in [learner experience](./learner-experience.md#deadlines).
 
-Ended access is restored by overriding the course time limit with a fixed date or a number of days, for one learner or a whole cohort. Policy and overrides are admin-only: the educator interface has no screen for either.
+Policy is admin-only: the educator interface has no screen for it. Nothing in the product restores ended access.
 
 ## Site Time Zone
 
@@ -152,17 +121,11 @@ Legal consent records are registered read-only: the admin disables add, change, 
 
 The same posture covers where a signup came from: one record per signed-up user, plus a daily tally of first-time tracked arrivals per campaign. Both lists filter by source, medium and campaign, drill down by date, and export the ticked rows or the whole filtered list to CSV with every recorded field included, safe to open in a spreadsheet even when a value has been crafted to look like a formula. Read access has to be granted as a permission; staff status alone does not show them. Deleting a user still takes their attribution record with it. What is recorded, and the privacy obligations that come with it, is in [signup attribution](./signup-attribution.md).
 
-## Content Cannot Be Deleted
+## Content and Forms Are Not in the Admin
 
-Authored content — courses, course parts, topics, activities, files, and forms with their pages, questions, and options — cannot be deleted through the admin: not from a detail page, not as a bulk action, and not from an inline on a parent. Adding and changing remain available, and content is authored in files and loaded into the site by a command, so the admin is not where content is removed. A form added directly in the admin rather than loaded from files is given a slug automatically. See [content editing workflow](./content-editing-workflow.md).
-
-Articles are the exception: because loading never deletes one, the admin is where an article is removed. An article whose file is still in the content repository comes back on the next load, and the article's admin page says so.
+Authored content — courses, course parts, topics, articles, activities, files and course categories — and form definitions with their pages, questions, content blocks and options are not in the admin: they cannot be viewed, added, changed or deleted there. Content is authored in files and loaded from the content repository, which is the only way it changes; a course's price comes from its course file too. See [content editing workflow](./content-editing-workflow.md). Educators see a course's [reference parts](./content-editing-workflow.md#course-frontmatter-options) in the course outline in the [educator interface](./educator-interface.md).
 
 Underneath the admin the same protection holds for anything reaching the database another way: a form question a learner has answered, a course anyone is registered for, and the form progress record behind a course application cannot be deleted while those records exist.
-
-Course categories are authored content too, and the admin is stricter with them: it refuses to create one as well as to delete one, because the category vocabulary belongs to the content repo. An administrator can see and edit an existing category's title, description, ordering, and whether it gets a section of its own on the dashboard, and can see on a course's own page which category places it on the dashboard and what else it belongs to — but any such edit lasts only until the next content load, which rewrites the category from its file. See [content editing workflow](./content-editing-workflow.md) for how categories are authored and [learner experience](./learner-experience.md) for what one does on the dashboard.
-
-A course's own page also lists its [reference parts](./content-editing-workflow.md#course-frontmatter-options), in order, read-only: they come from the course file when content is loaded, so they cannot be added, changed or deleted in the admin.
 
 ## Webhook Test-Send
 

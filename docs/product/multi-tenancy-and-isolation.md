@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-11-18_
+_Last updated: 2026-11-24_
 
 ## Summary
 
@@ -48,7 +48,7 @@ A site can be subdivided into one or more **organisations** — a grouping and s
 
 Every site has at least one organisation, named after the site itself and created automatically — for existing sites on upgrade, and for every new site from then on. A single-organisation deployment needs no configuration and behaves as it did before organisations existed. Organisation names are unique within a site.
 
-**People are associated with organisations as learners.** Someone can belong to an organisation as a learner before, and independently of, any cohort membership or course registration, and every cohort membership and course registration belongs to one of those associations — an enrolment with no organisation behind it cannot exist. The same person can be a learner of several organisations on one site, keeping one account and one set of profile fields; each organisation sees only its own association, which is scoping within the site rather than an isolation boundary of its own. An organisation can mark a learner removed, which withdraws their access to courses held through that organisation while leaving their enrolments and progress history intact; it is never a hard delete. See [admin interface](./admin-interface.md#learner-rosters) for how learners are added and removed.
+**People are associated with organisations as learners.** Someone can belong to an organisation as a learner before, and independently of, any cohort membership or course registration, and every cohort membership and course registration belongs to one of those associations — an enrolment with no organisation behind it cannot exist. The same person can be a learner of several organisations on one site, keeping one account and one set of profile fields; each organisation sees only its own association, which is scoping within the site rather than an isolation boundary of its own. An organisation can mark a learner removed, which withdraws their access to courses held through that organisation while leaving their enrolments and progress history intact; it is never a hard delete. See [educator interface](./educator-interface.md#learners) for how learners are added, deactivated and reactivated.
 
 Staff access within an organisation comes from role assignments: a role on the organisation covers everything in it, including cohorts created later, and a role on a cohort covers that cohort only. Either counts only while the person is an active member of that organisation. See [educator interface](./educator-interface.md#access-control).
 

@@ -1,6 +1,6 @@
 # Registration Rules
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-11-24_
 
 ## Summary
 
@@ -8,7 +8,7 @@ _Last updated: 2026-10-25_
 - **A rule names job titles, departments and locations, and can also bound the four start dates.** Built.
 - **Every change that affects who is registered shows a preview first, and nothing is saved until the administrator confirms.** Built.
 - **A learner who stops matching is retracted, never deleted**, so their progress is kept. Built.
-- **Every registration a rule made records which rule made it.** Built.
+- **Every registration a rule made records which rule made it.** The record is not shown in the product. Built.
 - **A rule can recommend its course instead of registering for it.** Matching learners see the course under Recommended courses on their dashboard, see [learner experience](./learner-experience.md). Built.
 - **Rules run in the background.** They only apply while a task worker is running. See [deployment](./deployment.md#background-tasks). Built.
 - **The app is optional** and needs the [HR attributes](./hr-attributes.md) and course recommendations apps. A project that leaves it out sees no change. Built.
@@ -40,9 +40,9 @@ Their registration is deactivated, not deleted, so progress is kept, and they ar
 
 A recommendation a rule made is removed when its learner stops matching and when the rule is disabled; it stays while the organisation's switch is off. A rule-made recommendation that staff delete by hand comes back on the rule's next run while the learner still matches. A recommendation an administrator made is never touched by a rule.
 
-## Rule-made Registrations in the Admin
+## Rule-made Registrations
 
-A registration's admin page shows the rule that made it, or the name of a rule since deleted. If staff deactivate or reactivate such a registration, or the learner registers themselves, it is detached from the rule and rules leave it alone from then on.
+The rule that made a registration is recorded but not shown anywhere in the product. If staff deactivate or reactivate such a registration, or the learner registers themselves, it is detached from the rule and rules leave it alone from then on.
 
 An enabled rule cannot be deleted. Deleting a disabled rule keeps its registrations and their record. A job title, department or location that a rule names cannot be deleted; deactivate it instead, and the rule warns that it uses an inactive entry. See [admin interface](./admin-interface.md).
 
@@ -56,4 +56,4 @@ Nothing needs setting. A project can add its own rule kinds through an optional 
 - Rules that register cohorts, and other kinds of rule out of the box.
 - Exclusion conditions, and OR across attributes.
 - Bulk enable or disable actions, and a periodic reconcile.
-- Audit-log entries for rule changes, and showing a registration's source in the educator interface.
+- Audit-log entries for rule changes, and showing a registration's source rule anywhere in the product.

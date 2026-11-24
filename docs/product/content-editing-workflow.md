@@ -11,7 +11,7 @@ _Last updated: 2026-11-24_
 - A site's course categories are declared once per content repo, and each course names the categories it belongs to in its own frontmatter. See [learner experience](./learner-experience.md) for what the dashboard does with them.
 - A course can list parts under `reference:` in `course.md` as reference material kept outside its learning path. Reference material never counts toward completion. Learners read it from the course player, and educators can see and preview it on the course's page in the [educator interface](./educator-interface.md#courses).
 - Legal documents are versioned alongside content, and the exact version a user accepted is recorded on their consent record.
-- There is **no browser-based content editor**. All authoring happens in files, and content cannot be deleted from the admin either, with one exception: articles.
+- There is **no browser-based content editor**. All authoring happens in files, and content is not in the admin at all: it cannot be viewed, edited or deleted there.
 
 ## Authoring Model
 
@@ -19,7 +19,7 @@ Content lives as files on disk — Markdown for text-heavy items, YAML for struc
 
 **UUIDs in frontmatter.** Every content item carries a UUID in its frontmatter. It is the stable identifier for the item and survives edits, renames, and re-saves. A new file has none: run `content_save` once with `--generate-uuids` to write them in, then commit the result. A run without the flag refuses content that lacks a UUID.
 
-**No GUI editor.** There is no admin-side or browser-based authoring interface. This is by design: the file system is the source of truth and git is the audit trail. Content records cannot be deleted from the admin either, except articles — see [admin interface](./admin-interface.md#content-cannot-be-deleted).
+**No GUI editor.** There is no admin-side or browser-based authoring interface. This is by design: the file system is the source of truth and git is the audit trail. Content is not in the admin at all, so it cannot be viewed, edited or deleted there.
 
 **AI authoring.** Authors may use AI tools to draft or revise Markdown. This is a workflow affordance only — there is no AI integration in the application code.
 
@@ -50,11 +50,11 @@ Categories are declared in a single `course_categories.yaml` at the content repo
 
 An article can sit anywhere in the content repository, inside or outside a course folder. It is either published or `hidden`, and its public URL comes from a `slug` that defaults to its file name. It can name an `author`, and `show_date` and `show_author` override the site-wide defaults for its byline. An article can carry one optional `image`, a path relative to the article file, with `image_alt` text required alongside it; the image appears on the article page, its cards and its social-sharing preview. Articles have no category, and there is no scheduled publishing. See [learner experience](./learner-experience.md#blog) for the public blog pages.
 
-Loading never deletes an article. An administrator can delete one in the admin, but while its file remains in the repository it comes back on the next load, so removing an article for good means deleting the file as well.
+Loading never deletes an article, and no screen deletes one; marking it `hidden` takes it off the public blog.
 
 ## Course Frontmatter Options
 
-These are set in a course's YAML frontmatter and take effect when content is loaded. There is no admin or educator toggle for any of them except price — changing one means editing the file and re-running `content_save`.
+These are set in a course's YAML frontmatter and take effect when content is loaded. There is no admin or educator toggle for any of them — changing one means editing the file and re-running `content_save`.
 
 **Access type.** A course is free unless it declares otherwise:
 
@@ -89,9 +89,9 @@ dashboard_category: technical
 
 `dashboard_category` can be omitted when a course names exactly one category, and both keys can be left off entirely. Belonging to more than one category is recorded, but only the dashboard category is read anywhere today: there is no catalogue filtering by category yet, so a course's other categories have no visible effect. See [learner experience](./learner-experience.md) for what the dashboard does with them.
 
-**Due dates and time limits.** A topic or form can carry a due date in its own frontmatter, either a fixed `due_date` (such as `2026-03-14`) or `due_days_after_registration`, a number of days after the learner registered on the course. Either can take an optional `due_time`, a quoted 24-hour time such as `"17:00"`; without one, the item falls due at the end of that day in the site's time zone. A course can carry a `time_limit_days`, a whole number of days (at least 1) after registration. An administrator can override these per cohort registration or per learner, see [admin interface](./admin-interface.md#deadline-overrides); what learners see is described in [learner experience](./learner-experience.md#deadlines). What happens once a date passes is set by the [deadline policy](./admin-interface.md#deadline-policy).
+**Due dates and time limits.** A topic or form can carry a due date in its own frontmatter, either a fixed `due_date` (such as `2026-03-14`) or `due_days_after_registration`, a number of days after the learner registered on the course. Either can take an optional `due_time`, a quoted 24-hour time such as `"17:00"`; without one, the item falls due at the end of that day in the site's time zone. A course can carry a `time_limit_days`, a whole number of days (at least 1) after registration. Nobody can override these for a single cohort registration or learner. What learners see is described in [learner experience](./learner-experience.md#deadlines). What happens once a date passes is set by the [deadline policy](./admin-interface.md#deadline-policy).
 
-**Due dates that depend on where content sits.** A topic, form or part placed in more than one course does not have to share one date. A `children:` entry in `course.md` or `part.yaml` can carry the same due keys for that placement alone, or `no_due_date: true` to drop a date the file sets. A `course.md` entry that places a part can list the part's topics and forms by path and give each its own value for that course. The most specific value wins: the course's entry, then the part's, then the file's own. A staff override still beats all of them.
+**Due dates that depend on where content sits.** A topic, form or part placed in more than one course does not have to share one date. A `children:` entry in `course.md` or `part.yaml` can carry the same due keys for that placement alone, or `no_due_date: true` to drop a date the file sets. A `course.md` entry that places a part can list the part's topics and forms by path and give each its own value for that course. The most specific value wins: the course's entry, then the part's, then the file's own.
 
 **Reference material.** A course can list parts under `reference:` in `course.md` to offer them as reference material, such as regulations or a glossary, instead of as steps on the learning path. Reference parts are never counted toward completion. They hold topics only, and none of them can carry a deadline. A part can sit on the learning path of one course and be reference material in another, but not in both lists of the same course. A part shared between courses must sit inside the directory `content_save` loads, not in a second source path, and not under a folder whose name starts with `_` or `.`. A malformed reference list is rejected by `content_save` and `content_validate`. Learners read it from the course player and see it listed on the course detail page. Educators can see and preview it on the course's page in the [educator interface](./educator-interface.md#courses).
 
@@ -105,7 +105,7 @@ shared_with:
   - harbour-college
 ```
 
-`audience` is `organisation_learners` (the default) or `public`, and has no effect on a course that names no organisations. `shared_with` lists other organisations whose educators may use the course as its owners' educators do; a course that names no organisations cannot be shared, and removing an entry removes that share on the next load. Slugs are looked up among the organisations of the site being loaded, so an unknown slug fails the load. With `DEBUG` on, an unknown slug creates the organisation instead, so a development site loads without setup. Both values show read-only in the course admin. What belonging to an organisation means for who sees the course is covered in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
+`audience` is `organisation_learners` (the default) or `public`, and has no effect on a course that names no organisations. `shared_with` lists other organisations whose educators may use the course as its owners' educators do; a course that names no organisations cannot be shared, and removing an entry removes that share on the next load. Slugs are looked up among the organisations of the site being loaded, so an unknown slug fails the load. With `DEBUG` on, an unknown slug creates the organisation instead, so a development site loads without setup. What belonging to an organisation means for who sees the course is covered in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 
 **Shuffled quizzes.** A QUIZ form can serve its pages, its questions and its answer options in a random order for each sitting, through three independent form options, `shuffle_pages`, `shuffle_questions` and `shuffle_options`, all off by default. On an option, `locked: true` pins it in place while the others move, which suits "All of the above". On a content block or question, a shared `group` value keeps a stimulus and its questions together as one block on one page. Validation rejects these options on any other form type, and a `locked` option or a `group` that could not work as written. What learners see is in [learner experience](./learner-experience.md#quiz-feedback); guidance on wording a quiz that shuffles safely lives in the `fls-content` authoring plugin described below.
 
@@ -113,7 +113,7 @@ shared_with:
 
 **Quiz declarations.** A QUIZ form can set `requires_declaration: true` to make the learner sign a declaration before every attempt. The author can give the wording in `declaration_text`; a quiz that leaves it empty shows the site's default text, which an operator can change with the `FORM_DECLARATION_DEFAULT_TEXT` setting. Validation rejects both keys on any other form type, rejects `declaration_text` without `requires_declaration`, and rejects `requires_declaration` on a form a course names as its `application_form`. What learners see is in [learner experience](./learner-experience.md#quiz-declaration).
 
-Other course metadata — learning outcomes, difficulty (`beginner`, `intermediate`, `advanced`, `all_levels`), estimated duration, description, `price` — is authored the same way. A price can also be set in the admin, and a price set there survives a later content re-save unless the course file sets or clears it. See [course prices](./learner-experience.md#course-prices) for what a price can be and where it shows.
+Other course metadata — learning outcomes, difficulty (`beginner`, `intermediate`, `advanced`, `all_levels`), estimated duration, description, `price` — is authored the same way. A price is set only in the course file. See [course prices](./learner-experience.md#course-prices) for what a price can be and where it shows.
 
 ## Validation and Loading
 
@@ -126,11 +126,11 @@ Validation parses every YAML and Markdown file against strict schemas before any
 
 `content_save` loads only committed content: if any file under a source path is not committed to git, it refuses, lists the files, and changes nothing, so what is loaded always matches a commit. With `DEBUG` on, as in local development, it skips this check and loads uncommitted files as they are on disk. It runs validation internally on every run and writes only if it passes. It accepts several source paths and saves them as one, so content kept in more than one directory or repository loads together. It upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry, an `application_form` path or a `sections` path that does not resolve to loaded content fails the whole load rather than being silently dropped. So does a due key on an entry for an activity, article or part, or a part's entry naming something the part does not contain; every such error is reported at once, and the offline validator catches the same ones.
 
-Moving a part from `children:` to `reference:` removes that course's placement of the part on the next `content_save`. Any deadlines educators set for that course on the part or on the topics inside it go with it. `content_save` reports each removal, so the loss is visible in the run's output. Learners' stored progress for that course is recalculated in the same run, so nobody stays stuck below 100% because of a part that no longer counts. Other courses that place the same part keep their placements and deadlines.
+Moving a part from `children:` to `reference:` removes that course's placement of the part on the next `content_save`. Any deadlines set for that course on the part or on the topics inside it go with it. `content_save` reports each removal, so the loss is visible in the run's output. Learners' stored progress for that course is recalculated in the same run, so nobody stays stuck below 100% because of a part that no longer counts. Other courses that place the same part keep their placements and deadlines.
 
 Validation also checks the `path` of every `c-article-link`, `c-article-card` and `c-course-card`: it must point at a validated file of the right type, so a broken link or card fails before anything is written. Two articles with the same slug are rejected too, as is an article `image` that does not point at an image file in the repository.
 
-A companion command, `danger_content_delete`, removes content. It is deliberately named to require considered invocation, and is the only route by which loaded content other than articles is deleted.
+A companion command, `danger_content_delete`, removes content. It is deliberately named to require considered invocation, and is the only route by which loaded content is deleted.
 
 ## Markdown Rendering Pipeline
 

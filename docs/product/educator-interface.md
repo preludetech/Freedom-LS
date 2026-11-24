@@ -51,7 +51,7 @@ Each control sits beside what it changes:
 - **Add to a cohort, remove, or move** a learner to another active cohort in the organisation, from the Overview tab's Cohorts panel: Add to cohort under the list, Remove and Move on each row. Each confirmation names the courses the learner loses access to. A move carries course progress across, keeping whichever record is further along for a course both cohorts give access to. Nothing is deleted.
 - **Register for a course** from the Courses tab, and deactivate or reactivate a registration from its row on the Overview tab's Course registrations list. Any course that is not coming soon can be registered, but not one that is closed to the learner's organisation, which is refused with a message. Deactivating a registration keeps progress and says whether a cohort still gives access to the course.
 - **Deactivate or reactivate** the learner, from the Settings tab. Deactivating removes access to this organisation's courses while keeping cohorts, registrations and progress, which return on reactivation. On the site's default organisation, a learner can undo a deactivation, of themselves or of a registration, by registering for an open course themselves.
-- **Edit the name**, from the Settings tab. Only a site admin can. Email is the learner's login for every organisation, so it is changed in the Django admin; see [admin interface](./admin-interface.md#learner-rosters).
+- **Edit the name**, from the Settings tab. Only a site admin can. Email is the learner's login for every organisation, so it is changed in the [Django admin](./admin-interface.md).
 
 Cohort admins manage membership and course registrations within their own cohorts. Adding, deactivating and reactivating learners, and resending the account setup email, need an organisation admin or site admin. Learners are deactivated here, never deleted. Each action sends a [webhook](./webhooks.md) event.
 
@@ -154,7 +154,7 @@ Admins can give only roles at or below their own. A change that gives someone ac
 
 ![A cohort's History tab listing when, who, what, target and details for each change](screenshots/educator_history.png)
 
-The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and staff roles and deactivations. Pausing a learner's course, resuming it and extending its deadlines are done in the Django admin, but are recorded too, on the learner's History tab and in the Audit log. The record shows as a **History** tab on a learner's page and on a cohort's page. A move between cohorts appears on the learner and on both cohorts. Each entry is one line showing when, who and what, with any description, reason and, for a bulk change, the entries it made opening beneath it; the cohort tab also names the person each row is about. A History tab sorts on its columns and filters by who, what and when, as the Audit log does. Deleting a cohort also records each role that went with it, and the learner's History tab shows each time an admin opened one of the learner's conversations. Changes with no user behind them show as "System".
+The educator interface records who changed what, and when, for the actions educators take here: learner changes, cohort membership and course registrations, cohort changes, and staff roles and deactivations. The record shows as a **History** tab on a learner's page and on a cohort's page. A move between cohorts appears on the learner and on both cohorts. Each entry is one line showing when, who and what, with any description, reason and, for a bulk change, the entries it made opening beneath it; the cohort tab also names the person each row is about. A History tab sorts on its columns and filters by who, what and when, as the Audit log does. Deleting a cohort also records each role that went with it, and the learner's History tab shows each time an admin opened one of the learner's conversations. Changes with no user behind them show as "System".
 
 ### Reasons
 
@@ -168,7 +168,7 @@ Confirming a removal or deactivation (removing a learner from a cohort, deactiva
 
 The Audit log, under Administration, lists the current organisation's entries, newest first, sorted by any column and filtered by who, by what and by when, and names the person each row is about. The Audit log and both History tabs export to CSV with their current filters, and each export is itself recorded in the Audit log. Only site admins and organisation admins see the Audit log and a learner's History tab. A cohort admin also sees the History tab of a cohort they administer. Cohort viewers see neither.
 
-Not recorded: anything before the feature was installed (there is no backfill), logins, and records edited directly in the Django admin, apart from pausing, resuming and extending a learner's course. The log has no search, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
+Not recorded: anything before the feature was installed (there is no backfill), logins, and records edited directly in the Django admin. The log has no search, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
 
 ## Reports
 
@@ -211,10 +211,10 @@ Not done: no screen reader (NVDA, VoiceOver or TalkBack) has been run through th
 These are not available in the educator interface:
 
 - **Bulk operations**: moving several learners between cohorts, deleting in bulk, and bulk actions on a cohort's Learners tab or on Staff. Imports cannot import anything but learners.
-- **Email changes**: a learner's email is changed in the [Django admin](./admin-interface.md#learner-rosters).
+- **Email changes**: a learner's email is changed in the [Django admin](./admin-interface.md).
 - **Deleting a learner**: learners are deactivated, never deleted, here.
 - **Site admin**: the role is not assigned or deactivated from the educator interface, nor from the Django admin.
-- **Deadlines**: due dates, time limits, deadline overrides and overdue status are not shown or set here, and overdue learners do not appear in needs-attention lists. Overrides, pauses and extensions are set in the Django admin; see [admin interface](./admin-interface.md#deadline-overrides).
+- **Deadlines**: due dates, time limits, deadline overrides and overdue status are not shown or set here, and overdue learners do not appear in needs-attention lists. Overrides, pauses and extensions cannot be set anywhere yet; see [roadmap](./roadmap.md#deadlines).
 - **Dark mode**: neither theme has one.
 
 Educators cannot send email to learners from FLS, and there is no group or broadcast messaging; see [messaging](./messaging.md#not-built). Remaining gaps are in the [roadmap](./roadmap.md).

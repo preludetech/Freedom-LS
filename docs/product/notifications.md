@@ -1,11 +1,11 @@
 # Notifications
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-24_
 
 ## Summary
 
 - Signed-in users get an in-app bell with an unread badge in the header, a panel of recent notifications, and a notification centre page.
-- These events raise a notification today: a learner is registered for a course by someone else, a [bulk action](./educator-interface.md) an educator started finishes in the background, and staff pause a learner's course, resume it, or extend a learner's deadline. [Direct messages](./messaging.md) do not; the unread count on the header Messages button is their signal.
+- These events raise a notification today: a learner is registered for a course by someone else, a [bulk action](./educator-interface.md) an educator started finishes in the background. Notifications for staff pausing, resuming or extending a learner's course are defined but cannot fire, because nobody can pause, resume or extend through the product (see [roadmap](./roadmap.md#deadlines)). [Direct messages](./messaging.md) do not; the unread count on the header Messages button is their signal.
 - The bell is **off by default**. Notifications are recorded either way.
 - A project can add its own notification categories.
 - Not built: email or any other delivery, preferences, pop-up alerts, retention, and backfill.
@@ -22,7 +22,7 @@ FLS never notifies someone about what they just did. A learner is notified when 
 
 An educator whose bulk action ran in the background is notified when it finishes, with a summary of the result; following it opens the table the action was run from. An action that finishes within the request reports on screen instead, and a finished learner import raises no notification.
 
-A learner is notified when staff [pause their course](./learner-experience.md#deadlines), when staff resume it, and when staff [extend a deadline](./admin-interface.md#pausing-and-extending); following the notification opens the course. None carries the reason staff gave. A pause that reaches its planned resume date reopens the course by itself, but no notification is sent on that date; see [roadmap](./roadmap.md#deadlines).
+Nothing in the product can [pause a learner's course](./learner-experience.md#deadlines), resume it or extend a deadline today, so learners are not notified of any of these; see [roadmap](./roadmap.md#deadlines).
 
 ## Turning It On and Extending It
 
