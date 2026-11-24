@@ -84,7 +84,10 @@ class CourseCatalogue:
     # table columns and a learner's wrong-answer blocks both follow.
     # Deduplicated across courses, unlike all_items.
     ordered_quiz_form_ids: list[UUID]
-    # The topics and forms a content save retired. They stay in the catalogue so
+    # The topics and forms a learner can no longer reach: those a content save
+    # retired, and those under a retired CoursePart (which are not stamped
+    # themselves). That is every item `viewable_items(include_retired=True)`
+    # lists that `viewable_items()` leaves out. They stay in the catalogue so
     # their recorded progress still shows, but they are out of every completion
     # figure: a learner is never marked down for content nobody can reach.
     retired_item_ids: frozenset[UUID]
@@ -268,9 +271,10 @@ def build_course_catalogue(
             for item in reg.course.viewable_items(include_retired=True)
             if isinstance(item, Topic | Form)
         ]
+        live_ids = {item.id for item in reg.course.viewable_items()}
         course_items[reg.course_id] = items
         for item in items:
-            if item.is_retired:
+            if item.id not in live_ids:
                 retired_item_ids.add(item.id)
             if isinstance(item, Topic):
                 topic_ids.add(item.id)

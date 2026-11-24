@@ -612,7 +612,9 @@ def build_confusions_by_quiz(
     }
 
 
-def _build_quiz_columns(items: list[Topic | Form]) -> list[QuizColumn]:
+def _build_quiz_columns(
+    items: list[Topic | Form], retired_item_ids: frozenset[UUID] = frozenset()
+) -> list[QuizColumn]:
     """One column per quiz in the course, in the order the course lists them."""
     quiz_forms = [
         item
@@ -626,7 +628,7 @@ def _build_quiz_columns(items: list[Topic | Form]) -> list[QuizColumn]:
             title=form.title,
             abbreviation=abbreviation,
             pass_percentage=form.quiz_pass_percentage,
-            retired=form.is_retired,
+            retired=form.id in retired_item_ids,
         )
         for form, abbreviation in zip(quiz_forms, abbreviations, strict=True)
     ]
@@ -698,7 +700,7 @@ def _build_course_section(
 ) -> CourseSection:
     course = reg.course
     items = catalogue.course_items[reg.course_id]
-    quiz_columns = _build_quiz_columns(items)
+    quiz_columns = _build_quiz_columns(items, catalogue.retired_item_ids)
     learner_rows = [
         _build_learner_row(learner_id, items, quiz_columns, roster, catalogue, progress)
         for learner_id in roster.learner_ids

@@ -18,6 +18,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
+    CoursePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, Topic
@@ -3198,6 +3199,30 @@ class TestRetiredContentInTheReport:
         detail = data.learners[0]
         assert (detail.completed_item_count, detail.total_item_count) == (1, 2)
         assert [item.title for item in detail.completed_items] == ["Live Topic"]
+
+    def test_content_under_a_retired_part_is_flagged_retired_and_out_of_the_completion_denominator(
+        self, mock_site_context
+    ) -> None:
+        course: Course = CourseFactory()
+        live_topic: Topic = TopicFactory(title="Live Topic")
+        part = retired(CoursePartFactory())
+        topic_in_part: Topic = TopicFactory(title="Part Topic")
+        quiz_in_part: Form = FormFactory(title="Part Quiz", strategy=FormStrategy.QUIZ)
+        _attach(course, live_topic, order=0)
+        _attach(course, part, order=1)
+        _attach(part, topic_in_part, order=0)
+        _attach(part, quiz_in_part, order=1)
+        cohort, record = _one_learner_cohort(course)
+        topic_progress(record, live_topic, complete_time=timezone.now())
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        row = data.courses[0].learner_rows[0]
+        assert (row.completed_item_count, row.total_item_count) == (1, 1)
+        assert row.completion_percentage == 100
+        assert [(q.title, q.retired) for q in data.courses[0].quizzes] == [
+            ("Part Quiz", True)
+        ]
 
     def test_a_wrong_answer_to_a_retired_question_is_listed_and_flagged(
         self, mock_site_context

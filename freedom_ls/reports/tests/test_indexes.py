@@ -26,6 +26,7 @@ from freedom_ls.content_engine.factories import (
     ActivityFactory,
     ContentCollectionItemFactory,
     CourseFactory,
+    CoursePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course
@@ -407,6 +408,28 @@ class TestBuildCourseCatalogue:
         assert catalogue.all_items == [live, gone_topic, gone_form]
         assert catalogue.retired_item_ids == {gone_topic.id, gone_form.id}
         assert catalogue.quiz_form_ids == {gone_form.id}
+
+    def test_content_under_a_retired_part_is_recorded_as_retired_and_live_content_is_not(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        live = TopicFactory()
+        part = retired(CoursePartFactory())
+        topic_in_part = TopicFactory()
+        form_in_part = FormFactory(strategy=FormStrategy.QUIZ)
+        _attach(course, live, order=0)
+        _attach(course, part, order=1)
+        _attach(part, topic_in_part, order=0)
+        _attach(part, form_in_part, order=1)
+
+        catalogue = build_course_catalogue(
+            load_registrations(cohort, mock_site_context.pk)
+        )
+
+        assert catalogue.all_items == [live, topic_in_part, form_in_part]
+        assert catalogue.retired_item_ids == {topic_in_part.id, form_in_part.id}
 
 
 class TestRegistrationIds:
