@@ -2,7 +2,7 @@
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/></marker></defs>
 <rect width="736" height="194" fill="#ffffff"/>
 <text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Educator interface code layout</text>
-<rect x="24.0" y="58.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="58.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V102.0 A6,6 0 0 0 30.0,108.0 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="80.0" fill="#111827">educator-interface-refactor-7-</text>
 <text x="40.0" y="95.0" fill="#111827">cleanup</text>

@@ -15,6 +15,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
+- 🟠 Medium · `educator-interface-refactor-7-cleanup` (Educator interface code layout)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
 - 🟡 Low · `educator-intercface-small-ui-polish` (Educator interface)
 - 🟡 Low · `remove-unnecessary-admin-panel-functionality` (Educator interface)
@@ -26,7 +27,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
-- 🟠 Medium · `educator-interface-refactor-7-cleanup` (Educator interface code layout)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
 - 🟠 Medium · `deadlines-5-reminders` (Deadlines)
@@ -230,7 +230,7 @@ Priority: 🟠 Medium
 
 The educator interface's `views.py` and `actions.py` split into one `panels/<area>/` package per area, with tests mirrored. Parent: `educator-interface-refactor`.
 
-- `educator-interface-refactor-7-cleanup` — **ready** — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
+- `educator-interface-refactor-7-cleanup` — **in progress** — Deletes the emptied flat modules, trims `views.py` to the shell, and sweeps up old paths, docs and baselines.
 
 ![Educator interface code layout](roadmap_diagrams/educator-interface-code-layout.svg)
 
