@@ -16,6 +16,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-4-attempt-review` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🟠 Medium · `learner-interface-features-3-revision-questions` (Learner interface features, via `content-widget-sayit-reveal`)
+- 🟡 Low · `educator-intercface-small-ui-polish` (Educator interface)
 - 🟡 Low · `remove-unnecessary-admin-panel-functionality` (Educator interface)
 
 ### Ready to start
@@ -26,10 +27,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
-- 🟠 Medium · `faster-test-runs-12-reliable-full-run-record` (Faster test runs)
-- 🟠 Medium · `faster-test-runs-13-checkpoint-shared-paths` (Faster test runs)
-- 🟠 Medium · `faster-test-runs-2-reuse-test-database` (Faster test runs)
-- 🟠 Medium · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
 - 🟠 Medium · `educator-interface-refactor-7-cleanup` (Educator interface code layout)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
@@ -40,12 +37,16 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `user-communication-2-notification-email` (User communication)
 - 🟠 Medium · `user-communication-6-moderation` (User communication)
 - 🟠 Medium · `user-communication-help-desk` (User communication)
-- 🟠 Medium · `corporate-job-course-recommendations-4-educator-interface-screens` (Registration rules)
-- 🟠 Medium · `corporate-job-course-recommendations-5-attribute-csv-import` (Registration rules)
 - 🟠 Medium · `referral-tracking-marketing-channels` (Referral tracking and marketing)
 - 🟠 Medium · `referral-tracking-external-referer-first-touch` (Referral tracking and marketing)
 - 🟠 Medium · `server-side-conversion-tracking` (Referral tracking and marketing)
 - 🟠 Medium · `cookie-banner` (Referral tracking and marketing)
+- 🟡 Low · `corporate-job-course-recommendations-4-educator-interface-screens` (Registration rules)
+- 🟡 Low · `corporate-job-course-recommendations-5-attribute-csv-import` (Registration rules)
+- 🟡 Low · `faster-test-runs-12-reliable-full-run-record` (Faster test runs)
+- 🟡 Low · `faster-test-runs-13-checkpoint-shared-paths` (Faster test runs)
+- 🟡 Low · `faster-test-runs-2-reuse-test-database` (Faster test runs)
+- 🟡 Low · `faster-test-runs-9-machine-wide-test-run-limit` (Faster test runs)
 - 🟡 Low · `reference-material-content-4-library-courses` (Reference material)
 - 🟡 Low · `admin-dashboard-signal-cards` (Educator interface)
 - 🟡 Low · `audit-log-coverage-gaps` (Educator interface)
@@ -86,7 +87,7 @@ Keeping learner records for SACAA's five-year rule, and signed quiz declarations
 
 **Notes**
 - Build order: the two specs share no code and run in parallel.
-- Collisions: `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` changes the form schema, `Form`, `FormProgress`, `content_save` and `form_start`, like `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools`; it rebases onto whichever lands first.
+- Collisions: `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` changes the form schema, `Form`, `FormProgress`, `content_save` and `form_start`, like `sacaa-compliance-3-question-pools`; whichever lands second rebases.
 - Decided: only superusers force delete, at any time, with a required reason written to the audit log; no retention-window gate and no automatic cleanup.
 - Decided: force delete replaces the User admin's delete button and "delete selected" action as the one erasure path.
 - Decided: each quiz sets whether its declaration is signed on every attempt or once per learner; the typed name must be non-empty and is stored as typed.
@@ -108,8 +109,7 @@ Quiz randomisation and a per-attempt record of the paper served, for training or
 ![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
 
 **Notes**
-- Build order: `sacaa-compliance-2-shuffle`, then `sacaa-compliance-3-question-pools`. `sacaa-compliance-4-attempt-review` runs beside them once `educator-interface-refactor-5-learner` lands.
-- Collisions: `sacaa-compliance-2-shuffle` and `sacaa-compliance-3-question-pools` both change the form schema, validator and `content_save`, so they run in series.
+- Build order: `sacaa-compliance-3-question-pools` and `sacaa-compliance-4-attempt-review` run in parallel.
 - Decided: randomisation is opt-in per quiz form and off by default; existing quizzes behave exactly as today.
 - Decided: one seed per attempt and the served paper saved at attempt start; a retake is a new attempt with a fresh draw and order.
 - Decided: scoring, results, export and review read the served paper, never a re-derived shuffle or the whole form, and a draw keeps `max_score` the same for every attempt.
@@ -132,8 +132,8 @@ Question versions, retired content, safer content saves and logged access to que
 ![SACAA content versions and access](roadmap_diagrams/sacaa-content-versions-and-access.svg)
 
 **Notes**
-- Build order: `sacaa-compliance-content-versions-and-access-1-content-save-safety`, `sacaa-compliance-content-versions-and-access-2-retire-removed-content`, `sacaa-compliance-content-versions-and-access-3-question-versions` in series; `sacaa-compliance-content-versions-and-access-4-question-access` runs beside them; `sacaa-compliance-content-versions-and-access-5-answered-version-review` last.
-- Collisions: the first three all change `content_save`; `sacaa-compliance-content-versions-and-access-3-question-versions` changes the served paper after `sacaa-compliance-2-shuffle` and collides with `sacaa-compliance-3-question-pools`.
+- Build order: `sacaa-compliance-content-versions-and-access-2-retire-removed-content`, then `sacaa-compliance-content-versions-and-access-3-question-versions`; `sacaa-compliance-content-versions-and-access-4-question-access` runs beside them; `sacaa-compliance-content-versions-and-access-5-answered-version-review` last.
+- Collisions: `sacaa-compliance-content-versions-and-access-2-retire-removed-content` and `sacaa-compliance-content-versions-and-access-3-question-versions` both change `content_save`; the latter changes the served paper and collides with `sacaa-compliance-3-question-pools`.
 - Decided: each source path is a git repo with a clean tree before the save, checked on disk only; `--generate-uuids` dirties it afterwards by design; the commit hash is recorded.
 - Decided: retired content is served to no one; progress, answers and attempts are kept; content back in the source is un-retired; nothing is deleted.
 - Decided: `FormQuestion` keeps its uuid and each change makes an immutable version; an attempt pins its versions at start and finishes on them.
@@ -211,7 +211,7 @@ Applications become steps an applicant works through over weeks, decided by a de
 ![Multi-step course applications](roadmap_diagrams/multi-step-course-applications.svg)
 
 **Notes**
-- Order: `multi-step-course-applications-1-review-states` starts now. Then `multi-step-course-applications-2-reviewers-and-inbox` and `multi-step-course-applications-4-reopen-form` run in parallel. `multi-step-course-applications-10-intake-courses` follows `multi-step-course-applications-3-approval-outcome`. `multi-step-course-applications-6-reviewer-verdicts` needs it and `multi-step-course-applications-5-requirements-and-resolver`; `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` follow it, and `multi-step-course-applications-9-help-requests` can start once `multi-step-course-applications-2-reviewers-and-inbox` lands.
+- Order: `multi-step-course-applications-2-reviewers-and-inbox` and `multi-step-course-applications-4-reopen-form` run in parallel. `multi-step-course-applications-10-intake-courses` follows `multi-step-course-applications-3-approval-outcome`. `multi-step-course-applications-6-reviewer-verdicts` needs it and `multi-step-course-applications-5-requirements-and-resolver`; `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` follow it, and `multi-step-course-applications-9-help-requests` can start once `multi-step-course-applications-2-reviewers-and-inbox` lands.
 - Collisions: `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` both change the reconcile step and the requirements page; whichever lands second rebases. `multi-step-course-applications-2-reviewers-and-inbox` adds `panels/applications/` and a line in `interface_config`, which the educator-interface refactor also edits.
 - Decided: no workflow graph. The resolver is a pure function of the application's data, re-run after every event by one reconcile function; superseded requirements are kept.
 - Decided: states are `TextChoices` and service functions, no FSM library. Reviewer and system actions go in `audit_log`, never the applicant's name. No `changes_requested` or `under_review` states.
@@ -226,36 +226,6 @@ Applications become steps an applicant works through over weeks, decided by a de
 - Out of scope: outside systems reporting a step done, provider lists and distance ranking, more than one sign-off, and scanning uploaded files (not planned).
 - References: `research_review_foundations.md`, `research_help_requests.md` and `intake_courses_case.md` in the parent.
 
-## Faster test runs
-
-Priority: 🟠 Medium
-
-Cut the time and machine load of test runs so several worktrees can work at once. Parent: `faster-test-runs`.
-
-- `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
-- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
-- `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
-- `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
-- `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing.
-- `faster-test-runs-13-checkpoint-shared-paths` — **ready** — A `finish_worktree` checkpoint tests main's change to a file the branch changed earlier as main's change.
-
-![Faster test runs](roadmap_diagrams/faster-test-runs.svg)
-
-**Notes**
-- Every spec can start now and run in parallel, except `faster-test-runs-7-claude-cloud-test-runs` and the two below.
-- `faster-test-runs-11-record-failed-full-runs` extends the record `faster-test-runs-12-reliable-full-run-record` makes reliable; `faster-test-runs-13-checkpoint-shared-paths` changes the selector after `faster-test-runs-8-narrower-targeted-tier`.
-- Suggested order by saving: `faster-test-runs-1-fast-password-hasher`, `faster-test-runs-2-reuse-test-database`, then the rest.
-- `faster-test-runs-7-claude-cloud-test-runs` waits on the others because the owner wants it only if they are not enough.
-- Collision: `faster-test-runs-2-reuse-test-database` and `faster-test-runs-5-full-suite-on-github-actions` both change the test tier definition and its runner.
-- Collision: `faster-test-runs-8-narrower-targeted-tier` changes the test selector, `faster-test-runs-9-machine-wide-test-run-limit` the runner, and `faster-test-runs-10-rerun-only-failures-in-a-batch` the tier definition.
-- Collision: `faster-test-runs-12-reliable-full-run-record` may change the runner too, beside `faster-test-runs-9-machine-wide-test-run-limit`.
-- Decision: generic `sdd` and `ds` plugins stay generic; project values reach them through per-project configuration.
-- Decision: no spec reduces what is tested without naming the test that still covers it.
-- Assumption: every spec reports its before and after timings against `faster-test-runs/research_test_timings.md`.
-- Open: whether coverage is still enforced across parallel jobs (owned by `faster-test-runs-5-full-suite-on-github-actions`).
-- Out of scope: paid runners, squashing migrations, changes to the First Class workflow.
-- References: `faster-test-runs/research_test_timings.md`, `faster-test-runs/research_batch_test_load.md`, `faster-test-runs/research_finish_worktree_reruns.md`.
-
 ## Educator interface code layout
 
 Priority: 🟠 Medium
@@ -267,9 +237,7 @@ The educator interface's `views.py` and `actions.py` split into one `panels/<are
 ![Educator interface code layout](roadmap_diagrams/educator-interface-code-layout.svg)
 
 **Notes**
-- `educator-interface-refactor-3-staff` and `educator-interface-refactor-4-course` run in parallel with `educator-interface-refactor-2-dashboard-and-audit-log`. `educator-interface-refactor-5-learner` and then `educator-interface-refactor-6-cohort` follow it, and `educator-interface-refactor-7-cleanup` comes last.
-- Collisions: the parallel specs all cut ranges from `views.py`, `actions.py`, `test_views.py` and `test_actions.py`, and add lines to one import block. Each removes only its own ranges, so the conflicts stay mechanical.
-- Land the effort before `extract_panels_framework-5-package-and-install` and before the specs that add educator panels (`deadlines-6-educator-management`, `deadlines-7-educator-at-risk`, `corporate-job-course-recommendations-4-educator-interface-screens`, `audit-log-coverage-gaps`). Otherwise rebase them onto it.
+- Land `educator-interface-refactor-7-cleanup` before `extract_panels_framework-5-package-and-install` and before the specs that add educator panels (`deadlines-6-educator-management`, `deadlines-7-educator-at-risk`, `corporate-job-course-recommendations-4-educator-interface-screens`, `audit-log-coverage-gaps`). Otherwise rebase them onto it.
 - Decided: a pure move. URL names, paths, the app label and template paths stay. There's no re-export shim. Each spec repoints every import and `mock.patch` string for what it moves.
 - Decided: an area holds `config.py`, `data_tables.py`, `data_table_panels.py`, `panels.py`, `instance_view.py` (a file), `actions.py`, `bulk_actions.py`, `filters.py` and `quick_view.py`, each only where it has content. Every `__init__.py` is empty.
 - Decided: a spec that moves registered bulk actions adds a new data migration rewriting `BulkActionRun.action_path`, with a reverse, and sets `requires_migrations: true`.
@@ -388,23 +356,6 @@ Notifications and direct messaging between learners and educators. Parent: `user
   - what a digest holds and where a user's timezone comes from (`user-communication-2-notification-email`).
 - Out of scope: announcements, forums, group conversations, SMS and push, reply-by-email.
 
-## Registration rules
-
-Priority: 🟠 Medium
-
-Rules that register or recommend courses based on a learner's HR attributes. Parent: `corporate-job-course-recommendations`.
-
-- `corporate-job-course-recommendations-4-educator-interface-screens` — **ready** — Educator-interface screens for attribute lists, a learner's attributes, and registration rules with their preview.
-- `corporate-job-course-recommendations-5-attribute-csv-import` — **ready** — Import learners' HR attributes by CSV through the bulk import flow, with a preview, and evaluate rules once per import.
-
-![Registration rules](roadmap_diagrams/registration-rules.svg)
-
-**Notes**
-- Both run in parallel. Both edit educator-interface learner views; whichever lands second rebases.
-- Only `organisation_admin` and `site_admin` manage lists and rules. A preview lists the learners affected, not a count.
-- CSV import updates `Learner` attributes only, never `User` details. Open: an unknown list value becomes an error row (the default) or is created on confirm.
-- Out of scope: SCIM and SSO sync, custom attributes, rule-filled cohorts.
-
 ## Referral tracking and marketing
 
 Priority: 🟠 Medium
@@ -424,6 +375,50 @@ Where signups come from, and what visitors are told about tracking.
 - `referral-tracking-external-referer-first-touch` must agree with the existing attribution touch list.
 - The `referral-tracking-*` specs and `landing-page-component-kit` are pull-ins from First-Class-LMS. `landing-page-component-kit` first needs a decision on whether FLS owns marketing pages.
 
+## Registration rules
+
+Priority: 🟡 Low
+
+Rules that register or recommend courses based on a learner's HR attributes. Parent: `corporate-job-course-recommendations`.
+
+- `corporate-job-course-recommendations-4-educator-interface-screens` — **ready** — Educator-interface screens for attribute lists, a learner's attributes, and registration rules with their preview.
+- `corporate-job-course-recommendations-5-attribute-csv-import` — **ready** — Import learners' HR attributes by CSV through the bulk import flow, with a preview, and evaluate rules once per import.
+
+![Registration rules](roadmap_diagrams/registration-rules.svg)
+
+**Notes**
+- Both run in parallel. Both edit educator-interface learner views; whichever lands second rebases.
+- Only `organisation_admin` and `site_admin` manage lists and rules. A preview lists the learners affected, not a count.
+- CSV import updates `Learner` attributes only, never `User` details. Open: an unknown list value becomes an error row (the default) or is created on confirm.
+- Out of scope: SCIM and SSO sync, custom attributes, rule-filled cohorts.
+
+## Faster test runs
+
+Priority: 🟡 Low
+
+Cut the time and machine load of test runs so several worktrees can work at once. Parent: `faster-test-runs`.
+
+- `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
+- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
+- `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
+- `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
+- `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing.
+- `faster-test-runs-13-checkpoint-shared-paths` — **ready** — A `finish_worktree` checkpoint tests main's change to a file the branch changed earlier as main's change.
+
+![Faster test runs](roadmap_diagrams/faster-test-runs.svg)
+
+**Notes**
+- Every spec can start now and run in parallel, except `faster-test-runs-7-claude-cloud-test-runs` and the two below.
+- `faster-test-runs-11-record-failed-full-runs` extends the record `faster-test-runs-12-reliable-full-run-record` makes reliable; `faster-test-runs-13-checkpoint-shared-paths` changes the test selector.
+- Suggested order by saving: `faster-test-runs-2-reuse-test-database` first, then the rest.
+- `faster-test-runs-7-claude-cloud-test-runs` waits on the others because the owner wants it only if they are not enough.
+- Collision: `faster-test-runs-12-reliable-full-run-record` may change the runner too, beside `faster-test-runs-9-machine-wide-test-run-limit`.
+- Decision: generic `sdd` and `ds` plugins stay generic; project values reach them through per-project configuration.
+- Decision: no spec reduces what is tested without naming the test that still covers it.
+- Assumption: every spec reports its before and after timings against `faster-test-runs/research_test_timings.md`.
+- Out of scope: paid runners, squashing migrations, changes to the First Class workflow.
+- References: `faster-test-runs/research_test_timings.md`, `faster-test-runs/research_batch_test_load.md`, `faster-test-runs/research_finish_worktree_reruns.md`.
+
 ## Reference material
 
 Priority: 🟡 Low
@@ -435,8 +430,6 @@ Reference parts, such as regulations, that learners consult at any time beside a
 ![Reference material](roadmap_diagrams/reference-material.svg)
 
 **Notes**
-- Build order: `reference-material-content-1-authoring` first; then `reference-material-content-2-learner-reference` and `reference-material-content-3-educator-reference` in parallel; `reference-material-content-4-library-courses` last, at low priority.
-- Collisions: `reference-material-content-1-authoring` changes `content_save`, the schema and the validator, like `sacaa-compliance-content-versions-and-access-1-content-save-safety` and `sacaa-compliance-content-versions-and-access-2-retire-removed-content`; whichever lands second rebases. `reference-material-content-4-library-courses` touches the learner and cohort progress panels that `educator-interface-refactor-5-learner` and `educator-interface-refactor-6-cohort` move.
 - Decided: reference parts are `CoursePart` rows attached by a new `CourseReferencePart(course, course_part, order)`; `Course.items` stays the learning path. Reference parts hold topics only, one level deep.
 - Decided: a part listed under `reference:` makes `content_save` delete that course's old collection item placing it, with its overrides and due dates, and report what it removed.
 - Decided: reading reference material records nothing (no progress, resume pointer or `started_at`) and follows lesson access, so it is closed while paused and after the time limit ends.
@@ -458,6 +451,7 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted, plus linked dashboard figures, learner-tab messaging and one new-message flow.
 - `remove-unnecessary-admin-panel-functionality` — **in progress** — Remove content engine, learner and cohort admin from the Django admin; content comes only from content_save.
 - `admin-dashboard-signal-cards` — **ready** — The admin index shows signup, registration, application and interest cards: last 7 days against the previous 7, newest entries.
+- `educator-intercface-small-ui-polish` — **in progress** — Course detail tabs, collapsed content parts, add or remove registrations, preview next/previous, quiz stats, button text alignment.
 - `staff-person-profile-by-email` — **ready** — Staff look up one person by email and see account, attribution, applications, interests, recommendations and registrations with progress.
 
 ![Educator interface](roadmap_diagrams/educator-interface.svg)
@@ -499,7 +493,7 @@ The icons app becomes an installable package another Django project can use and 
 ![Semantic icons extraction](roadmap_diagrams/semantic-icons-extraction.svg)
 
 **Notes**
-- Strictly sequential: each spec builds on the one before. `extract-semantic-icons-app-1-standalone-app` can start now; it touches only `freedom_ls/icons/`, `conftest.py` and the apps that reach into `loader._cache`.
+- Strictly sequential: each spec builds on the one before.
 - Decided: the package ships all 63 current semantic names, FLS-domain ones included. Host-added names layer on top; host settings win over app registrations, which win over built-ins.
 - Decided: "custom icons" means remapping within the active set, pointing a name at the host's own SVG file, and registering a whole custom icon set.
 - Assumed: distribution copies the panel framework: public MIT repo beside it in `django_apps/`, released by git tag, pinned with a PEP 508 git URL, `CHANGELOG.md` with upgrade flags.

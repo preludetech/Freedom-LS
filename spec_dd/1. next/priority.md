@@ -17,13 +17,11 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 ## Medium
 
-- `faster-test-runs`
 - `educator-interface-refactor`
 - `content-widget-sayit-reveal`
 - `deadlines`
 - `form-engine-branch-logic-2-and-conditions`
 - `user-communication`
-- `corporate-job-course-recommendations`
 - `referral-tracking-marketing-channels`
 - `referral-tracking-external-referer-first-touch`
 - `server-side-conversion-tracking`
@@ -31,6 +29,8 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 ## Low
 
+- `corporate-job-course-recommendations`
+- `faster-test-runs`
 - `reference-material-content-4-library-courses`
 - `educator-interface-full-polish`
 - `landing-page-component-kit`

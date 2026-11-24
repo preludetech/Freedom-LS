@@ -3,12 +3,12 @@
 <rect width="736" height="209" fill="#ffffff"/>
 <text x="24" y="38" font-size="15" font-weight="bold" fill="#111827">Registration rules</text>
 <rect x="24.0" y="58.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V117.0 A6,6 0 0 0 30.0,123.0 H32.0 Z" fill="#fb923c"/>
+<path d="M32.0,58.0 H30.0 A6,6 0 0 0 24.0,64.0 V117.0 A6,6 0 0 0 30.0,123.0 H32.0 Z" fill="#facc15"/>
 <text x="40.0" y="80.0" fill="#111827">corporate-job-course-</text>
 <text x="40.0" y="95.0" fill="#111827">recommendations-4-educator-</text>
 <text x="40.0" y="110.0" fill="#111827">interface-screens</text>
 <rect x="354.0" y="58.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V117.0 A6,6 0 0 0 360.0,123.0 H362.0 Z" fill="#fb923c"/>
+<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V117.0 A6,6 0 0 0 360.0,123.0 H362.0 Z" fill="#facc15"/>
 <text x="370.0" y="80.0" fill="#111827">corporate-job-course-</text>
 <text x="370.0" y="95.0" fill="#111827">recommendations-5-attribute-</text>
 <text x="370.0" y="110.0" fill="#111827">csv-import</text>

@@ -19,16 +19,16 @@
 <path d="M274.0,687.5 C314.0,687.5 314.0,816.0 354.0,816.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M604.0,304.5 C644.0,304.5 644.0,495.5 684.0,495.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M934.0,495.5 C974.0,495.5 974.0,578.0 1014.0,578.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,967.0 C314.0,967.0 314.0,748.0 354.0,748.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,967.0 C314.0,967.0 314.0,1012.5 354.0,1012.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,748.0 C644.0,748.0 644.0,752.5 684.0,752.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,1035.0 C314.0,1035.0 314.0,1065.5 354.0,1065.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,544.0 C314.0,544.0 314.0,562.0 354.0,562.0 L604.0,562.0 C644.0,562.0 644.0,684.5 684.0,684.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,612.0 C314.0,612.0 314.0,586.0 354.0,586.0 L604.0,586.0 C644.0,586.0 644.0,684.5 684.0,684.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M604.0,632.0 C644.0,632.0 644.0,684.5 684.0,684.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,763.0 C314.0,763.0 314.0,678.0 354.0,678.0 L604.0,678.0 C644.0,678.0 644.0,684.5 684.0,684.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,831.0 C314.0,831.0 314.0,702.0 354.0,702.0 L604.0,702.0 C644.0,702.0 644.0,684.5 684.0,684.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,763.0 C314.0,763.0 314.0,632.0 354.0,632.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,967.0 C314.0,967.0 314.0,748.0 354.0,748.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,967.0 C314.0,967.0 314.0,1012.5 354.0,1012.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,748.0 C644.0,748.0 644.0,752.5 684.0,752.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,1035.0 C314.0,1035.0 314.0,1065.5 354.0,1065.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,476.0 C314.0,476.0 314.0,448.0 354.0,448.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,408.0 C314.0,408.0 314.0,448.0 354.0,448.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M604.0,448.0 C644.0,448.0 644.0,563.5 684.0,563.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
@@ -125,30 +125,6 @@
 <text x="1030.0" y="567.5" fill="#111827">multi-step-course-</text>
 <text x="1030.0" y="582.5" fill="#111827">applications-11-applicant-</text>
 <text x="1030.0" y="597.5" fill="#111827">picks-onward-courses</text>
-<rect x="24.0" y="519.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,519.0 H30.0 A6,6 0 0 0 24.0,525.0 V563.0 A6,6 0 0 0 30.0,569.0 H32.0 Z" fill="#fb923c"/>
-<text x="40.0" y="541.0" fill="#111827">faster-test-runs-2-reuse-test-</text>
-<text x="40.0" y="556.0" fill="#111827">database</text>
-<rect x="684.0" y="659.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M692.0,659.5 H690.0 A6,6 0 0 0 684.0,665.5 V703.5 A6,6 0 0 0 690.0,709.5 H692.0 Z" fill="#facc15"/>
-<text x="700.0" y="681.5" fill="#111827">faster-test-runs-7-claude-</text>
-<text x="700.0" y="696.5" fill="#111827">cloud-test-runs</text>
-<rect x="24.0" y="587.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,587.0 H30.0 A6,6 0 0 0 24.0,593.0 V631.0 A6,6 0 0 0 30.0,637.0 H32.0 Z" fill="#fb923c"/>
-<text x="40.0" y="609.0" fill="#111827">faster-test-runs-9-machine-</text>
-<text x="40.0" y="624.0" fill="#111827">wide-test-run-limit</text>
-<rect x="354.0" y="607.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,607.0 H360.0 A6,6 0 0 0 354.0,613.0 V651.0 A6,6 0 0 0 360.0,657.0 H362.0 Z" fill="#fb923c"/>
-<text x="370.0" y="629.0" fill="#111827">faster-test-runs-11-record-</text>
-<text x="370.0" y="644.0" fill="#111827">failed-full-runs</text>
-<rect x="24.0" y="738.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,738.0 H30.0 A6,6 0 0 0 24.0,744.0 V782.0 A6,6 0 0 0 30.0,788.0 H32.0 Z" fill="#fb923c"/>
-<text x="40.0" y="760.0" fill="#111827">faster-test-runs-12-reliable-</text>
-<text x="40.0" y="775.0" fill="#111827">full-run-record</text>
-<rect x="24.0" y="806.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,806.0 H30.0 A6,6 0 0 0 24.0,812.0 V850.0 A6,6 0 0 0 30.0,856.0 H32.0 Z" fill="#fb923c"/>
-<text x="40.0" y="828.0" fill="#111827">faster-test-runs-13-</text>
-<text x="40.0" y="843.0" fill="#111827">checkpoint-shared-paths</text>
 <rect x="24.0" y="942.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,942.0 H30.0 A6,6 0 0 0 24.0,948.0 V986.0 A6,6 0 0 0 30.0,992.0 H32.0 Z" fill="#fb923c"/>
 <text x="40.0" y="964.0" fill="#111827">learner-interface-features-3-</text>
@@ -171,6 +147,30 @@
 <rect x="354.0" y="1048.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,1048.0 H360.0 A6,6 0 0 0 354.0,1054.0 V1077.0 A6,6 0 0 0 360.0,1083.0 H362.0 Z" fill="#fb923c"/>
 <text x="370.0" y="1070.0" fill="#111827">user-communication-8-realtime</text>
+<rect x="24.0" y="519.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,519.0 H30.0 A6,6 0 0 0 24.0,525.0 V563.0 A6,6 0 0 0 30.0,569.0 H32.0 Z" fill="#facc15"/>
+<text x="40.0" y="541.0" fill="#111827">faster-test-runs-2-reuse-test-</text>
+<text x="40.0" y="556.0" fill="#111827">database</text>
+<rect x="684.0" y="659.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,659.5 H690.0 A6,6 0 0 0 684.0,665.5 V703.5 A6,6 0 0 0 690.0,709.5 H692.0 Z" fill="#facc15"/>
+<text x="700.0" y="681.5" fill="#111827">faster-test-runs-7-claude-</text>
+<text x="700.0" y="696.5" fill="#111827">cloud-test-runs</text>
+<rect x="24.0" y="587.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,587.0 H30.0 A6,6 0 0 0 24.0,593.0 V631.0 A6,6 0 0 0 30.0,637.0 H32.0 Z" fill="#facc15"/>
+<text x="40.0" y="609.0" fill="#111827">faster-test-runs-9-machine-</text>
+<text x="40.0" y="624.0" fill="#111827">wide-test-run-limit</text>
+<rect x="354.0" y="607.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,607.0 H360.0 A6,6 0 0 0 354.0,613.0 V651.0 A6,6 0 0 0 360.0,657.0 H362.0 Z" fill="#facc15"/>
+<text x="370.0" y="629.0" fill="#111827">faster-test-runs-11-record-</text>
+<text x="370.0" y="644.0" fill="#111827">failed-full-runs</text>
+<rect x="24.0" y="738.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,738.0 H30.0 A6,6 0 0 0 24.0,744.0 V782.0 A6,6 0 0 0 30.0,788.0 H32.0 Z" fill="#facc15"/>
+<text x="40.0" y="760.0" fill="#111827">faster-test-runs-12-reliable-</text>
+<text x="40.0" y="775.0" fill="#111827">full-run-record</text>
+<rect x="24.0" y="806.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,806.0 H30.0 A6,6 0 0 0 24.0,812.0 V850.0 A6,6 0 0 0 30.0,856.0 H32.0 Z" fill="#facc15"/>
+<text x="40.0" y="828.0" fill="#111827">faster-test-runs-13-</text>
+<text x="40.0" y="843.0" fill="#111827">checkpoint-shared-paths</text>
 <rect x="24.0" y="451.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M32.0,451.0 H30.0 A6,6 0 0 0 24.0,457.0 V495.0 A6,6 0 0 0 30.0,501.0 H32.0 Z" fill="#9ca3af"/>
 <text x="40.0" y="473.0" fill="#111827">extract-semantic-icons-app-2-</text>
