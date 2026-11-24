@@ -2551,3 +2551,85 @@ def test_a_content_block_with_no_question_on_a_drawing_page_fails(
     result = run_validator(form_dir)
 
     assert_validator_fails(result, "has no question to travel with on a drawing page")
+
+
+def test_part_in_reference_directory_not_listed_fails(tmp_path: Path) -> None:
+    """A part under reference/ that the reference: list does not name belongs to nothing."""
+    course_dir = tmp_path / "course"
+    _write(
+        course_dir / "reference" / "glossary" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: Glossary\n---\n",
+    )
+    _write(
+        course_dir / "reference" / "regs" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: Regulations\n---\n",
+    )
+    write_reference_course(
+        course_dir,
+        children=None,
+        reference_block=_reference_block("reference/glossary/part.yaml"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "not listed under reference:")
+
+
+def test_reference_part_child_with_no_due_date_fails(tmp_path: Path) -> None:
+    """Reference material has no deadline, so no_due_date on its entry is an error."""
+    course_dir = tmp_path / "course"
+    (course_dir / "glossary").mkdir(parents=True)
+    write_valid_topic(course_dir / "glossary", "topic.md")
+    _write(
+        course_dir / "glossary" / "part.yaml",
+        "---\ncontent_type: COURSE_PART\ntitle: Glossary\nchildren:\n"
+        "  - path: topic.md\n    no_due_date: true\n---\n",
+    )
+    write_reference_course(
+        course_dir,
+        children=None,
+        reference_block=_reference_block("glossary/part.yaml"),
+    )
+
+    result = run_validator(course_dir)
+
+    assert_validator_fails(result, "carries no_due_date")
+
+
+def test_missing_child_of_reference_part_outside_validated_path_fails(
+    tmp_path: Path,
+) -> None:
+    """A reference part outside the validated path is read from disk, children included."""
+    content = tmp_path / "content"
+    _part_listing(content / "shared" / "part.yaml", ["missing.md"])
+    write_reference_course(
+        content / "course",
+        children=None,
+        reference_block=_reference_block("../shared/part.yaml"),
+    )
+
+    result = run_validator(content / "course", repo_root=tmp_path)
+
+    assert_validator_fails(result, "is missing or does not parse")
+
+
+def test_choice_question_with_sections_and_no_explanation_warns_but_passes(
+    tmp_path: Path,
+) -> None:
+    """A missing explanation is a warning: the run still passes."""
+    form_dir = tmp_path / "bank"
+    form_dir.mkdir()
+    write_valid_topic(form_dir, "topic.md")
+    write_valid_form(form_dir)
+    _write(
+        form_dir / "1. page.yaml",
+        "---\ncontent_type: FORM_PAGE\ntitle: Page\n---\n"
+        "question: Pick one\ntype: multiple_choice\nsections: [topic.md]\n"
+        'options:\n  - text: "Yes"\n    value: "yes"\n    correct: true\n'
+        '  - text: "No"\n    value: "no"\n',
+    )
+
+    result = run_validator(form_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "no explanation" in result.stderr

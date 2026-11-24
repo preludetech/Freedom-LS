@@ -498,6 +498,9 @@ def price_errors(
     Every price rule, keyed by the author-facing field name it belongs to.
     Currency is never required here -- each caller resolves a default
     currency before calling, and reports a still-missing currency itself.
+    Rules run in order and a field keeps its first error only, so a field
+    that is both stray for the kind and numerically invalid reports the
+    stray message rather than being overwritten by the amount checks.
     """
     values: dict[str, object] = {
         "amount": amount,
@@ -584,7 +587,13 @@ def slugify(value: str) -> str:
 
 
 def _require_quoted_amount(value: object) -> object:
-    """Refuse a bare YAML number, so a price amount is never read through float."""
+    """Refuse a bare YAML number, so a price amount is never read through float.
+
+    `yaml.safe_load` resolves an unquoted `amount: 1499.00` to a float before
+    pydantic ever sees it, and a float can't round-trip a currency amount
+    exactly. Requiring a quoted string means the amount reaches `Decimal`
+    from the author's own digits.
+    """
     if not isinstance(value, str):
         raise ValueError('write amounts as quoted strings, e.g. "1499.00"')
     return value
@@ -669,7 +678,13 @@ def _default_currency() -> str:
 
 
 def _validate_price(price: "FixedPrice | RangePrice | DiscountedPrice") -> None:
-    """Run the shared price rules against one submodel's own fields."""
+    """Run the shared price rules against one submodel's own fields.
+
+    `price_errors` is keyed by the same author-facing field names these
+    submodels use, so the dump can be passed straight through. An absent
+    `currency` resolves to `DEFAULT_CURRENCY` first, matching how
+    `Course.clean()` and `content_save` resolve it.
+    """
     fields = price.model_dump(exclude_none=True)
     if "currency" not in fields:
         fields["currency"] = _default_currency()
@@ -1019,7 +1034,6 @@ class Form(
         False,
         description="If True, leaving the test mid-attempt finalises and scores it. Default False.",
     )
-
     shuffle_pages: bool = Field(
         False,
         description="QUIZ only. If True, each sitting serves the pages in a random order. Default False.",
@@ -1410,7 +1424,6 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
             "position, because options are shuffled."
         ),
     )
-
     min: str = Field(
         "",
         description=(

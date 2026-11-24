@@ -24,6 +24,7 @@ validate that a bunch of markdown files matches the given schema
 from the command line run:
     uv run --no-project --with pydantic --with pyyaml --with python-frontmatter --with babel python validate.py /path/to/content/directory_or_item
 
+
 The path can either be a file or a directory. if it is a directory then recurse over all files and validate each one.
 """
 
@@ -117,14 +118,14 @@ IGNORED_PROBLEM = (
 )
 IGNORED_FIX = "Remove this entry, or remove the line from ignore: in .fls-content.yaml."
 
-_IGNORE_FILE_NAME = ".fls-content.yaml"
+CONFIG_FILE_NAME = ".fls-content.yaml"
 _GLOB_CHARACTERS = frozenset("*?[")
 
 
 def _ignore_entry(entry: object, root: Path) -> Path:
     """One ignore: entry as a resolved key, or ValueError when it is not a plain
     relative path inside the content repo."""
-    where = f"{root / _IGNORE_FILE_NAME}"
+    where = f"{root / CONFIG_FILE_NAME}"
     if not isinstance(entry, str):
         raise ValueError(
             f"\n❌ Invalid ignore entry {entry!r} in {where}\n"
@@ -157,7 +158,7 @@ def read_ignore_list(root: Path) -> frozenset[Path]:
     No file, or no ignore: key, gives an empty set. The file comes from a checkout, so
     it is parsed with safe_load and can never construct Python objects.
     """
-    config_file = root / _IGNORE_FILE_NAME
+    config_file = root / CONFIG_FILE_NAME
     if not config_file.is_file():
         return frozenset()
     try:
@@ -927,6 +928,10 @@ class _ParsedByPath:
                     self._items[content_key(item.file_path)] = item
         return self._items.get(key)
 
+    def was_read_from_disk(self, key: Path) -> bool:
+        """Whether the key sits outside the validated path, so get() read it itself."""
+        return key in self._read
+
     def children_of(self, part: CoursePart) -> list[Path]:
         """The part's children as resolved keys, listed or auto-discovered. Auto-discovery
         parses every file beside the part, so the walk happens once per part however many
@@ -1106,9 +1111,18 @@ def _reference_part_errors(
     errors: list[str] = []
     for key in children:
         child = by_path.get(key)
-        if child is None:
-            continue
         shown = _shown_relative_to(key, part.file_path.parent)
+        if child is None:
+            # Inside the validated path the unknown-child check and the file's own
+            # validation report this. Nothing else looks at a part outside it.
+            if by_path.was_read_from_disk(content_key(part.file_path)):
+                errors.append(
+                    error(
+                        problem=f"the part's child {shown} is missing or does not parse",
+                        fix="Fix the part's children: list or that file first.",
+                    )
+                )
+            continue
         if child.content_type != ContentType.TOPIC:
             errors.append(
                 error(
@@ -1129,31 +1143,72 @@ def _reference_part_errors(
             fix="Remove the due keys from part.yaml; reference material has no deadline.",
         )
         for entry in part.children or []
-        if entry.holds_due_value()
+        if entry.sets_a_due_key()
+    )
+    errors.extend(
+        error(
+            problem=(
+                f"the part's children: entry {entry.path} carries no_due_date, "
+                "which a reference part does not need"
+            ),
+            fix="Remove no_due_date from part.yaml; reference material has no deadline.",
+        )
+        for entry in part.children or []
+        if entry.no_due_date
     )
     return errors
+
+
+def _unlisted_reference_part_errors(
+    course: Course, attached: set[Path], ignore: frozenset[Path]
+) -> list[str]:
+    """Auto-discovery skips the course's reference directory, so a part there that
+    neither list names is loaded but belongs to nothing, and nothing else would say
+    so. `attached` holds the keys the course's reference: and children: lists name."""
+    course_dir = content_key(course.file_path).parent
+    return [
+        _reference_list_error(
+            course.file_path,
+            course.content_type,
+            "reference",
+            str(part_file.relative_to(course_dir)),
+            problem="this part is in reference/ but not listed under reference:",
+            fix="Add the part to the reference: list, or move it out of reference/.",
+        )
+        for part_file in sorted((course_dir / REFERENCE_DIR_NAME).rglob("part.yaml"))
+        if content_key(part_file) not in attached
+        and not is_ignored(part_file, ignore)
+        and not is_loader_skipped(content_key(part_file), course_dir)
+    ]
 
 
 def validate_reference_lists(
     all_parsed: Sequence[BaseBaseContentModel],
     *,
     ignore: frozenset[Path] = frozenset(),
+    loaded_root: Path | None = None,
 ) -> list[str]:
     """Check every course's reference: list against the files it names.
 
     A reference part sits outside the learning path, so it may not also be a child of the
     course, it must be a part file the loader reads, and it holds topics with no due dates.
+    Without loaded_root, a part beyond the validated path is read from disk, as a
+    single-directory validate run needs. content_save passes the path it loads: it links
+    only parts it loads with the course.
     """
     errors: list[str] = []
     # Reads from disk when a part sits outside the validated path, so validating one
     # course directory gives the same answer as loading the whole tree.
     by_path = _ParsedByPath(all_parsed, ignore=ignore)
     for course in all_parsed:
-        if not isinstance(course, Course) or not course.reference:
+        if not isinstance(course, Course):
             continue
         keys = [resolve_author_path(course.file_path, e.path) for e in course.reference]
         repeated = _repeated_indices(keys)
         learning_path = _learning_path_keys(course, ignore)
+        errors.extend(
+            _unlisted_reference_part_errors(course, {*keys, *learning_path}, ignore)
+        )
         for index, (entry, key) in enumerate(zip(course.reference, keys, strict=True)):
             error = functools.partial(
                 _reference_list_error,
@@ -1205,6 +1260,16 @@ def validate_reference_lists(
                     error(
                         problem="content_save skips this part: a name on its path starts with _ or .",
                         fix="Move the part to a folder content_save reads: no name on its path may start with _ or .",
+                    )
+                )
+                continue
+            if loaded_root is not None and not key.is_relative_to(
+                content_key(loaded_root)
+            ):
+                errors.append(
+                    error(
+                        problem="this part is not loaded with the course: it sits outside the directory content_save was given",
+                        fix="Load a directory that holds both the course and the part.",
                     )
                 )
                 continue
@@ -2036,7 +2101,6 @@ def validate(path):
         failed_files.append((path, message))
     for message in validate_question_sections(all_parsed, ignore=ignore):
         failed_files.append((path, message))
-
     # A single-file run has no sibling files to resolve an image against.
     if path.is_dir():
         for message in validate_article_images(all_parsed, all_file_paths):
