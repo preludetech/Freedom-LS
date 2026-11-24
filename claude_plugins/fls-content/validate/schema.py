@@ -1046,6 +1046,17 @@ class Form(
         False,
         description="QUIZ only. If True, each sitting serves each question's options in a random order. Default False.",
     )
+    requires_declaration: bool = Field(
+        False,
+        description="QUIZ only. If True, the learner signs a declaration before every attempt. Default False.",
+    )
+    declaration_text: str = Field(
+        "",
+        description=(
+            "QUIZ only, with requires_declaration. The declaration the learner signs. "
+            "Leave out to use the site's default text."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_quiz_fields(self):
@@ -1074,12 +1085,18 @@ class Form(
                 "shuffle_pages": self.shuffle_pages,
                 "shuffle_questions": self.shuffle_questions,
                 "shuffle_options": self.shuffle_options,
+                "requires_declaration": self.requires_declaration,
+                "declaration_text": self.declaration_text,
             }
             for name, is_on in knobs.items():
                 if is_on:
                     raise ValueError(
                         f"{name} should only be set when strategy is QUIZ (in {self.file_path})"
                     )
+        if self.declaration_text and not self.requires_declaration:
+            raise ValueError(
+                f"declaration_text should only be set when requires_declaration is true (in {self.file_path})"
+            )
         return self
 
 

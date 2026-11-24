@@ -1,0 +1,34 @@
+---
+content_type: FORM_PAGE
+title: Questions
+uuid: 0d4ef4c1-bd76-484f-9d95-fb1a31898545
+---
+options:
+- correct: true
+  text: The Earth
+  uuid: ccf95d17-4732-4c5b-91a0-855d8476803c
+  value: the_earth
+- text: The Sun
+  uuid: 86bad3e1-030c-42ca-8c67-eaac3197cb39
+  value: the_sun
+- text: Mars
+  uuid: 036b24c6-2d88-4830-9295-1f280eab3399
+  value: mars
+question: What does the Moon orbit?
+type: multiple_choice
+uuid: 15675464-76d2-46ad-8b90-5cc83ff075e2
+---
+options:
+- correct: true
+  text: A star
+  uuid: de86e36f-fb58-42b1-be18-1001f048197f
+  value: a_star
+- text: A planet
+  uuid: 50cbb9ef-c6d3-4ed2-8274-13720c353869
+  value: a_planet
+- text: A moon
+  uuid: 5d3ff687-fe5a-4f85-9935-6f503d80bf7f
+  value: a_moon
+question: What is the Sun?
+type: multiple_choice
+uuid: 01814eba-fa06-4fb8-b768-112388665aca

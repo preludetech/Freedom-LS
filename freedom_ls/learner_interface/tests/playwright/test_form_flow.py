@@ -688,3 +688,47 @@ def test_a_shuffled_quiz_shows_the_served_order_on_every_visit(
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
+
+
+def _declaration_quiz_course() -> Course:
+    """A course whose only item is a one-question quiz that requires a declaration."""
+    form = FormFactory(
+        title="Declaration Quiz",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=50,
+        requires_declaration=True,
+        declaration_text="I wrote every answer myself.",
+    )
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(
+        form_page=page,
+        type="multiple_choice",
+        question="Which option is right?",
+        required=False,
+    )
+    QuestionOptionFactory(question=question, text="Alpha", order=0, correct=True)
+    QuestionOptionFactory(question=question, text="Beta", order=1)
+    return course_with_form(form, title="Declaration Course", slug="declaration-course")
+
+
+def test_a_declaration_quiz_asks_for_a_signature_before_page_one(
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _declaration_quiz_course()
+    register_user_for_course(course, logged_in_user)
+
+    navigate_to_form(page, live_server, course)
+    page.get_by_role("link", name="Start Form").click()
+    expect(page.get_by_test_id("declaration-text")).to_contain_text(
+        "I wrote every answer myself."
+    )
+
+    page.get_by_test_id("declaration-agreed").check()
+    page.get_by_test_id("declaration-typed-name").fill("Sheena O'Connell")
+    page.get_by_test_id("sign-declaration-button").click()
+
+    expect(page).to_have_url(re.compile(r"/fill_form/1$"))
+    expect(page.get_by_text("Which option is right?")).to_be_visible()
