@@ -128,11 +128,6 @@ def _sittings() -> tuple[int, int, int]:
     )
 
 
-# ---------------------------------------------------------------------------
-# form_start
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_form_start_on_a_declaration_quiz_with_no_open_sitting_redirects_to_the_declaration_and_writes_nothing(
     declaration_course, client
@@ -226,11 +221,6 @@ def test_form_start_on_a_survey_starts_a_sitting_as_before(mock_site_context, cl
     assert _sittings() == (1, 1, 0)
 
 
-# ---------------------------------------------------------------------------
-# form_declaration: the page
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_the_page_shows_the_effective_declaration_text(declaration_course, client):
     course, form, _user = declaration_course
@@ -283,11 +273,6 @@ def test_the_page_carries_the_hash_of_the_text_it_shows(declaration_course, clie
     assert hidden.get("value") == declaration_text_hash(
         form.effective_declaration_text()
     )
-
-
-# ---------------------------------------------------------------------------
-# form_declaration: signing
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -394,11 +379,6 @@ def test_a_missing_trusted_proxy_header_refuses_the_signature_and_writes_nothing
 
     assert response.status_code == 403
     assert _sittings() == (0, 0, 0)
-
-
-# ---------------------------------------------------------------------------
-# form_declaration: gates and non-declaration forms
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
