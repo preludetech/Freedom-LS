@@ -1,0 +1,143 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link [ref=f5e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f5e4]
+      - heading "FirstClass" [level=1] [ref=f5e5]
+    - navigation [ref=f5e6]:
+      - generic [ref=f5e7]:
+        - link "Login" [ref=f5e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f5e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f5e10]:
+    - generic [ref=f5e12]:
+      - link "Back" [ref=f5e13] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f5e18]:
+        - heading "QA Revision Course" [level=1] [ref=f5e19]
+        - generic [ref=f5e21]:
+          - generic [ref=f5e25]:
+            - paragraph [ref=f5e26]: Lessons
+            - paragraph [ref=f5e27]: 16 lessons
+          - generic [ref=f5e31]:
+            - paragraph [ref=f5e32]: Enrolment
+            - paragraph [ref=f5e33]: Free · open
+      - generic [ref=f5e34]:
+        - complementary [ref=f5e35]:
+          - generic [ref=f5e37]:
+            - generic [ref=f5e38]:
+              - paragraph [ref=f5e39]: Free · open to everyone
+              - paragraph [ref=f5e40]: One click. No credit card.
+            - link "Enrol for free" [ref=f5e41] [cursor=pointer]:
+              - /url: /courses/qa-revision-course/access/
+            - generic [ref=f5e42]:
+              - heading "This course includes" [level=3] [ref=f5e43]
+              - list [ref=f5e44]:
+                - listitem [ref=f5e45]: 16 lessons
+                - listitem [ref=f5e46]: Includes assessments
+        - generic [ref=f5e48]:
+          - heading "Course content" [level=2] [ref=f5e49]
+          - navigation "Course outline" [ref=f5e51]:
+            - list [ref=f5e52]:
+              - listitem [ref=f5e53]:
+                - button "1. Locked Foundations" [ref=f5e54] [cursor=pointer]:
+                  - generic [ref=f5e55]:
+                    - generic [ref=f5e56]: "1."
+                    - generic [ref=f5e57]: Locked
+                    - generic [ref=f5e61]: Foundations
+              - listitem [ref=f5e67]:
+                - button "2. Locked Practice" [ref=f5e68] [cursor=pointer]:
+                  - generic [ref=f5e69]:
+                    - generic [ref=f5e70]: "2."
+                    - generic [ref=f5e71]: Locked
+                    - generic [ref=f5e75]: Practice
+              - listitem [ref=f5e81]:
+                - button "3. Locked Advanced" [ref=f5e82] [cursor=pointer]:
+                  - generic [ref=f5e83]:
+                    - generic [ref=f5e84]: "3."
+                    - generic [ref=f5e85]: Locked
+                    - generic [ref=f5e89]: Advanced
+              - listitem [ref=f5e95]:
+                - button "4. Locked Backlog" [ref=f5e96] [cursor=pointer]:
+                  - generic [ref=f5e97]:
+                    - generic [ref=f5e98]: "4."
+                    - generic [ref=f5e99]: Locked
+                    - generic [ref=f5e103]: Backlog
+  - contentinfo [ref=f5e109]:
+    - generic [ref=f5e110]:
+      - paragraph [ref=f5e111]: © 2026 FirstClass
+      - navigation "Legal" [ref=f5e112]:
+        - link "Terms and Conditions" [ref=f5e113] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f5e114] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f5e115] [cursor=pointer]: learner-interface-features-3-revision-questions
+  - list [ref=f5e117]:
+    - listitem [ref=f5e118]:
+      - link "Hide »" [ref=f5e119] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e120]:
+      - link "Toggle Theme" [ref=f5e121] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e124]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e125] [cursor=pointer]
+      - link "History /courses/qa-revision-course/detail/" [ref=f5e126] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e127]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e128] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f5e129] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e130]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e131] [cursor=pointer]
+      - 'link "Time CPU: 61.07ms (75.61ms)" [ref=f5e132] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f5e133]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e134] [cursor=pointer]
+      - link "Settings" [ref=f5e135] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e136]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e137] [cursor=pointer]
+      - link "Headers" [ref=f5e138] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e139]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e140] [cursor=pointer]
+      - link "Request course_detail" [ref=f5e141] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e142]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e143] [cursor=pointer]
+      - link "SQL 22 queries in 12.26ms" [ref=f5e144] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e145]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e146] [cursor=pointer]
+      - link "Static files 10 files used" [ref=f5e147] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e148]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e149] [cursor=pointer]
+      - link "Templates learner_interface/course_detail.html" [ref=f5e150] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e151]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e152] [cursor=pointer]
+      - link "Alerts" [ref=f5e153] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e154]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e155] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f5e156] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e157]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e158] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f5e159] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e160]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f5e161] [cursor=pointer]
+      - link "Community" [ref=f5e162] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f5e163]:
+      - checkbox "Enable for next and successive requests" [ref=f5e164] [cursor=pointer]
+      - generic [ref=f5e165]: Intercept redirects
+    - listitem [ref=f5e166]:
+      - checkbox "Enable for next and successive requests" [ref=f5e167] [cursor=pointer]
+      - generic [ref=f5e168]: Profiling

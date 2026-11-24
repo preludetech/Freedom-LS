@@ -1,0 +1,106 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link [ref=f5e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f5e4]
+      - heading "FirstClass" [level=1] [ref=f5e5]
+    - navigation [ref=f5e6]:
+      - generic [ref=f5e7]:
+        - generic [ref=f5e8]:
+          - button "Notifications, 6 new" [ref=f5e9]
+          - status:
+            - generic [ref=f5e13]: Notifications, 6 new
+            - generic [aria-hidden] [ref=f5e14]: "6"
+        - button "Open user menu for Revision Learner" [ref=f5e16] [cursor=pointer]:
+          - generic [ref=f5e17]:
+            - generic [ref=f5e18]: Open user menu for Revision Learner
+            - generic [aria-hidden] [ref=f5e19]: RL
+  - generic:
+    - status
+    - alert
+  - main [ref=f5e20]:
+    - generic [ref=f5e22]:
+      - dialog "Course outline" [ref=f5e23]:
+        - generic [ref=f5e26]:
+          - generic [ref=f5e27]:
+            - paragraph [ref=f5e28]: Course outline
+            - paragraph [ref=f5e29]: QA Revision Course
+            - generic [ref=f5e31]:
+              - progressbar "Progress for QA Revision Course" [ref=f5e32]: 18%
+              - generic [ref=f5e33]: 18% complete
+          - navigation "Course outline" [ref=f5e34]:
+            - list [ref=f5e35]:
+              - listitem [ref=f5e36]:
+                - button "1. Completed Foundations" [expanded] [ref=f5e37] [cursor=pointer]:
+                  - generic [ref=f5e38]:
+                    - generic [ref=f5e39]: "1."
+                    - generic [ref=f5e40]: Completed
+                    - generic [ref=f5e44]: Foundations
+                - list [ref=f5e50]:
+                  - listitem [ref=f5e51]:
+                    - generic [ref=f5e52]:
+                      - generic [ref=f5e53]: "1.1"
+                      - generic [ref=f5e54]: Completed
+                      - generic [ref=f5e58]: Foundations A
+                  - listitem [ref=f5e59]:
+                    - generic [ref=f5e60]:
+                      - generic [ref=f5e61]: "1.2"
+                      - generic [ref=f5e62]: Completed
+                      - link "Foundations B" [ref=f5e67] [cursor=pointer]:
+                        - /url: /courses/qa-revision-course/2/
+                  - listitem [ref=f5e68]:
+                    - generic [ref=f5e69]:
+                      - generic [ref=f5e70]: "1.3"
+                      - generic [ref=f5e71]: Completed
+                      - link "QA Revision Foundations Quiz" [ref=f5e76] [cursor=pointer]:
+                        - /url: /courses/qa-revision-course/3/
+              - listitem [ref=f5e77]:
+                - button "2. Completed Practice" [ref=f5e78] [cursor=pointer]:
+                  - generic [ref=f5e79]:
+                    - generic [ref=f5e80]: "2."
+                    - generic [ref=f5e81]: Completed
+                    - generic [ref=f5e85]: Practice
+              - listitem [ref=f5e91]:
+                - button "3. Not started Advanced" [ref=f5e92] [cursor=pointer]:
+                  - generic [ref=f5e93]:
+                    - generic [ref=f5e94]: "3."
+                    - generic [ref=f5e95]: Not started
+                    - generic [ref=f5e99]: Advanced
+              - listitem [ref=f5e105]:
+                - button "4. Completed Backlog" [ref=f5e106] [cursor=pointer]:
+                  - generic [ref=f5e107]:
+                    - generic [ref=f5e108]: "4."
+                    - generic [ref=f5e109]: Completed
+                    - generic [ref=f5e113]: Backlog
+          - navigation "Revision" [ref=f5e119]:
+            - link "Revision 36 due" [ref=f5e120] [cursor=pointer]:
+              - /url: /courses/qa-revision-course/revision/
+              - generic [ref=f5e121]: Revision
+              - generic [ref=f5e122]: 36 due
+      - generic [ref=f5e123]:
+        - generic [ref=f5e125]:
+          - navigation "Breadcrumb" [ref=f5e128]:
+            - list [ref=f5e129]:
+              - listitem [ref=f5e130]:
+                - link "QA Revision Course" [ref=f5e131] [cursor=pointer]:
+                  - /url: /courses/qa-revision-course/detail/
+              - listitem [ref=f5e132]:
+                - generic [aria-hidden] [ref=f5e133]: ">"
+                - link "Foundations" [ref=f5e134] [cursor=pointer]:
+                  - /url: /courses/qa-revision-course/1/
+              - listitem [ref=f5e135]:
+                - generic [aria-hidden] [ref=f5e136]: ">"
+                - generic "Foundations A" [ref=f5e137]
+          - heading "Foundations A" [level=1] [ref=f5e140]
+        - link "Next" [ref=f5e144] [cursor=pointer]:
+          - /url: /courses/qa-revision-course/2/
+  - contentinfo [ref=f5e148]:
+    - generic [ref=f5e149]:
+      - paragraph [ref=f5e150]: © 2026 FirstClass
+      - navigation "Legal" [ref=f5e151]:
+        - link "Terms and Conditions" [ref=f5e152] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f5e153] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f5e154] [cursor=pointer]: learner-interface-features-3-revision-questions
+  - generic "Show toolbar" [ref=f5e156]: DJDT

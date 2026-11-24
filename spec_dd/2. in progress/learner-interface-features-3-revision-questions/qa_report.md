@@ -1,160 +1,95 @@
 # Frontend QA report: revision questions
 
-Spec: `learner-interface-features-3-revision-questions`. Plan: `3. frontend_qa.md`.
+Test plan: `3. frontend_qa.md`. Result: every test and layout record passed. No bugs were found and nothing was fixed.
 
 ## Methodology
 
-Screenshots were collected into `screenshots/` beside this report, and every image linked below exists there. Tests ran against a QA server on port 8235 with the seeded learners A, B and C and the admin. Tests ran at desktop, mobile (375px) and tablet (768px) viewports. Two screenshots in that folder (`page-2026-11-23T04-27-13-821Z.png`, `page-2026-11-23T04-34-55-569Z.png`) were taken with the debug toolbar open. They are broken and no record references them, so they are not linked.
-
-Pre-step note (rebase): rebased 33 commits onto main. Conflicts were resolved in `pyproject.toml`/`uv.lock` (kept dulwich and fsrs), and in the content_engine `test_validate.py` and `test_content_save.py` (kept both sides' tests). The lost-change check passed. The full suite had one failure: the educator quiz preview test counted the correct-answer mark's new inner span twice. That was fixed in the test, committed and pushed. The front-end check was folded into this QA run (same pages and viewports). The upstream-change review found nothing changed.
+Screenshots were collected into `screenshots/` beside this report. Every image referenced below exists there. Tests ran at desktop, mobile (375px) and tablet (768px) viewports. Mobile and tablet covered the plan's responsive checks: Tests 2.4, 3, 4, 5 and 6.4. The other tests ran at desktop only.
 
 ## Diff scoping
 
-Class: **FULL**. Skipped: nothing. Everything ran (desktop, mobile and tablet passes included).
-
-Changed files that triggered the class (front-end subset, from the `scoping` record):
-- `freedom_ls/form_engine/templates/cotton/correct-answer-mark.html`
-- `freedom_ls/learner_interface/static/learner_interface/js/alpine-components.js`
-- `freedom_ls/learner_interface/templates/learner_interface/_course_base.html`
-- `.../course_revision.html`
-- `.../partials/course_toc_revision.html`
-- `.../partials/revision_card.html`
-- `.../partials/revision_dashboard.html`
-- `.../partials/revision_end.html`
-- `.../partials/revision_feedback.html`
-- and 109 non-front-end files
+Class: `FULL`. The changed files that triggered it were the `learner_interface` templates and static files, `freedom_ls/revision/*`, `freedom_ls/form_engine/*` and `freedom_ls/content_engine/*`. Nothing was skipped.
 
 ## Smoke gate
 
-Status: **pass**. Pages loaded: `/` and `/courses/qa-revision-course/revision/`. The run was not aborted.
+Outcome: **pass**. Pages loaded: `/` and `/courses/qa-revision-course/revision/`.
 
 ## Design check
 
-No design records exist: this plan has no design screenshots, so no design states tested.
+No design states tested. The plan has no `-design` tests.
 
-## Results summary
+## Test results
 
-| Test | Viewport | Result |
-| --- | --- | --- |
-| 1.2, 1.3 course detail untouched (Test 1) | desktop | pass |
-| 2.2, 2.3, 2.5, 2.6 outline entry (Test 2) | desktop | pass |
-| 2.4 outline entry on small screens | mobile, tablet | pass |
-| 3.2, 3.3, 3.4, 3.5 dashboard (Test 3) | desktop | pass |
-| 3.2 dashboard | mobile | pass |
-| 4.1 to 4.10 wrong answer (Test 4) | desktop | pass |
-| 4.5 wrong-answer feedback | mobile | pass |
-| 5.1, 5.3 to 5.7 right answer and I guessed (Test 5) | desktop | pass |
-| 5.3 right answer, toggle and Next on one row | tablet | pass |
-| 5.3 right answer, toggle and Next on one row | mobile | **fail** (B2) |
-| 6.2 done card (Test 6) | desktop | pass |
-| 6.2-brand done card brand checklist | desktop | **fail** (B1) |
-| 6.2 done card | tablet | pass |
-| 6.4 done card at 375px | mobile | pass |
-| 6.3, 6.5, 6.6, 6.7, 6.8 | desktop | pass |
-| 6.7-early-submit | desktop | **fail** (B3) |
-| 7.2, 7.3, 7.4 nothing due (Test 7) | desktop | pass |
-| 8.1, 8.2, 8.3, 8.4, 8.5 turned away (Test 8) | desktop | pass |
-| 9.1, 9.2, 9.4, 9.5 quiz pages (Test 9) | desktop | pass |
-| 9.3 results page incorrect-answers block | desktop | skip |
-| 10.1, 10.3, 10.6 to 10.9 dropped question and explanation (Test 10) | desktop | pass |
-
-## Bugs
-
-### B1: Revision done count tiles are bordered boxes inside the bordered card
-
-Manifestations:
-- `6.2-brand`, desktop
-
-Expected: brand visual checklist says items are separated by space, with no box inside a box. The three count tiles (Knew it, Hard, Forgot) should not each be a bordered box inside the bordered revision card.
-
-Actual: `revision_end.html` gives each tile `rounded-md border border-border bg-surface-2`, so three bordered tinted boxes sit inside the bordered card at every viewport. The spec says "count tiles" but does not describe borders.
-
-![](screenshots/page-2026-11-23T04-32-54-459Z.png)
-![](screenshots/page-2026-11-23T04-46-50-941Z.png)
-![](screenshots/page-2026-11-23T04-47-38-393Z.png)
-
-### B2: I guessed and Next do not share a row at 375px
-
-Manifestations:
-- `5.3`, mobile
-
-Expected: plan 5.3 says the "I guessed" toggle sits at the left with its help line, and "Next" at the right of the same row.
-
-Actual: at 375px the toggle's group (button plus the help line "We'll ask you this one again sooner.") is too wide, so Next wraps onto its own line below. At 768 and 1920 they share a row. The buttons themselves fit and keep one-line labels.
-
-![](screenshots/page-2026-11-23T04-46-28-973Z.png)
-
-### B3: Answer form submits as a native GET before the page finishes loading
-
-Manifestations:
-- `6.7-early-submit`, desktop
-
-Expected: "Check answer" always submits the answer to `course_revision_answer` (POST) and shows feedback.
-
-Actual: the answer form in `partials/revision_card.html` has `hx-post` but no method or action fallback. Clicked after the page is parsed but before DOMContentLoaded (deferred scripts still loading), it submits natively as GET to the revision page. The answer goes into the URL query string (`?question_<uuid>=<option uuid>`), nothing is recorded, and the unanswered question re-renders. Minor: reproducible by automation, plausible on a slow network. No screenshot (the failure is in the URL and the network behaviour).
+| Test | Viewport | Result | Screenshot | Notes |
+| --- | --- | --- | --- | --- |
+| 1 Course details page untouched | desktop | pass | ![](screenshots/page-2026-11-24T14-50-01-627Z.png) | Learner A sees hero, Continue, "This course includes" and course content. There is no Revision card and no due count. The anonymous view shows the same page with "Enrol for free" and nothing about revision: ![](screenshots/page-2026-11-24T14-49-47-757Z.png). |
+| 2 Revision entry in outline | desktop | pass | ![](screenshots/page-2026-11-24T14-50-18-582Z.png) | The REVISION eyebrow sits under the outline with no divider or icon. The "40+ due" pill is at the right and nothing appears under the progress bar. Clicking the entry opens `/revision/` inside the player with the entry highlighted. The entry persists across Previous and Next. |
+| 2.5 / 3.4 Learner B, empty bank | desktop | pass | ![](screenshots/page-2026-11-24T15-00-00-000Z.png) | There is no Revision entry in the outline. `/revision/` returns 200 with "Questions appear here after you finish a section." and "Back to the course". The outline's 18% complete is a stale cached `CourseProgress` value left by the data reset. It is not a product fault. |
+| 2.4 outline on small screens | mobile | pass | ![](screenshots/page-2026-11-24T15-04-32-712Z.png) | The sheet ends with REVISION and the "40+ due" pill. There is no horizontal scroll. |
+| 2.4 outline on small screens | tablet | pass | ![](screenshots/page-2026-11-24T15-05-56-415Z.png) | REVISION with "34 due" at the bottom of the sheet. scrollWidth is 768. |
+| 3 Dashboard | desktop | pass | ![](screenshots/page-2026-11-24T14-50-33-141Z.png) | The card has the icon, heading, "40+ questions due." and a full-width Start revision button. Start leads to "1 of 15". GET on `/revision/start/` and `/revision/next/` returns 405. |
+| 3 Dashboard | mobile | pass | ![](screenshots/page-2026-11-24T15-04-48-238Z.png) | The card sits inside the player. scrollWidth is 375. |
+| 4 Wrong answer | desktop | pass | ![](screenshots/page-2026-11-24T14-52-04-850Z.png) | An empty submit returns 422 "Choose an answer." with no browser bubble: ![](screenshots/page-2026-11-24T14-51-52-106Z.png). The red/green rows, callout, Revisit link and Next all matched the plan. Focus lands on the feedback and reload keeps it. |
+| 4 Wrong answer | tablet | pass | ![](screenshots/page-2026-11-24T15-06-07-177Z.png) | A wrong answer on a backlog question with no explanation. |
+| 5 Right answer and "I guessed" | desktop | pass | ![](screenshots/page-2026-11-24T14-52-33-642Z.png) | The toggle cycles pressed, unpressed, pressed (![](screenshots/element-2026-11-24T14-52-51-142Z.png)) and survives reload. In the admin, the Revision models are read-only: no add link, the add view returns 403, and there are no actions. |
+| 5 Right answer and "I guessed" | mobile | pass | ![](screenshots/page-2026-11-24T15-05-00-385Z.png) | Feedback fits 375px. "I guessed" and Next share one row. |
+| 6 "Revision done" | desktop | pass | ![](screenshots/page-2026-11-24T14-53-36-950Z.png) | Of 15 answers, 11 were Knew it, 2 Hard and 2 Forgot. Back to the course leads to the same item as Continue. The due count dropped from 40+ to 36. The session resumed after the tab was closed. The dropped, 30-day and Advanced questions never appeared. |
+| 6.4 "Revision done" | mobile | pass | ![](screenshots/page-2026-11-24T15-05-36-697Z.png) | Knew it 14, Hard 0, Forgot 1 sit side by side. Each column is 87px with no clipped labels. |
+| 7 Nothing due | desktop | pass | ![](screenshots/page-2026-11-24T15-01-00-000Z.png) | The badge reads "0 due" and the dashboard shows the nothing-due line. The session ran 10 right and 5 wrong, and the counts matched. |
+| 8 Turned away | desktop | pass | none | Anonymous users go to login. An unregistered course redirects to its detail page. Paused and access-ended learners see their notices. A missing course returns 404. |
+| 9 Quiz pages unchanged | desktop | pass | ![](screenshots/page-2026-11-24T15-00-33-328Z.png) | Learner B took the quiz because Learner A could not start a new sitting. The results show "Quiz passed!" at 80%. The educator preview shows "Correct answer" marks: ![](screenshots/page-2026-11-24T15-01-07-442Z.png). Learner A's attempt count is unchanged. |
+| 10 Dropped question and edited explanation | desktop | pass | ![](screenshots/page-2026-11-24T15-03-56-573Z.png) | The session mixed knowledge-check and bank-form questions, with the locked option last. The dropped question disappeared and its review row was removed. `content_validate` warned and exited 0. The feedback had no explanation text. |
 
 ## Layout probe
 
 | Test | Viewport | URL | Screenshot | Result |
 | --- | --- | --- | --- | --- |
-| 1.2 | desktop | `/courses/qa-revision-course/detail/` | ![](screenshots/page-2026-11-23T04-27-21-014Z.png) | clean |
-| 2.2 | desktop | `/courses/qa-revision-course/1/` | ![](screenshots/page-2026-11-23T04-29-32-989Z.png) | clean |
-| 3.2 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-29-44-642Z.png) | clean |
-| 3.3 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-30-12-534Z.png) | clean |
-| 4.5 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-30-46-289Z.png) | clean |
-| 5.3 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-31-18-844Z.png) | clean |
-| 6.2 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-32-54-459Z.png) | clean |
-| 7.3 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-36-36-250Z.png) | clean |
-| 10.8 | desktop | `/courses/functionality-demo-course-parts/revision/` | ![](screenshots/page-2026-11-23T04-45-16-634Z.png) | clean |
-| 2.4 | mobile | `/courses/qa-revision-course/1/` | ![](screenshots/page-2026-11-23T04-45-51-528Z.png) | flags: "stacked: sidebar ink spans y=354..812, outside the content's y=264..313"; "stacked: sidebar ink spans x=0..375, more than half of the 375px viewport". Recorded note: the flags come from the outline sheet that the test opens deliberately; below 1024px the outline is a sheet behind the toggle, as the plan states. |
-| 3.2 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-46-05-805Z.png) | clean |
-| 4.5 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-46-19-981Z.png) | clean |
-| 5.3 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-46-28-973Z.png) | clean (the probe found nothing; the Next wrap is B2) |
-| 6.4 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-46-50-941Z.png) | clean |
-| 2.4 | tablet | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-47-10-851Z.png) | flags: "stacked: sidebar ink spans y=662..1024, outside the content's y=228..534"; "stacked: sidebar ink spans x=0..768, more than half of the 768px viewport". Recorded note: the flags come from the outline sheet the test opens deliberately. |
-| 5.3 | tablet | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-47-20-978Z.png) | clean |
-| 6.2 | tablet | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-23T04-47-38-393Z.png) | clean |
+| 1 | desktop | `/courses/qa-revision-course/detail/` | ![](screenshots/page-2026-11-24T14-50-01-627Z.png) | clean |
+| 2 | desktop | `/courses/qa-revision-course/1/` | ![](screenshots/page-2026-11-24T14-50-18-582Z.png) | clean |
+| 3 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T14-50-33-141Z.png) | clean |
+| 4 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T14-51-33-546Z.png) | clean |
+| 4 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T14-52-04-850Z.png) | clean |
+| 5 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T14-52-33-642Z.png) | clean |
+| 6 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T14-53-36-950Z.png) | clean |
+| 3.4 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T15-00-00-000Z.png) | clean |
+| 9 | desktop | `/courses/qa-revision-course/3/complete` | ![](screenshots/page-2026-11-24T15-00-33-328Z.png) | clean |
+| 9 | desktop | `/educator/organisations/demodev/courses/<qa-revision-course>` | ![](screenshots/page-2026-11-24T15-01-07-442Z.png) | clean |
+| 10 | desktop | `/courses/functionality-demo-course-parts/revision/` | ![](screenshots/page-2026-11-24T15-03-56-573Z.png) | clean |
+| 7 | desktop | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T15-01-00-000Z.png) | clean |
+| 2.4 | mobile | `/courses/qa-revision-course/1/` | ![](screenshots/page-2026-11-24T15-04-32-712Z.png) | pass, with two flags. Both are "stacked" flags: sidebar ink spans y=383..812, outside the content's y=264..313, and spans x=0..375, over half the viewport. They measure the intentionally open bottom-sheet overlay, so this is expected. |
+| 3 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T15-04-48-238Z.png) | clean |
+| 5 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T15-05-00-385Z.png) | clean |
+| 6.4 | mobile | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T15-05-36-697Z.png) | clean |
+| 2.4 | tablet | `/courses/qa-revision-course/1/` | ![](screenshots/page-2026-11-24T15-05-56-415Z.png) | pass, with two flags. Both are "stacked" flags: sidebar ink spans y=595..1024, outside the content's y=284..333, and spans x=0..768, over half the viewport. They measure the intentionally open bottom-sheet overlay, so this is expected. |
+| 4 | tablet | `/courses/qa-revision-course/revision/` | ![](screenshots/page-2026-11-24T15-06-07-177Z.png) | clean |
+| capture-check | desktop | `/courses/qa-revision-course/detail/` | ![](screenshots/page-2026-11-24T14-49-47-757Z.png) | clean. The debug toolbar partly covers the screenshot (see General notes). |
 
 ## Data changes
 
 | What changed | Made by | Files written |
 | --- | --- | --- |
-| DemoDev Site pk=2 domain `127.0.0.1:8662` changed to `127.0.0.1:8235` so the QA server on 8235 resolves its site (the login page returned a 500) | `sdd:qa-data-helper` | none |
-| Deleted RevisionSchedule (98) and RevisionReview (84) rows and `revision_session:*` session keys for the three QA revision learners (left by earlier QA runs), then re-ran `qa_create_revision_scenario`: Learner A back to 51 ready | `sdd:qa-data-helper` | none |
-| Learner C (`qa-revision-back`) nothing due: 7 RevisionSchedule.due moved 10 days ahead, 47 schedules created 10 days ahead for unscheduled bank questions | `sdd:qa-data-helper` | none |
-| Paused QA Revision Course for Learner A via `deadlines.actions.pause_course` (CoursePause 1b2132b1), then resumed via `resume_course` | `sdd:qa-data-helper` | none |
-| Ended Learner A's access to QA Revision Course with a LearnerCourseRegistrationDeadlineConfig (`end_course_access=on`) and a past whole-course LearnerDeadlineOverride (`deactivate_registration` would show not-registered, not access-ended), then deleted both rows to restore access | `sdd:qa-data-helper` | none |
+| The DemoDev Site domain had been pinned to `127.0.0.1:8235` by an earlier run, so requests on other ports returned 500 (`Site.DoesNotExist`). Set it to `127.0.0.1`. | `manage.py shell` | none |
+| Learner A showed 36 due. Deleted the three QA revision learners' `RevisionSchedule` and `RevisionReview` rows, stripped `revision_session` keys from sessions and re-ran the seeder. | `manage.py shell` + `qa_create_revision_scenario` | none |
+| Learner B had finished Foundations in an earlier run (2 topic progress rows and a completed quiz `FormProgress`). Deleted that progress. | `manage.py shell` | none |
+| Test 7.1: Learner C's schedules all due +10 days, plus 47 new schedules due +10 days, giving 0 due and a bank of 54. | `manage.py shell` (`.claude/agent-memory/sdd-qa-data-helper/qa_revision_nothing_due_script.py`) | none |
+| Test 8.4: added a `LearnerCourseRegistrationDeadlineConfig` (end_course_access on) and a `LearnerDeadlineOverride` with time limit 2026-11-14 for Learner A to end access. Both rows were deleted afterwards. | `sdd:qa-data-helper` | none |
+| Test 8.3: paused and resumed Learner A via `deadlines.actions`. Also ran a registration deactivate/reactivate probe. Cleared Learner B's Test 9 Foundations progress again. | `manage.py shell` | none |
+| Test 10.8: set Learner A's schedule for knowledge-check question 1b756173 ("Which file identifies a directory as a course part?") due now. | `manage.py shell` | none |
+| Test 10: saved a scratch copy of `demo_content` with one bank question and one explanation removed, then re-saved the real `demo_content` to restore it. | `content_save` | none |
 
 ## Bug status
 
-- **FIXED** (commit: eacdd1ccf) — B1, revision done count tiles are bordered boxes inside the bordered card. Decided: plain figures, no border and no fill on each. — after the fix: ![](screenshots/fixed/page-2026-11-23T14-49-47-893Z.png) ![](screenshots/fixed/page-2026-11-23T14-49-57-765Z.png) ![](screenshots/fixed/page-2026-11-23T14-50-05-184Z.png)
-- **FIXED** (commit: 2b846d5e0): B2, I guessed and Next do not share a row at 375px. Re-verified at 375px (same row, help line under it, ![](screenshots/page-2026-11-23T04-58-50-477Z.png)) and at 768px (unchanged).
-- **FIXED** (commit: 2ce55b3f8): B3, the answer form submits as a native GET before the page finishes loading. Re-verified with JavaScript off: Check answer now posts, records the answer and redirects to the feedback. With htmx on, the flow is unchanged: 422 "Choose an answer.", a 200 swap, focus on the feedback and no navigation. Remaining gap, which loses no data: "Next" and "I guessed" are `hx-post` buttons with no form, so before htmx loads they do nothing.
+| Bug | Status |
+| --- | --- |
+| none | no bug records |
 
 ## General notes
 
-- **8.3 viewport caveat.** The paused-course screenshot (![](screenshots/page-2026-11-23T04-38-01-290Z.png)) was taken at 1280x720: the reopened tab lost the desktop viewport. The behaviour itself passed: `/revision/` redirects to the course detail page with the "Your educator paused this course..." notice. The 8.4 access-ended result is at ![](screenshots/page-2026-11-23T04-39-55-238Z.png).
-- **3.4 screenshot discarded** (debug toolbar open in the fresh context). Learner B's page passed on the text checks and a clean layout probe.
-- **9.3 skipped.** Results pages show the score (Knowledge Check 100% 3/3, QA Foundations 80% 4/5), see ![](screenshots/page-2026-11-23T04-41-38-636Z.png). The incorrect-answers block did not render: the QA quiz has `quiz_show_incorrect` off, and Learner A's latest Knowledge Check attempt is 100% with no retake allowed. That block (`course_form_complete.html`) has its own "Correct answer" markup, does not use the shared correct-answer-mark component and is not changed on this branch. The shared mark is covered by 9.4.
-- **9.1.** Learner A's Foundations quiz allows no new sitting, so the quiz was taken fresh as Learner B after walking items 1.1 and 1.2 to unlock it. Quiz page: ![](screenshots/page-2026-11-23T04-42-20-495Z.png). Educator preview (9.4): ![](screenshots/page-2026-11-23T04-43-12-285Z.png).
-- **Screenshots for passing tests** are linked in the layout probe table above, plus these not repeated there: 4.3 ![](screenshots/page-2026-11-23T04-30-26-595Z.png), 5.5 ![](screenshots/page-2026-11-23T04-31-31-432Z.png), 7.2 and 7.3 ![](screenshots/page-2026-11-23T04-36-36-250Z.png).
-- **Admin observation (5.7).** The Revision reviews changelist has no default ordering, so the latest review is not first until you sort by Reviewed at. No action attached.
-- **Test 10.1 observation.** `content_save` on main now refuses content outside a committed git repo, so the scratch copy was git-initialised and committed first.
-- **Test 10.7 observation.** The shipped `demo_content` already raises 21 explanation warnings from `content_validate` (shuffled quiz and others), unrelated to this branch.
-- **Test 10.9 cleanup.** The real `demo_content` was re-saved (dropped question restored, marker cleared). The scratch copy was left in the session scratchpad because recursive deletes are blocked by the security hook.
-- **Test 10.8** feedback: ![](screenshots/page-2026-11-23T04-45-16-634Z.png).
+- No test or layout record failed, so there are no per-bug sections.
+- Test 8 has no screenshot. It checked redirects, notices and status codes only.
+- Observation: the Revision reviews admin changelist has no ordering, so the latest review is not at the top.
+- Observation: the capture-check screenshot (`page-2026-11-24T14-49-47-757Z.png`) is partly covered by the debug toolbar. The first prep check used `offsetParent`, which is always null for fixed elements, so the toolbar was not collapsed. Every later shot collapses it. That session had also dropped, so the capture shows the anonymous view, which was used as Test 1 step 3 evidence.
+- Observation: the scratch content directory for Test 10 was left in the session scratchpad. A recursive delete is outside what QA may run, so plan step 9 was not done. The harness clears the scratchpad.
+- Test 9: Learner A could not start a new Foundations quiz sitting and had no results link, so Learner B took the quiz. This form does not show incorrect answers, so the results page had no "Correct answer" marks to check. The educator preview covered those instead.
 
-## Re-check: Test 2 after the sidebar restyle
-
-The Revision entry was restyled after this run to match brand rule 6: a "Revision" eyebrow in the Reference link's style, with no divider and no icon. The 2.2 and 2.4 shots above show the old row. Test 2's checklist was re-run against the new look at 1920x1080, with Learner A (36 due at the time):
-
-| Check | Result | Screenshot |
-| --- | --- | --- |
-| 2.2 with reference material: "Revision" label computed style equals the "Reference" link's (12px, 600, uppercase, same colour); 24px space above both; no border, no icon; chip "36 due" on the same line | pass | ![](screenshots/desktop_2.2_sidebar_revision_with_reference.png) |
-| 2.2 without reference material | pass | ![](screenshots/desktop_2.2_sidebar_revision_no_reference.png) |
-| 2.3 on the revision page: Reference-style current highlight, no outline row highlighted | pass | ![](screenshots/desktop_2.3_sidebar_revision_current.png) |
-| 2.4 outline sheet at 375 and 768: chip on the label's line, at the right edge, lowercase; no horizontal overflow | pass | (probe only) |
-
-The reference material for the first shot was added to "QA Revision Course" on the dev database for the screenshot and removed afterwards.
-
-status: ok · reason: 3 bugs — 3 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: report rendered, 0 bugs documented

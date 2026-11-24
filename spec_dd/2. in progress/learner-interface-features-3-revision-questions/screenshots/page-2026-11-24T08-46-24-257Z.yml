@@ -1,0 +1,91 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - button "Notifications, 6 new" [ref=f4e9]
+          - status:
+            - generic [ref=f4e13]: Notifications, 6 new
+            - generic [aria-hidden] [ref=f4e14]: "6"
+        - button "Open user menu for Revision Learner" [ref=f4e16] [cursor=pointer]:
+          - generic [ref=f4e17]:
+            - generic [ref=f4e18]: Open user menu for Revision Learner
+            - generic [aria-hidden] [ref=f4e19]: RL
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e20]:
+    - generic [ref=f4e22]:
+      - dialog "Course outline" [ref=f4e23]:
+        - generic [ref=f4e26]:
+          - generic [ref=f4e27]:
+            - paragraph [ref=f4e28]: Course outline
+            - paragraph [ref=f4e29]: QA Revision Course
+            - generic [ref=f4e31]:
+              - progressbar "Progress for QA Revision Course" [ref=f4e32]: 18%
+              - generic [ref=f4e33]: 18% complete
+          - navigation "Course outline" [ref=f4e34]:
+            - list [ref=f4e35]:
+              - listitem [ref=f4e36]:
+                - button "1. Completed Foundations" [ref=f4e37] [cursor=pointer]:
+                  - generic [ref=f4e38]:
+                    - generic [ref=f4e39]: "1."
+                    - generic [ref=f4e40]: Completed
+                    - generic [ref=f4e44]: Foundations
+              - listitem [ref=f4e50]:
+                - button "2. Completed Practice" [ref=f4e51] [cursor=pointer]:
+                  - generic [ref=f4e52]:
+                    - generic [ref=f4e53]: "2."
+                    - generic [ref=f4e54]: Completed
+                    - generic [ref=f4e58]: Practice
+              - listitem [ref=f4e64]:
+                - button "3. Not started Advanced" [ref=f4e65] [cursor=pointer]:
+                  - generic [ref=f4e66]:
+                    - generic [ref=f4e67]: "3."
+                    - generic [ref=f4e68]: Not started
+                    - generic [ref=f4e72]: Advanced
+              - listitem [ref=f4e78]:
+                - button "4. Completed Backlog" [ref=f4e79] [cursor=pointer]:
+                  - generic [ref=f4e80]:
+                    - generic [ref=f4e81]: "4."
+                    - generic [ref=f4e82]: Completed
+                    - generic [ref=f4e86]: Backlog
+          - generic [ref=f4e92]:
+            - link "Reference" [ref=f4e93] [cursor=pointer]:
+              - /url: /courses/qa-revision-course/reference/
+            - navigation "Reference" [ref=f4e95]:
+              - list [ref=f4e96]:
+                - listitem [ref=f4e97]:
+                  - button "QA Revision Reference" [ref=f4e98] [cursor=pointer]
+          - navigation "Revision" [ref=f4e110]:
+            - link "Revision 36 due" [ref=f4e111] [cursor=pointer]:
+              - /url: /courses/qa-revision-course/revision/
+              - generic [ref=f4e112]: Revision
+              - generic [ref=f4e113]: 36 due
+      - generic [ref=f4e114]:
+        - navigation "Breadcrumb" [ref=f4e119]:
+          - list [ref=f4e120]:
+            - listitem [ref=f4e121]:
+              - link "QA Revision Course" [ref=f4e122] [cursor=pointer]:
+                - /url: /courses/qa-revision-course/detail/
+            - listitem [ref=f4e123]:
+              - generic [aria-hidden] [ref=f4e124]: ">"
+              - generic "Revision" [ref=f4e125]
+        - generic [ref=f4e128]:
+          - heading "Revision" [level=1] [ref=f4e132]
+          - paragraph [ref=f4e133]: 36 questions due.
+          - button "Start revision" [ref=f4e135] [cursor=pointer]
+  - contentinfo [ref=f4e136]:
+    - generic [ref=f4e137]:
+      - paragraph [ref=f4e138]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e139]:
+        - link "Terms and Conditions" [ref=f4e140] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e141] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e142] [cursor=pointer]: learner-interface-features-3-revision-questions
+  - generic "Show toolbar" [ref=f4e144]: DJDT

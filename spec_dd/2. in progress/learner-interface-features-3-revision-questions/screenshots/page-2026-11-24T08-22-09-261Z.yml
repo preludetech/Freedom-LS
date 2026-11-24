@@ -1,0 +1,117 @@
+- generic [active] [ref=f14e1]:
+  - banner [ref=f14e2]:
+    - link [ref=f14e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f14e4]
+      - heading "FirstClass" [level=1] [ref=f14e5]
+    - navigation [ref=f14e6]:
+      - generic [ref=f14e7]:
+        - generic [ref=f14e8]:
+          - button "Notifications, 6 new" [ref=f14e9]
+          - status:
+            - generic [ref=f14e13]: Notifications, 6 new
+            - generic [aria-hidden] [ref=f14e14]: "6"
+        - button "Open user menu for Revision Learner" [ref=f14e16] [cursor=pointer]:
+          - generic [ref=f14e17]:
+            - generic [ref=f14e18]: Open user menu for Revision Learner
+            - generic [aria-hidden] [ref=f14e19]: RL
+  - generic:
+    - status
+    - alert
+  - main [ref=f14e20]:
+    - generic [ref=f14e23]:
+      - generic [ref=f14e25]:
+        - generic [ref=f14e26]:
+          - button "Open course outline" [ref=f14e27] [cursor=pointer]
+          - navigation "Breadcrumb" [ref=f14e31]:
+            - list [ref=f14e32]:
+              - listitem [ref=f14e33]:
+                - link "QA Revision Course" [ref=f14e34] [cursor=pointer]:
+                  - /url: /courses/qa-revision-course/detail/
+              - listitem [ref=f14e35]:
+                - generic [aria-hidden] [ref=f14e36]: ">"
+                - link "Foundations" [ref=f14e37] [cursor=pointer]:
+                  - /url: /courses/qa-revision-course/1/
+              - listitem [ref=f14e38]:
+                - generic [aria-hidden] [ref=f14e39]: ">"
+                - generic "Foundations A" [ref=f14e40]
+        - generic [ref=f14e42]:
+          - progressbar "Progress for QA Revision Course" [ref=f14e43]: 18%
+          - generic [ref=f14e44]: 18%
+        - heading "Foundations A" [level=1] [ref=f14e47]
+      - link "Next" [ref=f14e51] [cursor=pointer]:
+        - /url: /courses/qa-revision-course/2/
+  - contentinfo [ref=f14e55]:
+    - generic [ref=f14e56]:
+      - paragraph [ref=f14e57]: © 2026 FirstClass
+      - navigation "Legal" [ref=f14e58]:
+        - link "Terms and Conditions" [ref=f14e59] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f14e60] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f14e61] [cursor=pointer]: learner-interface-features-3-revision-questions
+  - list [ref=f14e63]:
+    - listitem [ref=f14e64]:
+      - link "Hide »" [ref=f14e65] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e66]:
+      - link "Toggle Theme" [ref=f14e67] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e71] [cursor=pointer]
+      - link "History /courses/qa-revision-course/1/" [ref=f14e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e74] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f14e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e76]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e77] [cursor=pointer]
+      - 'link "Time CPU: 250.77ms (280.38ms)" [ref=f14e78] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f14e79]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e80] [cursor=pointer]
+      - link "Settings" [ref=f14e81] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e82]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e83] [cursor=pointer]
+      - link "Headers" [ref=f14e84] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e85]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e86] [cursor=pointer]
+      - link "Request view_course_item" [ref=f14e87] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e88]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e89] [cursor=pointer]
+      - link "SQL 80 queries in 69.12ms" [ref=f14e90] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e91]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e92] [cursor=pointer]
+      - link "Static files 13 files used" [ref=f14e93] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e94]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e95] [cursor=pointer]
+      - link "Templates learner_interface/course_topic.html" [ref=f14e96] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e97]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e98] [cursor=pointer]
+      - link "Alerts" [ref=f14e99] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e100]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e101] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f14e102] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e103]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e104] [cursor=pointer]
+      - link "Signals 130 receivers of 15 signals" [ref=f14e105] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e106]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e107] [cursor=pointer]
+      - link "Community" [ref=f14e108] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e109]:
+      - checkbox "Enable for next and successive requests" [ref=f14e110] [cursor=pointer]
+      - generic [ref=f14e111]: Intercept redirects
+    - listitem [ref=f14e112]:
+      - checkbox "Enable for next and successive requests" [ref=f14e113] [cursor=pointer]
+      - generic [ref=f14e114]: Profiling
