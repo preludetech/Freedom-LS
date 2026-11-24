@@ -19,6 +19,7 @@ instance pages that puts each action here:
 |---|---|
 | A learner's Cohorts panel (Overview tab) | Add to cohort, Remove, Move |
 | A learner's Courses tab | Register for a course |
+| A learner's Courses tab quiz attempts table | The attempt number opens the attempt (quick view; full attempt review page) |
 | A learner's Course registrations list (Overview tab) | Deactivate / Reactivate a registration |
 | A cohort's Settings tab | Three panels: Name (the name field, Save in the card footer), Staff (Add staff member; Change role and Remove from cohort on each person's row), Status (Deactivate / Reactivate, Delete) |
 | A cohort's Learners tab | Add learners, Remove, Move |
