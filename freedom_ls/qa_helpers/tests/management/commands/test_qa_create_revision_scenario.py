@@ -87,7 +87,7 @@ def test_practice_part_is_weak(mock_site_context) -> None:
     assert weak_sections(user, record) == {practice.pk}
 
 
-def test_ready_count_stops_at_the_limit(mock_site_context) -> None:
+def test_seeded_learner_ready_count_stops_at_the_limit(mock_site_context) -> None:
     _seed(mock_site_context)
     user, record = _main_record(mock_site_context)
 
