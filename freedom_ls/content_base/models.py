@@ -1,11 +1,32 @@
 from pathlib import Path
+from typing import Self, cast
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
-from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
+from freedom_ls.site_aware_models.models import (
+    SiteAwareManager,
+    SiteAwareModel,
+    TimestampedModel,
+)
+
+
+class RetirableQuerySet[ModelT: models.Model](models.QuerySet[ModelT]):
+    def not_retired(self) -> Self:
+        """Rows a learner can be served: every row no content save has retired."""
+        return self.filter(retired_at__isnull=True)
+
+
+class RetirableManager(SiteAwareManager):
+    # A hand-written pass-through, as ArticleManager is: SiteAwareManager.from_queryset()
+    # is not a base mypy can resolve. The manager itself filters nothing, so upserts,
+    # the admin and reports keep seeing retired rows.
+    _queryset_class: type[RetirableQuerySet] = RetirableQuerySet
+
+    def not_retired(self) -> RetirableQuerySet:
+        return cast("RetirableQuerySet", self.get_queryset()).not_retired()
 
 
 class BaseContent(SiteAwareModel, TimestampedModel):
@@ -27,8 +48,21 @@ class BaseContent(SiteAwareModel, TimestampedModel):
         help_text=_("Optional list of tags"),
     )
 
+    retired_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=_("When a content save found this row missing from the source"),
+    )
+
+    objects: RetirableManager = RetirableManager()
+
     class Meta:
         abstract = True
+
+    @property
+    def is_retired(self) -> bool:
+        return self.retired_at is not None
 
     @property
     def content_type(self):

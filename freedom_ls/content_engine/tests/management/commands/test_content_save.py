@@ -7,13 +7,15 @@ import re
 import shutil
 import tempfile
 import uuid
-from collections.abc import Iterator
-from datetime import date, time
+from collections.abc import Callable, Iterator
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from pathlib import Path
 from typing import cast
+from unittest.mock import Mock
 
 import pytest
+import time_machine
 import yaml
 from dulwich import porcelain
 from PIL import Image
@@ -35,6 +37,7 @@ from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME, ImageCache
 from freedom_ls.content_engine.images import ImageEncodeDecision, ImageEncodeStatus
 from freedom_ls.content_engine.management.commands.content_save import (
     PreservingDumper,
+    SourceCommit,
     _format_bytes,
     _format_image_decision_line,
     get_file_type_from_extension,
@@ -50,9 +53,11 @@ from freedom_ls.content_engine.management.commands.content_save import (
     update_file_with_uuid,
 )
 from freedom_ls.content_engine.models import (
+    Activity,
     Article,
     ContentCollectionItem,
     ContentSave,
+    ContentSaveSource,
     Course,
     CourseCategory,
     CoursePart,
@@ -735,7 +740,7 @@ def test_jpeg_image_is_stored_as_optimised_webp(site, mock_site_context):
 
         file_obj = File.objects.get(site=site, file_path="1. intro/images/photo.jpg")
         assert file_obj.mime_type == "image/webp"
-        assert file_obj.file.name.endswith(".webp")
+        assert str(file_obj.file.name).endswith(".webp")
         assert file_obj.file_path == "1. intro/images/photo.jpg"
         assert file_obj.original_filename == "photo.jpg"
 
@@ -6368,3 +6373,267 @@ quiz_pass_percentage: 70
 
     form = Form.objects.get(id=_SHUFFLE_FORM_UUID)
     assert (form.requires_declaration, form.declaration_text) == (False, "")
+
+
+# Retiring rows a save run no longer finds in the source.
+
+RETIRED_AT_RUN = datetime(2026, 5, 1, 9, 30, tzinfo=UTC)
+LATER_RUN = datetime(2026, 5, 2, 9, 30, tzinfo=UTC)
+
+CATEGORY_UUID = "50000000-0000-0000-0000-000000000001"
+ARTICLE_UUID = "50000000-0000-0000-0000-000000000002"
+SOLO_COURSE_UUID = "50000000-0000-0000-0000-000000000003"
+MAIN_COURSE_UUID = "50000000-0000-0000-0000-000000000004"
+LOOSE_TOPIC_UUID = "50000000-0000-0000-0000-000000000005"
+LOOSE_ACTIVITY_UUID = "50000000-0000-0000-0000-000000000006"
+PART_UUID = "50000000-0000-0000-0000-000000000007"
+PART_TOPIC_UUID = "50000000-0000-0000-0000-000000000008"
+FORM_UUID = "50000000-0000-0000-0000-000000000009"
+PAGE_UUID = "50000000-0000-0000-0000-00000000000a"
+FORM_CONTENT_UUID = "50000000-0000-0000-0000-00000000000b"
+QUESTION_UUID = "50000000-0000-0000-0000-00000000000c"
+OPTION_A_UUID = "50000000-0000-0000-0000-00000000000d"
+OPTION_B_UUID = "50000000-0000-0000-0000-00000000000e"
+
+
+def _form_page_yaml(
+    *, with_content: bool = True, with_question: bool = True, with_option_b: bool = True
+) -> str:
+    option_b = (
+        f"  - text: Blue\n    value: 2\n    uuid: {OPTION_B_UUID}\n"
+        if with_option_b
+        else ""
+    )
+    question = (
+        "---\ncontent_type: FORM_QUESTION\nquestion: Favourite colour?\n"
+        f"type: multiple_choice\nrequired: true\nuuid: {QUESTION_UUID}\noptions:\n"
+        f"  - text: Red\n    value: 1\n    uuid: {OPTION_A_UUID}\n{option_b}"
+        if with_question
+        else ""
+    )
+    content = (
+        f"---\ncontent_type: FORM_CONTENT\ncontent: Read first\nuuid: {FORM_CONTENT_UUID}\n"
+        if with_content
+        else ""
+    )
+    return (
+        f"---\ncontent_type: FORM_PAGE\ntitle: Page\nuuid: {PAGE_UUID}\n"
+        f"{content}{question}"
+    )
+
+
+def _write_source_with_one_of_each(root: Path, **page_flags: bool) -> None:
+    """A source holding one row of every retirable model, each from its own file where
+    the model allows it."""
+    (root / "categories.yaml").write_text(
+        "---\ncontent_type: COURSE_CATEGORIES\ncategories:\n"
+        f"  - slug: tech\n    title: Tech\n    uuid: {CATEGORY_UUID}\n"
+    )
+    (root / "article.md").write_text(
+        f"---\ncontent_type: ARTICLE\ntitle: News\npublished_on: 2026-03-04\n"
+        f"uuid: {ARTICLE_UUID}\n---\n\nBody text.\n"
+    )
+    (root / "handout.txt").write_text("Handout text")
+    (root / "loose_topic.md").write_text(
+        f"---\ncontent_type: TOPIC\ntitle: Loose topic\nuuid: {LOOSE_TOPIC_UUID}\n---\n\nText\n"
+    )
+    (root / "loose_activity.md").write_text(
+        f"---\ncontent_type: ACTIVITY\ntitle: Loose activity\nuuid: {LOOSE_ACTIVITY_UUID}\n"
+        "---\n\nText\n"
+    )
+    (root / "solo").mkdir(exist_ok=True)
+    (root / "solo" / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Solo course\nuuid: {SOLO_COURSE_UUID}\n---\n"
+    )
+    main = root / "main"
+    (main / "01. Part").mkdir(parents=True, exist_ok=True)
+    (main / "course.md").write_text(
+        f"---\ncontent_type: COURSE\ntitle: Main course\nuuid: {MAIN_COURSE_UUID}\n---\n"
+    )
+    (main / "01. Part" / "part.yaml").write_text(
+        f"---\ncontent_type: COURSE_PART\ntitle: Part\nuuid: {PART_UUID}\n"
+    )
+    _write_topic(main / "01. Part", "01. inside.md", "Inside", PART_TOPIC_UUID)
+    (root / "form").mkdir(exist_ok=True)
+    (root / "form" / "form.md").write_text(
+        f"---\ncontent_type: FORM\nstrategy: UNSCORED\ntitle: Survey\nuuid: {FORM_UUID}\n"
+        "---\n\nIntro\n"
+    )
+    (root / "form" / "1. page.yaml").write_text(_form_page_yaml(**page_flags))
+
+
+def _remove_path(*parts: str) -> Callable[[Path], None]:
+    def remove(root: Path) -> None:
+        target = root.joinpath(*parts)
+        if target.is_dir():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+
+    return remove
+
+
+def _rewrite_form_page(**page_flags: bool) -> Callable[[Path], None]:
+    def rewrite(root: Path) -> None:
+        (root / "form" / "1. page.yaml").write_text(_form_page_yaml(**page_flags))
+
+    return rewrite
+
+
+# Each case removes one thing from the source and names the row that goes with it.
+REMOVALS = {
+    "course": (Course, {"pk": SOLO_COURSE_UUID}, _remove_path("solo")),
+    "course_part": (CoursePart, {"pk": PART_UUID}, _remove_path("main", "01. Part")),
+    "topic": (Topic, {"pk": LOOSE_TOPIC_UUID}, _remove_path("loose_topic.md")),
+    "activity": (
+        Activity,
+        {"pk": LOOSE_ACTIVITY_UUID},
+        _remove_path("loose_activity.md"),
+    ),
+    "article": (Article, {"pk": ARTICLE_UUID}, _remove_path("article.md")),
+    "form": (Form, {"pk": FORM_UUID}, _remove_path("form")),
+    "form_page": (FormPage, {"pk": PAGE_UUID}, _remove_path("form", "1. page.yaml")),
+    "form_content": (
+        FormContent,
+        {"pk": FORM_CONTENT_UUID},
+        _rewrite_form_page(with_content=False),
+    ),
+    "form_question": (
+        FormQuestion,
+        {"pk": QUESTION_UUID},
+        _rewrite_form_page(with_question=False),
+    ),
+    "question_option": (
+        QuestionOption,
+        {"pk": OPTION_B_UUID},
+        _rewrite_form_page(with_option_b=False),
+    ),
+    "course_category": (
+        CourseCategory,
+        {"pk": CATEGORY_UUID},
+        _remove_path("categories.yaml"),
+    ),
+    "file": (File, {"file_path": "handout.txt"}, _remove_path("handout.txt")),
+}
+REMOVAL_CASES = [
+    pytest.param(model, lookup, remove, id=name)
+    for name, (model, lookup, remove) in REMOVALS.items()
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("model", "lookup", "remove"), REMOVAL_CASES)
+def test_save_run_retires_a_row_missing_from_the_source_at_the_run_time(
+    site, mock_site_context, tmp_path, model, lookup, remove
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    remove(tmp_path)
+
+    with time_machine.travel(RETIRED_AT_RUN, tick=False):
+        save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    row = model._base_manager.get(site=site, **lookup)
+    assert (row.retired_at, row.updated_at) == (RETIRED_AT_RUN, RETIRED_AT_RUN)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("model", "lookup", "remove"), REMOVAL_CASES)
+def test_save_run_makes_a_retired_row_live_when_it_returns_to_the_source(
+    site, mock_site_context, tmp_path, model, lookup, remove
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    remove(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    assert model._base_manager.get(site=site, **lookup).is_retired
+
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert model._base_manager.get(site=site, **lookup).retired_at is None
+
+
+@pytest.mark.django_db
+def test_save_run_keeps_a_row_live_when_any_one_source_path_names_it(
+    site, mock_site_context, tmp_path
+):
+    first, second = tmp_path / "first", tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    _write_topic(first, "one.md", "One", LOOSE_TOPIC_UUID)
+    _write_topic(second, "two.md", "Two", PART_TOPIC_UUID)
+
+    save_content_to_db([first, second], site.name, retire_missing=True)
+    save_content_to_db([first, second], site.name, retire_missing=True)
+
+    assert Topic._base_manager.filter(retired_at__isnull=False).count() == 0
+
+
+@pytest.mark.django_db
+def test_save_run_leaves_retired_at_alone_when_an_identical_run_repeats(
+    site, mock_site_context, tmp_path
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    _remove_path("loose_topic.md")(tmp_path)
+    with time_machine.travel(RETIRED_AT_RUN, tick=False):
+        save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    with time_machine.travel(LATER_RUN, tick=False):
+        save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert Topic._base_manager.get(pk=LOOSE_TOPIC_UUID).retired_at == RETIRED_AT_RUN
+
+
+@pytest.mark.django_db
+def test_save_run_without_retire_missing_retires_nothing(
+    site, mock_site_context, tmp_path
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name)
+    _remove_path("loose_topic.md")(tmp_path)
+
+    save_content_to_db(tmp_path, site.name)
+
+    assert Topic._base_manager.get(pk=LOOSE_TOPIC_UUID).retired_at is None
+
+
+@pytest.mark.django_db
+def test_save_run_that_fails_after_the_sweep_leaves_every_retired_at_as_it_was(
+    site, mock_site_context, tmp_path, monkeypatch
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    _remove_path("loose_topic.md")(tmp_path)
+    monkeypatch.setattr(
+        ContentSaveSource.objects,
+        "bulk_create",
+        Mock(side_effect=RuntimeError("storage went away")),
+    )
+
+    with pytest.raises(RuntimeError, match="storage went away"):
+        save_content_to_db(
+            tmp_path,
+            site.name,
+            retire_missing=True,
+            source_commits=[SourceCommit(path=tmp_path, repo_path="", commit="abc")],
+        )
+
+    assert Topic._base_manager.get(pk=LOOSE_TOPIC_UUID).retired_at is None
+
+
+@pytest.mark.django_db
+def test_save_run_applies_a_returning_rows_content_change_in_the_run_that_un_retires_it(
+    site, mock_site_context, tmp_path
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    _remove_path("loose_topic.md")(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    _write_topic(tmp_path, "loose_topic.md", "Renamed topic", LOOSE_TOPIC_UUID)
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    topic = Topic._base_manager.get(pk=LOOSE_TOPIC_UUID)
+    assert (topic.retired_at, topic.title) == (None, "Renamed topic")

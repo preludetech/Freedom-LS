@@ -7,11 +7,15 @@ from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from freedom_ls.content_base.models import MarkdownContent, TitledContent
+from freedom_ls.content_base.models import (
+    MarkdownContent,
+    RetirableManager,
+    RetirableQuerySet,
+    TitledContent,
+)
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.content_engine.config import config
 from freedom_ls.content_engine.models.files import File
-from freedom_ls.site_aware_models.models import SiteAwareManager
 
 
 class ArticleVisibility(models.TextChoices):
@@ -19,7 +23,7 @@ class ArticleVisibility(models.TextChoices):
     HIDDEN = "hidden", _("Hidden")
 
 
-class ArticleQuerySet(models.QuerySet["Article"]):
+class ArticleQuerySet(RetirableQuerySet["Article"]):
     def published(self) -> ArticleQuerySet:
         return self.filter(visibility=ArticleVisibility.PUBLISHED)
 
@@ -48,10 +52,10 @@ class ArticleQuerySet(models.QuerySet["Article"]):
         return articles
 
 
-class ArticleManager(SiteAwareManager):
+class ArticleManager(RetirableManager):
     # Hand-written pass-through, the way comms.NotificationManager does it,
     # because SiteAwareManager.from_queryset() is not a base mypy can resolve.
-    _queryset_class = ArticleQuerySet
+    _queryset_class: type[ArticleQuerySet] = ArticleQuerySet
 
     def published(self) -> ArticleQuerySet:
         return cast("ArticleQuerySet", self.get_queryset()).published()
@@ -79,7 +83,7 @@ class Article(TitledContent, MarkdownContent):
     )
     image_alt = models.CharField(max_length=500, blank=True)
 
-    objects = ArticleManager()
+    objects: ArticleManager = ArticleManager()
 
     class Meta:
         ordering = ["-published_on", "slug"]

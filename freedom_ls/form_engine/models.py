@@ -18,7 +18,12 @@ from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.base.storage import storage_for_alias
-from freedom_ls.content_base.models import BaseContent, MarkdownContent, TitledContent
+from freedom_ls.content_base.models import (
+    BaseContent,
+    MarkdownContent,
+    RetirableManager,
+    TitledContent,
+)
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.form_engine.config import config as form_engine_config
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
@@ -406,8 +411,21 @@ class QuestionOption(SiteAwareModel, TimestampedModel):
     correct = models.BooleanField(null=True, blank=True)
     locked = models.BooleanField(default=False)
 
+    retired_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=_("When a content save found this row missing from the source"),
+    )
+
+    objects = RetirableManager()
+
     class Meta:
         ordering = ["order"]
+
+    @property
+    def is_retired(self) -> bool:
+        return self.retired_at is not None
 
     def __str__(self):
         return self.text

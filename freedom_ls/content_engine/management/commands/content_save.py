@@ -12,8 +12,9 @@ import mimetypes
 import re
 import uuid
 from collections import Counter, defaultdict
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Hashable, Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 
@@ -29,6 +30,7 @@ from django.core.files import File as DjangoFile
 from django.core.files.base import ContentFile
 from django.core.management.base import CommandError
 from django.db import models, transaction
+from django.db.models import Model
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django.utils.text import slugify
@@ -116,6 +118,42 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.slugs import get_unique_slug
 
 logger = logging.getLogger(__name__)
+
+# Every model a save can retire, in the order the count line names them.
+RETIRABLE_MODELS: tuple[type[Model], ...] = (
+    Course,
+    CoursePart,
+    Topic,
+    Activity,
+    Article,
+    Form,
+    FormPage,
+    FormContent,
+    FormQuestion,
+    QuestionOption,
+    CourseCategory,
+    File,
+)
+
+
+def _row_key(row: Model) -> Hashable:
+    """What identifies a row to a save: a File's path, any other row's pk."""
+    return row.file_path if isinstance(row, File) else row.pk
+
+
+@dataclass
+class _RunLedger:
+    """What one save found in the source and what it did about retirement."""
+
+    seen: dict[type[Model], set[Hashable]] = field(
+        default_factory=lambda: defaultdict(set)
+    )
+    retired: dict[type[Model], set[uuid.UUID]] = field(
+        default_factory=lambda: defaultdict(set)
+    )
+
+    def saw(self, row: Model) -> None:
+        self.seen[type(row)].add(_row_key(row))
 
 
 def represent_str(dumper, data):
@@ -339,6 +377,10 @@ def save_with_uuid(
 
     # Add extra fields (like foreign keys that aren't in the Pydantic schema)
     fields.update(extra_fields)
+
+    # A row found in the source is live. Written with the content so the update and
+    # the un-retire are one statement.
+    fields["retired_at"] = None
 
     # Calculate relative path if base_path is provided
     if base_path:
@@ -1186,6 +1228,8 @@ def save_file_to_db(
         file_obj.mime_type = mime_type or ""
         # None for a non-audio file clears a value left from when it was audio.
         file_obj.duration_seconds = duration_seconds
+        # A file found in the source is live; the save below persists the row.
+        file_obj.retired_at = None
 
     if (
         decision is not None
@@ -1311,7 +1355,7 @@ def _items_of[T: BaseBaseContentModel](
 
 
 def _write_source(
-    source: _ParsedSource, site: Site
+    source: _ParsedSource, site: Site, ledger: _RunLedger
 ) -> tuple[list[ImageEncodeStatus], list[str]]:
     """Write a `_ParsedSource`'s files and content rows. Returns its image statuses and
     the lines that report the part placements it removed."""
@@ -1324,6 +1368,7 @@ def _write_source(
     # Save non-content files (images, documents, etc.) to the database
     for file_path in source.all_files:
         if file_path not in source.content_files:
+            ledger.seen[File].add(_relative_to_source(source.path, file_path))
             decision = save_file_to_db(file_path, site, source.path, cache)
             if decision is not None:
                 image_statuses.append(decision.status)
@@ -1356,11 +1401,14 @@ def _write_source(
     # dashboard_category resolve against rows that already exist.
     for item in grouped.get(SchemaContentType.COURSE_CATEGORIES, []):
         categories = save_course_categories(item, site, source.path)
+        for category in categories:
+            ledger.saw(category)
         logger.info(f"Saved {len(categories)} CourseCategory row(s)")
 
     # Save Topics
     for item in grouped.get(SchemaContentType.TOPIC, []):
         topic = save_topic(item, site, source.path)
+        ledger.saw(topic)
         content_by_path[content_key(item.file_path)] = topic
         schema_by_path[content_key(item.file_path)] = item
         logger.info(f"Saved Topic: {topic.title}")
@@ -1368,6 +1416,7 @@ def _write_source(
     # Save Activities
     for item in grouped.get(SchemaContentType.ACTIVITY, []):
         activity = save_activity(item, site, source.path)
+        ledger.saw(activity)
         content_by_path[content_key(item.file_path)] = activity
         schema_by_path[content_key(item.file_path)] = item
         logger.info(f"Saved Activity: {activity.title}")
@@ -1376,6 +1425,7 @@ def _write_source(
     # a collection child.
     for item in grouped.get(SchemaContentType.ARTICLE, []):
         article = save_article(item, site, source.path)
+        ledger.saw(article)
         logger.info(f"Saved Article: {article.title}")
 
     # Save Courses and CourseParts
@@ -1385,6 +1435,7 @@ def _write_source(
     ] = []
     for item in _items_of(source.all_parsed, CourseSchema):
         collection = save_course(item, site, source.path)
+        ledger.saw(collection)
         content_by_path[content_key(item.file_path)] = collection
         schema_by_path[content_key(item.file_path)] = item
         collections_data.append((collection, item))
@@ -1392,6 +1443,7 @@ def _write_source(
 
     for item in _items_of(source.all_parsed, CoursePartSchema):
         collection = save_course_part(item, site, source.path)
+        ledger.saw(collection)
         content_by_path[content_key(item.file_path)] = collection
         schema_by_path[content_key(item.file_path)] = item
         collections_data.append((collection, item))
@@ -1401,6 +1453,7 @@ def _write_source(
     forms_by_dir: dict[Path, tuple[Form, form_schema.Form]] = {}
     for item in _items_of(source.all_parsed, form_schema.Form):
         form = save_form(item, site, source.path)
+        ledger.saw(form)
         forms_by_dir[item.file_path.parent] = (form, item)
         content_by_path[content_key(item.file_path)] = form
         schema_by_path[content_key(item.file_path)] = item
@@ -1442,6 +1495,7 @@ def _write_source(
                         page_item.when, options_by_slug, file_path
                     ),
                 )
+                ledger.saw(form_page)
                 logger.info(f"Saved FormPage: {form_page.title} (order={page_order})")
 
                 # Get all content items from this file in the order they appear in the YAML
@@ -1457,7 +1511,7 @@ def _write_source(
                 # Save texts and questions in the order they appear in the file
                 for content_order, item in enumerate(file_content_items):
                     if isinstance(item, form_schema.FormContent):
-                        save_form_content(
+                        form_content = save_form_content(
                             item,
                             form_page,
                             site,
@@ -1467,6 +1521,7 @@ def _write_source(
                                 item.when, options_by_slug, file_path
                             ),
                         )
+                        ledger.saw(form_content)
                         logger.info(
                             f"Saved FormContent in {form_page.title} (order={content_order})"
                         )
@@ -1482,6 +1537,9 @@ def _write_source(
                             ),
                         )
                         seen_question_ids.add(question.pk)
+                        ledger.saw(question)
+                        for saved_option in saved_options.values():
+                            ledger.saw(saved_option)
                         declarer, section_paths = effective_sections(item, form_item)
                         sections_by_question.append(
                             (
@@ -1669,6 +1727,7 @@ def save_content_to_db(
     *,
     generate_uuids: bool = True,
     source_commits: Sequence[SourceCommit] | None = None,
+    retire_missing: bool = False,
 ) -> None:
     """Scan through all validated files of every source path and save them as one.
 
@@ -1676,12 +1735,18 @@ def save_content_to_db(
     `generate_uuids=False` a file that lacks a uuid is refused instead of
     being given one, so a save never rewrites the content files. When
     `source_commits` is given, a `ContentSave` records the commit each source
-    path was loaded from, in the same transaction as the content rows.
+    path was loaded from, in the same transaction as the content rows. With
+    `retire_missing=True`, every row of the site that no source path names is
+    retired in the same transaction; a row that returns to the source is live again.
     """
     # Printed only once the load's transaction is over, so a load that rolls back,
     # at its commit included, has reported no removal and no success.
     image_statuses, removal_lines = _write_sources(
-        paths, site_name, generate_uuids=generate_uuids, source_commits=source_commits
+        paths,
+        site_name,
+        generate_uuids=generate_uuids,
+        source_commits=source_commits,
+        retire_missing=retire_missing,
     )
     for line in removal_lines:
         click.echo(line)
@@ -1695,6 +1760,21 @@ def save_content_to_db(
     click.echo(f"{summary} ({per_status})." if per_status else f"{summary}.")
 
 
+def _retire_missing(site: Site, ledger: _RunLedger, run_time: datetime) -> None:
+    """Retire every live row of the site that the run did not find in the source."""
+    for model in RETIRABLE_MODELS:
+        live = model._base_manager.filter(site=site, retired_at__isnull=True)
+        key = "file_path__in" if model is File else "pk__in"
+        pks = list(
+            live.exclude(**{key: ledger.seen[model]}).values_list("pk", flat=True)
+        )
+        # update() skips auto_now, and readers find changed rows by updated_at.
+        model._base_manager.filter(pk__in=pks).update(
+            retired_at=run_time, updated_at=run_time
+        )
+        ledger.retired[model] = set(pks)
+
+
 @transaction.atomic
 def _write_sources(
     paths: Path | str | Sequence[Path | str],
@@ -1702,6 +1782,7 @@ def _write_sources(
     *,
     generate_uuids: bool,
     source_commits: Sequence[SourceCommit] | None,
+    retire_missing: bool,
 ) -> tuple[list[ImageEncodeStatus], list[str]]:
     """Write every source path in one transaction. Returns the image statuses and the
     lines that report what was removed."""
@@ -1740,12 +1821,17 @@ def _write_sources(
         _refuse_missing_uuids(sources)
     _refuse_relative_path_collisions(sources)
 
+    run_time = timezone.now()
+    ledger = _RunLedger()
     image_statuses: list[ImageEncodeStatus] = []
     removal_lines: list[str] = []
     for source in sources:
-        source_statuses, source_removals = _write_source(source, site)
+        source_statuses, source_removals = _write_source(source, site, ledger)
         image_statuses.extend(source_statuses)
         removal_lines.extend(source_removals)
+
+    if retire_missing:
+        _retire_missing(site, ledger, run_time)
 
     if source_commits is not None:
         content_save = ContentSave.objects.create(

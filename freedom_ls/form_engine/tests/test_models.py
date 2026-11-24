@@ -40,6 +40,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.signals import form_attempt_completed
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import site_context
 
 # QuestionAnswer.question is PROTECTed against FormQuestion deletion.
@@ -1071,3 +1072,35 @@ def test_deleting_the_user_deletes_the_declaration(mock_site_context: object) ->
     declaration.form_progress.user.delete()
 
     assert FormDeclaration.objects.count() == 0
+
+
+@pytest.mark.parametrize(
+    "factory", [FormFactory, FormPageFactory, FormContentFactory, FormQuestionFactory]
+)
+def test_not_retired_returns_the_live_form_rows_and_leaves_out_a_retired_one(
+    mock_site_context, factory
+):
+    live = factory()
+    retired = retire(factory())
+    model = type(live)
+
+    assert list(model.objects.not_retired()) == [live]
+    assert set(model.objects.all()) == {live, retired}
+
+
+@pytest.mark.django_db
+def test_not_retired_leaves_out_a_retired_question_option(mock_site_context):
+    question = FormQuestionFactory()
+    live = QuestionOptionFactory(question=question)
+    to_retire: QuestionOption = QuestionOptionFactory(question=question)
+    retired = retire(to_retire)
+
+    assert list(QuestionOption.objects.not_retired()) == [live]
+    assert set(question.options.all()) == {live, retired}
+
+
+@pytest.mark.django_db
+def test_is_retired_on_a_question_option_follows_retired_at(mock_site_context):
+    option: QuestionOption = QuestionOptionFactory()
+
+    assert (option.is_retired, retire(option).is_retired) == (False, True)

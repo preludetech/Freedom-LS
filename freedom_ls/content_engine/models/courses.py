@@ -33,6 +33,17 @@ if TYPE_CHECKING:
     from freedom_ls.organisations.models import Organisation
 
 
+def live_collection_items(
+    collection: Course | CoursePart,
+) -> list[ContentCollectionItem]:
+    """The collection's own collection items whose child is not retired."""
+    return [
+        item
+        for item in collection.collection_items()
+        if item.child is None or not item.child.is_retired
+    ]
+
+
 class DifficultyLevel(models.TextChoices):
     """Course difficulty level enumeration."""
 
@@ -490,23 +501,36 @@ class Course(MarkdownContent, TitledContent):
             self._collection_items_cache = list(self.items.prefetch_related("child"))
         return self._collection_items_cache
 
-    def collection_items_flat(self) -> list[ContentCollectionItem]:
+    def collection_items_flat(
+        self, include_retired: bool = False
+    ) -> list[ContentCollectionItem]:
         """Get a flattened list of all collection items in the course.
 
-        Includes CourseParts' own rows and their nested rows in order.
+        Includes CourseParts' own rows and their nested rows in order. A child
+        a content save retired is left out, and so is everything under a
+        retired part, unless `include_retired` is true.
         """
         flattened = []
-        for item in self.collection_items():
+        own = (
+            self.collection_items() if include_retired else live_collection_items(self)
+        )
+        for item in own:
             flattened.append(item)
             if isinstance(item.child, CoursePart):
-                flattened.extend(item.child.collection_items())
+                flattened.extend(
+                    item.child.collection_items()
+                    if include_retired
+                    else live_collection_items(item.child)
+                )
         return flattened
 
-    def viewable_collection_items(self) -> list[ContentCollectionItem]:
+    def viewable_collection_items(
+        self, include_retired: bool = False
+    ) -> list[ContentCollectionItem]:
         """Return ordered list of all viewable collection items (no CoursePart sentinels)."""
         return [
             item
-            for item in self.collection_items_flat()
+            for item in self.collection_items_flat(include_retired)
             if not isinstance(item.child, CoursePart)
         ]
 
@@ -537,9 +561,9 @@ class Course(MarkdownContent, TitledContent):
         """
         return [item.child for item in self.collection_items_flat()]
 
-    def viewable_items(self) -> list:
+    def viewable_items(self, include_retired: bool = False) -> list:
         """Return ordered list of all viewable child content items (no CoursePart sentinels)."""
-        return [item.child for item in self.viewable_collection_items()]
+        return [item.child for item in self.viewable_collection_items(include_retired)]
 
     def lesson_count(self) -> int:
         """Viewable children that are lessons: every child except a form,

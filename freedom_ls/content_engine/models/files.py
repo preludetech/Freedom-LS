@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.base.storage import storage_for_alias
+from freedom_ls.content_base.models import RetirableManager
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 from ..config import config
@@ -58,12 +59,25 @@ class File(SiteAwareModel, TimestampedModel):
         ),
     )
 
+    retired_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=_("When a content save found this row missing from the source"),
+    )
+
+    objects = RetirableManager()
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["site", "file_path"], name="unique_file_path_per_site"
             )
         ]
+
+    @property
+    def is_retired(self) -> bool:
+        return self.retired_at is not None
 
     def __str__(self):
         return f"{self.original_filename} ({self.get_file_type_display()})"

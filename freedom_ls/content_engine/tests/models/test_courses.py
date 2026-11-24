@@ -7,6 +7,7 @@ import uuid
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 import time_machine
@@ -16,9 +17,11 @@ from django.db import IntegrityError, transaction
 from django.test import override_settings
 
 from freedom_ls.content_engine.factories import (
+    ArticleFactory,
     CourseCategoryFactory,
     CourseFactory,
     CoursePartFactory,
+    FileFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.management.commands.content_save import (
@@ -31,14 +34,17 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     DifficultyLevel,
     PriceKind,
+    Topic,
 )
 from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import Form
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 
 # CourseCategory: per-site uniqueness, Course ordering, and the dashboard_category FK.
 
@@ -1286,3 +1292,148 @@ def test_shared_by_reads_prefetched_organisations_without_a_query(
 
     with django_assert_num_queries(0):
         assert prefetched.shared_by(viewing) == "Northwind Logistics"
+
+
+# A child a content save retired drops out of the learner outline.
+
+
+class _Outline(NamedTuple):
+    course: Course
+    part: CoursePart
+    before: Topic
+    inside: Topic
+    after: Topic
+    quiz: Form
+
+
+def _course_with_part_between_topics() -> _Outline:
+    course: Course = CourseFactory()
+    part: CoursePart = CoursePartFactory()
+    before = TopicFactory()
+    inside = TopicFactory()
+    after = TopicFactory()
+    quiz = FormFactory()
+    course.items.create(child=before, order=0)
+    course.items.create(child=part, order=1)
+    part.items.create(child=inside, order=0)
+    part.items.create(child=quiz, order=1)
+    course.items.create(child=after, order=2)
+    return _Outline(course, part, before, inside, after, quiz)
+
+
+@pytest.mark.django_db
+def test_children_flat_skips_a_retired_topic(mock_site_context):
+    course, part, before, inside, after, quiz = _course_with_part_between_topics()
+    retire(inside)
+
+    assert course.children_flat() == [before, part, quiz, after]
+
+
+@pytest.mark.django_db
+def test_children_flat_skips_a_retired_part_and_the_children_under_it(
+    mock_site_context,
+):
+    course, part, before, _, after, _ = _course_with_part_between_topics()
+    retire(part)
+
+    assert course.children_flat() == [before, after]
+
+
+@pytest.mark.django_db
+def test_viewable_items_skips_a_retired_child_and_the_children_of_a_retired_part(
+    mock_site_context,
+):
+    course, part, before, _, after, _ = _course_with_part_between_topics()
+    retire(part)
+
+    assert course.viewable_items() == [before, after]
+
+
+@pytest.mark.django_db
+def test_lesson_count_does_not_count_a_retired_topic(mock_site_context):
+    course, _, _, inside, _, _ = _course_with_part_between_topics()
+    retire(inside)
+
+    assert course.lesson_count() == 2
+
+
+@pytest.mark.django_db
+def test_includes_assessments_is_false_once_the_only_form_is_retired(
+    mock_site_context,
+):
+    course, _, _, _, _, quiz = _course_with_part_between_topics()
+    retire(quiz)
+
+    assert course.includes_assessments() is False
+
+
+@pytest.mark.django_db
+def test_collection_items_still_returns_a_retired_child(mock_site_context):
+    course, part, before, inside, after, quiz = _course_with_part_between_topics()
+    retire(before)
+    retire(inside)
+
+    assert [item.child for item in course.collection_items()] == [before, part, after]
+    assert part.children() == [inside, quiz]
+
+
+@pytest.mark.django_db
+def test_include_retired_returns_every_child_in_order(mock_site_context):
+    course, part, before, inside, after, quiz = _course_with_part_between_topics()
+    retire(before)
+    retire(part)
+
+    assert [item.child for item in course.collection_items_flat(True)] == [
+        before,
+        part,
+        inside,
+        quiz,
+        after,
+    ]
+    assert course.viewable_items(include_retired=True) == [
+        before,
+        inside,
+        quiz,
+        after,
+    ]
+
+
+@pytest.mark.django_db
+def test_children_flat_keeps_a_collection_item_whose_child_is_gone(mock_site_context):
+    course: Course = CourseFactory()
+    topic = TopicFactory()
+    course.items.create(child=topic, order=0)
+    Topic.objects.filter(pk=topic.pk).delete()
+
+    assert [item.child for item in course.collection_items_flat()] == [None]
+
+
+# Every retirable model answers is_retired and not_retired() the same way.
+
+RETIRABLE_FACTORIES = [
+    CourseFactory,
+    CourseCategoryFactory,
+    ArticleFactory,
+    TopicFactory,
+    FileFactory,
+]
+
+
+@pytest.mark.django_db
+def test_is_retired_follows_retired_at(mock_site_context):
+    topic: Topic = TopicFactory()
+
+    assert (topic.is_retired, retire(topic).is_retired) == (False, True)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory", RETIRABLE_FACTORIES)
+def test_not_retired_returns_the_live_rows_and_leaves_out_a_retired_one(
+    mock_site_context, factory
+):
+    live = factory()
+    retired = retire(factory())
+    model = type(live)
+
+    assert list(model.objects.not_retired()) == [live]
+    assert set(model.objects.all()) == {live, retired}
