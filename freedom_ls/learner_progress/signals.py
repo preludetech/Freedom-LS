@@ -7,17 +7,20 @@ is never connected, and fails silently rather than loudly.
 explicitly — a new concrete `CourseItemProgress` subclass does not inherit the
 behaviour the way it would from a `save()` override, it needs its own `@receiver`
 line here. Form completions arrive instead on `form_attempt_completed`, which
-`form_engine` sends for every attempt, course-bound or not.
+`form_engine` sends for every attempt, course-bound or not. Deleting a completed
+`TopicProgress` or a `CourseFormAttempt` recalculates off `post_delete`, after the
+deleting transaction commits.
 """
 
 from __future__ import annotations
 
 from typing import cast
+from uuid import UUID
 
 from django.contrib.sites.models import Site
 from django.db import transaction
 from django.db.models import Case, Value, When
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
@@ -112,6 +115,55 @@ def recalculate_course_progress_on_save(
 
     update_course_progress_on_completion(instance)
     instance.mark_completion_recorded()
+
+
+def _recalculate_after_commit(course_progress_id: UUID) -> None:
+    """Recalculate one record once the deleting transaction commits.
+
+    Deferred so a record deleted with its own rows is skipped: by commit time
+    it is gone, and the lookup finds nothing to fix.
+    """
+
+    def recalculate() -> None:
+        record = (
+            CourseProgress._base_manager.filter(pk=course_progress_id)
+            .select_related("course")
+            .first()
+        )
+        if record is not None:
+            recalculate_progress_percentage(record)
+
+    transaction.on_commit(recalculate)
+
+
+@receiver(post_delete, sender=TopicProgress)
+def recalculate_course_progress_on_topic_delete(
+    sender: type[TopicProgress],
+    instance: TopicProgress,
+    **kwargs: object,
+) -> None:
+    """Take a deleted completion out of the record's stored percentage.
+
+    A row that never completed was never counted, so deleting it changes nothing.
+    """
+    if instance.complete_time is None:
+        return
+    _recalculate_after_commit(instance.course_progress_id)
+
+
+@receiver(post_delete, sender=CourseFormAttempt)
+def recalculate_course_progress_on_form_attempt_delete(
+    sender: type[CourseFormAttempt],
+    instance: CourseFormAttempt,
+    **kwargs: object,
+) -> None:
+    """Take a deleted sitting out of the record's stored percentage.
+
+    Deleting the `FormProgress` cascades here too. The attempt's completion is
+    not checked: its `FormProgress` may already be gone, and a recalculation
+    that changes nothing writes nothing.
+    """
+    _recalculate_after_commit(instance.course_progress_id)
 
 
 @receiver(

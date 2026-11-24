@@ -219,6 +219,124 @@ def test_recalculate_progress_percentage_catches_up_a_bulk_written_record(
     assert record.progress_percentage == 100
 
 
+@pytest.fixture
+def form_placement(mock_site_context):
+    """A record, and the collection item placing one quiz in its course."""
+    course = CourseFactory()
+    record: CourseProgress = CourseProgressFactory(course=course)
+    form = FormFactory(strategy="QUIZ")
+    collection_item = ContentCollectionItemFactory(
+        collection_object=course, child_object=form, order=0
+    )
+    return record, collection_item, form
+
+
+@pytest.mark.django_db
+def test_deleting_a_completed_topic_row_recalculates(
+    topic_placement, django_capture_on_commit_callbacks
+):
+    """Removing a completion takes it out of the stored percentage."""
+    from freedom_ls.learner_progress.signals import recalculate_progress_percentage
+
+    record, collection_item = topic_placement
+    tp: TopicProgress = TopicProgressFactory(
+        course_progress=record,
+        collection_item=collection_item,
+        topic=collection_item.child,
+        complete_time=timezone.now(),
+    )
+    recalculate_progress_percentage(record)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        TopicProgress.objects.filter(pk=tp.pk).delete()
+
+    record.refresh_from_db()
+    assert record.progress_percentage == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("deleted", ["form_progress", "course_attempt"])
+def test_deleting_a_completed_form_attempt_recalculates(
+    form_placement, django_capture_on_commit_callbacks, deleted
+):
+    """Deleting either half of a finished sitting takes it out of the percentage."""
+    from freedom_ls.learner_progress.models import CourseFormAttempt
+    from freedom_ls.learner_progress.signals import recalculate_progress_percentage
+
+    record, collection_item, form = form_placement
+    attempt: CourseFormAttempt = CourseFormAttemptFactory(
+        course_progress=record,
+        collection_item=collection_item,
+        form=form,
+        form_progress__completed_time=timezone.now(),
+    )
+    recalculate_progress_percentage(record)
+    record.refresh_from_db()
+    assert record.progress_percentage == 100
+
+    with django_capture_on_commit_callbacks(execute=True):
+        if deleted == "form_progress":
+            FormProgress.objects.filter(pk=attempt.form_progress_id).delete()
+        else:
+            CourseFormAttempt.objects.filter(pk=attempt.pk).delete()
+
+    record.refresh_from_db()
+    assert record.progress_percentage == 0
+
+
+@pytest.mark.django_db
+def test_deleting_a_record_with_its_rows_recalculates_nothing(
+    topic_placement, django_capture_on_commit_callbacks, monkeypatch
+):
+    """A record deleted along with its rows has no percentage left to fix."""
+    from freedom_ls.learner_progress import signals
+
+    record, collection_item = topic_placement
+    TopicProgressFactory(
+        course_progress=record,
+        collection_item=collection_item,
+        topic=collection_item.child,
+        complete_time=timezone.now(),
+    )
+    calls = []
+    monkeypatch.setattr(
+        signals,
+        "recalculate_progress_percentage",
+        lambda course_progress: calls.append(course_progress),
+    )
+
+    with django_capture_on_commit_callbacks(execute=True):
+        CourseProgress.objects.filter(pk=record.pk).delete()
+
+    assert calls == []
+
+
+@pytest.mark.django_db
+def test_deleting_an_unfinished_topic_row_recalculates_nothing(
+    topic_placement, django_capture_on_commit_callbacks, monkeypatch
+):
+    """A row that never completed was never counted."""
+    from freedom_ls.learner_progress import signals
+
+    record, collection_item = topic_placement
+    tp: TopicProgress = TopicProgressFactory(
+        course_progress=record,
+        collection_item=collection_item,
+        topic=collection_item.child,
+    )
+    calls = []
+    monkeypatch.setattr(
+        signals,
+        "recalculate_progress_percentage",
+        lambda course_progress: calls.append(course_progress),
+    )
+
+    with django_capture_on_commit_callbacks(execute=True):
+        TopicProgress.objects.filter(pk=tp.pk).delete()
+
+    assert calls == []
+
+
 @pytest.mark.django_db
 class TestRecalculationMovesUpdatedAt:
     def _complete_topic(
