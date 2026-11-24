@@ -33,12 +33,6 @@ freedom_ls/dev_tools/tests/test_danger_clear_all_course_progress.py
 freedom_ls/dev_tools/tests/test_danger_commands_with_applications.py
 freedom_ls/dev_tools/tests/test_danger_content_delete.py
 
-# educator_interface
-freedom_ls/educator_interface/tests/test_document_title.py
-freedom_ls/educator_interface/tests/test_interface_urls.py
-freedom_ls/educator_interface/tests/test_organisation_switcher.py
-freedom_ls/educator_interface/tests/test_sidebar.py
-
 # form_engine
 
 # google_tag
