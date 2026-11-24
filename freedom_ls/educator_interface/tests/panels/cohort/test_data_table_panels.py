@@ -344,10 +344,10 @@ def test_an_active_cohorts_learners_tab_offers_remove_for_each_member(
 
 
 @pytest.mark.django_db
-def test_a_learner_rows_remove_trigger_uses_the_error_variant(
+def test_a_learner_rows_remove_trigger_uses_the_secondary_variant(
     staff_client: Client,
 ) -> None:
-    """The per-row Remove trigger is styled as a destructive action, not secondary."""
+    """The per-row Remove trigger is secondary; only its dialog's confirm is red."""
     cohort = CohortFactory(organisation=OrganisationFactory())
     _add_member(cohort)
 
@@ -364,7 +364,8 @@ def test_a_learner_rows_remove_trigger_uses_the_error_variant(
         if "remove_from_cohort?learner=" in b.get("hx-get")
     ]
     assert buttons
-    assert all("btn-error" in b.get("class") for b in buttons)
+    assert all("btn-secondary" in b.get("class") for b in buttons)
+    assert not any("btn-error" in b.get("class") for b in buttons)
 
 
 @pytest.mark.django_db
