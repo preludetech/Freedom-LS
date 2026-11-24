@@ -135,7 +135,7 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 
 **Status: Deadline overrides, pausing and extending are not available anywhere; the deadline policy cannot be managed in the educator interface.**
 
-Deadline overrides, which would set or remove a due date or course time limit for a cohort course registration or a single learner, and pausing, resuming and extending a learner's course, are not available in the Django admin or the educator interface. Nobody can do them through the product until educator-interface screens are built. Pauses and extensions made earlier stay visible, read-only, in the Django admin. The [deadline policy](#deadlines) is still set by an administrator in the Django admin; see [admin interface](./admin-interface.md#deadline-policy).
+Deadline overrides, which would set or remove a due date or course time limit for a cohort course registration or a single learner, and pausing and extending a learner's course, are not available in the Django admin or the educator interface. Nobody can do them through the product until educator-interface screens are built. Pauses and extensions made earlier stay visible, read-only, in the Django admin, where a course that is still paused can be resumed. The [deadline policy](#deadlines) is still set by an administrator in the Django admin; see [admin interface](./admin-interface.md#deadline-policy).
 
 ## Deadlines
 

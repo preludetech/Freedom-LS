@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 
 from django.contrib import admin
-from django.contrib.admin.widgets import AutocompleteSelect, ForeignKeyRawIdWidget
+from django.contrib.admin.widgets import AutocompleteSelect
 from django.contrib.sites.models import Site
 from django.db import connection
 from django.forms import Select
@@ -42,10 +42,14 @@ from freedom_ls.deadlines.models import (
     CoursePause,
     DeadlineExtension,
     DeadlineKind,
+    LearnerCourseRegistrationDeadlineConfig,
     LearnerDeadlineOverride,
     SiteDeadlineConfig,
 )
-from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    LearnerCourseRegistrationFactory,
+)
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.factories import (
@@ -446,6 +450,42 @@ def test_the_pause_admin_allows_no_add_or_delete(
 
 
 @pytest.mark.django_db
+def test_an_open_pause_page_offers_resume(staff_client, mock_site_context) -> None:
+    pause: CoursePause = CoursePauseFactory()
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_deadlines_coursepause_change", args=[pause.pk])
+    )
+
+    assert [a["title"] for a in response.context["actions_detail"]] == ["Resume course"]
+
+
+@pytest.mark.django_db
+def test_an_ended_pause_page_offers_no_resume(staff_client, mock_site_context) -> None:
+    pause: CoursePause = CoursePauseFactory(ended_at=timezone.now())
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_deadlines_coursepause_change", args=[pause.pk])
+    )
+
+    assert response.context["actions_detail"] == []
+
+
+@pytest.mark.django_db
+def test_the_pause_page_stays_read_only(staff_client, mock_site_context) -> None:
+    pause: CoursePause = CoursePauseFactory()
+
+    response = staff_client.post(
+        reverse("admin:freedom_ls_deadlines_coursepause_change", args=[pause.pk]),
+        {"reason": "Edited by hand."},
+    )
+
+    pause.refresh_from_db()
+    assert response.status_code == 403
+    assert pause.reason == "Learner on leave."
+
+
+@pytest.mark.django_db
 def test_effective_deadlines_marks_an_extended_deadline_with_the_days_added(
     staff_client, mock_site_context
 ) -> None:
@@ -702,17 +742,51 @@ def test_the_cohort_registration_picker_query_count_does_not_grow_with_registrat
 
 
 @pytest.mark.django_db
-def test_the_learner_registration_config_add_form_picks_the_registration_by_raw_id(
+def test_the_learner_registration_config_saves_for_the_typed_email_and_course(
     staff_client: Client, mock_site_context: Site
 ) -> None:
+    registration = LearnerCourseRegistrationFactory()
     url = reverse(
         "admin:freedom_ls_deadlines_learnercourseregistrationdeadlineconfig_add"
     )
 
-    response = staff_client.get(url)
+    response = staff_client.post(
+        url,
+        {
+            **INHERIT_POST,
+            "learner_email": registration.learner.user.email.upper(),
+            "course": str(registration.course.pk),
+        },
+    )
 
-    widget = response.context["adminform"].form.fields["learner_registration"].widget
-    assert isinstance(widget, ForeignKeyRawIdWidget)
+    assert response.status_code == 302
+    config = LearnerCourseRegistrationDeadlineConfig.objects.get()
+    assert config.learner_registration == registration
+
+
+@pytest.mark.django_db
+def test_the_learner_registration_config_still_refuses_a_negative_grace_window(
+    staff_client: Client, mock_site_context: Site
+) -> None:
+    registration = LearnerCourseRegistrationFactory()
+    url = reverse(
+        "admin:freedom_ls_deadlines_learnercourseregistrationdeadlineconfig_add"
+    )
+
+    response = staff_client.post(
+        url,
+        {
+            **INHERIT_POST,
+            "grace_window": "-1 00:00:00",
+            "learner_email": registration.learner.user.email,
+            "course": str(registration.course.pk),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors["grace_window"] == [
+        "The grace window cannot be negative."
+    ]
 
 
 @pytest.mark.django_db

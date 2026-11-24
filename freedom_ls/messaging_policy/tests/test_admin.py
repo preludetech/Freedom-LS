@@ -7,7 +7,7 @@ from typing import NamedTuple, cast
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
-from django.contrib.admin.widgets import AutocompleteSelect, ForeignKeyRawIdWidget
+from django.contrib.admin.widgets import AutocompleteSelect
 from django.contrib.sites.models import Site
 from django.db import connection
 from django.db.models import Model
@@ -16,12 +16,18 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
+from freedom_ls.learner_management.admin_forms import (
+    NO_LEARNER,
+    NOT_REGISTERED,
+    SEVERAL_ORGANISATIONS,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
 from freedom_ls.learner_management.tests.scenario_world import custom_role_config
 from freedom_ls.messaging_policy.factories import (
     CohortCourseRegistrationMessagingConfigFactory,
@@ -46,6 +52,7 @@ from freedom_ls.messaging_policy.models import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.site_context import site_context
 
 pytestmark = pytest.mark.django_db
 
@@ -224,6 +231,22 @@ class OwnerLevel(NamedTuple):
     make_owner: Callable[[], Model]
     make_row: Callable[[Model], object]
     model: type[Model]
+    # The add form's field that picks the owner, and what a post puts in it.
+    picker_field: str
+    picker_post: Callable[[Model], dict[str, object]]
+
+
+def _pk_post(field: str) -> Callable[[Model], dict[str, object]]:
+    return lambda owner: {field: owner.pk}
+
+
+def _learner_email_post(learner: Model) -> dict[str, object]:
+    return {"learner_email": cast(Learner, learner).user.email}
+
+
+def _registration_email_post(registration: Model) -> dict[str, object]:
+    picked = cast(LearnerCourseRegistration, registration)
+    return {"learner_email": picked.learner.user.email, "course": picked.course.pk}
 
 
 OWNER_LEVELS = {
@@ -233,6 +256,8 @@ OWNER_LEVELS = {
         OrganisationFactory,
         lambda owner: OrganisationMessagingConfigFactory(organisation=owner),
         OrganisationMessagingConfig,
+        "organisation",
+        _pk_post("organisation"),
     ),
     "cohort": OwnerLevel(
         "cohortmessagingconfig",
@@ -240,6 +265,8 @@ OWNER_LEVELS = {
         CohortFactory,
         lambda owner: CohortMessagingConfigFactory(cohort=owner),
         CohortMessagingConfig,
+        "cohort",
+        _pk_post("cohort"),
     ),
     "learner": OwnerLevel(
         "learnermessagingconfig",
@@ -247,6 +274,8 @@ OWNER_LEVELS = {
         LearnerFactory,
         lambda owner: LearnerMessagingConfigFactory(learner=owner),
         LearnerMessagingConfig,
+        "learner_email",
+        _learner_email_post,
     ),
 }
 
@@ -267,7 +296,7 @@ def test_an_owner_level_add_page_shows_the_owner_the_flags_and_no_site_field(
 
     content = response.content.decode()
     assert response.status_code == 200
-    assert f'name="{level.owner_field}"' in content
+    assert f'name="{level.picker_field}"' in content
     assert all(f'name="{flag}"' in content for flag in FLAG_NAMES)
     assert 'name="site"' not in content
 
@@ -288,7 +317,7 @@ def test_an_owner_level_post_creates_the_row_for_the_owner(
     owner = level.make_owner()
 
     response = staff_client.post(
-        _url(level, "add"), {**POST_DATA, level.owner_field: owner.pk}
+        _url(level, "add"), {**POST_DATA, **level.picker_post(owner)}
     )
 
     assert response.status_code == 302
@@ -328,11 +357,11 @@ def test_a_second_post_for_the_same_owner_is_a_form_error(
     level.make_row(owner)
 
     response = staff_client.post(
-        _url(level, "add"), {**POST_DATA, level.owner_field: owner.pk}
+        _url(level, "add"), {**POST_DATA, **level.picker_post(owner)}
     )
 
     assert response.status_code == 200
-    assert response.context["adminform"].form.errors[level.owner_field]
+    assert response.context["adminform"].form.errors[level.picker_field]
     assert level.model.objects.count() == 1
 
 
@@ -360,6 +389,8 @@ class RegistrationLevel(NamedTuple):
     make_registration: Callable[[], Model]
     make_row: Callable[[Model], object]
     model: type[Model]
+    picker_field: str
+    picker_post: Callable[[Model], dict[str, object]]
 
 
 REGISTRATION_LEVELS = {
@@ -370,6 +401,8 @@ REGISTRATION_LEVELS = {
             registration=registration
         ),
         LearnerCourseRegistrationMessagingConfig,
+        "learner_email",
+        _registration_email_post,
     ),
     "cohort_registration": RegistrationLevel(
         "cohortcourseregistrationmessagingconfig",
@@ -378,6 +411,8 @@ REGISTRATION_LEVELS = {
             registration=registration
         ),
         CohortCourseRegistrationMessagingConfig,
+        "registration",
+        _pk_post("registration"),
     ),
 }
 REGISTRATION_POST_DATA = {"learner_to_course_peer": "open"}
@@ -401,7 +436,7 @@ def test_a_registration_add_page_shows_only_the_course_peer_flag(
 
     content = response.content.decode()
     assert response.status_code == 200
-    assert 'name="registration"' in content
+    assert f'name="{registration_level.picker_field}"' in content
     assert 'name="learner_to_course_peer"' in content
     assert 'name="learner_to_educator"' not in content
     assert 'name="learner_to_cohort_peer"' not in content
@@ -425,7 +460,7 @@ def test_a_registration_post_creates_the_row_for_the_registration(
 
     response = staff_client.post(
         _registration_url(registration_level, "add"),
-        {**REGISTRATION_POST_DATA, "registration": registration.pk},
+        {**REGISTRATION_POST_DATA, **registration_level.picker_post(registration)},
     )
 
     assert response.status_code == 302
@@ -465,11 +500,11 @@ def test_a_second_registration_post_for_the_same_registration_is_a_form_error(
 
     response = staff_client.post(
         _registration_url(registration_level, "add"),
-        {**REGISTRATION_POST_DATA, "registration": registration.pk},
+        {**REGISTRATION_POST_DATA, **registration_level.picker_post(registration)},
     )
 
     assert response.status_code == 200
-    assert response.context["adminform"].form.errors["registration"]
+    assert response.context["adminform"].form.errors[registration_level.picker_field]
     assert registration_level.model.objects.count() == 1
 
 
@@ -507,31 +542,117 @@ def test_the_cohort_registration_picker_query_count_does_not_grow_with_registrat
     assert many == few
 
 
-@pytest.mark.parametrize(
-    ("model_name", "field"),
-    [
-        ("learnermessagingconfig", "learner"),
-        ("learnercourseregistrationmessagingconfig", "registration"),
-    ],
+LEARNER_ADD_URL = "admin:freedom_ls_messaging_policy_learnermessagingconfig_add"
+REGISTRATION_ADD_URL = (
+    "admin:freedom_ls_messaging_policy_learnercourseregistrationmessagingconfig_add"
 )
-def test_the_add_form_picks_a_learner_or_learner_registration_by_raw_id(
-    staff_client: Client, model_name: str, field: str
-) -> None:
-    response = staff_client.get(
-        reverse(f"admin:freedom_ls_messaging_policy_{model_name}_add")
-    )
-
-    widget = response.context["adminform"].form.fields[field].widget
-    assert isinstance(widget, ForeignKeyRawIdWidget)
 
 
-def test_a_post_saves_a_learner_config_for_the_posted_learner_pk(
+def test_the_learner_email_is_matched_whatever_its_case(
     staff_client: Client,
 ) -> None:
     learner = LearnerFactory()
-    url = reverse("admin:freedom_ls_messaging_policy_learnermessagingconfig_add")
 
-    response = staff_client.post(url, {**POST_DATA, "learner": str(learner.pk)})
+    response = staff_client.post(
+        reverse(LEARNER_ADD_URL),
+        {**POST_DATA, "learner_email": learner.user.email.upper()},
+    )
 
     assert response.status_code == 302
     assert LearnerMessagingConfig.objects.get().learner == learner
+
+
+def test_an_email_with_no_learner_is_a_form_error(staff_client: Client) -> None:
+    response = staff_client.post(
+        reverse(LEARNER_ADD_URL), {**POST_DATA, "learner_email": "nobody@example.com"}
+    )
+
+    assert response.context["adminform"].form.errors["learner_email"] == [NO_LEARNER]
+    assert not LearnerMessagingConfig.objects.exists()
+
+
+def test_another_sites_learner_is_not_matched(
+    staff_client: Client, mock_site_context: Site
+) -> None:
+    with site_context(SiteFactory()):
+        other = LearnerFactory()
+
+    response = staff_client.post(
+        reverse(LEARNER_ADD_URL), {**POST_DATA, "learner_email": other.user.email}
+    )
+
+    assert response.context["adminform"].form.errors["learner_email"] == [NO_LEARNER]
+
+
+def test_an_email_in_two_organisations_needs_the_organisation(
+    staff_client: Client,
+) -> None:
+    first = LearnerFactory()
+    second = LearnerFactory(user=first.user)
+
+    unpicked = staff_client.post(
+        reverse(LEARNER_ADD_URL), {**POST_DATA, "learner_email": first.user.email}
+    )
+    picked = staff_client.post(
+        reverse(LEARNER_ADD_URL),
+        {
+            **POST_DATA,
+            "learner_email": first.user.email,
+            "organisation": str(second.organisation.pk),
+        },
+    )
+
+    assert unpicked.context["adminform"].form.errors["organisation"] == [
+        SEVERAL_ORGANISATIONS
+    ]
+    assert picked.status_code == 302
+    assert LearnerMessagingConfig.objects.get().learner == second
+
+
+def test_a_course_the_learner_is_not_registered_for_is_a_form_error(
+    staff_client: Client,
+) -> None:
+    registration = LearnerCourseRegistrationFactory()
+    other_course = LearnerCourseRegistrationFactory().course
+
+    response = staff_client.post(
+        reverse(REGISTRATION_ADD_URL),
+        {
+            **REGISTRATION_POST_DATA,
+            "learner_email": registration.learner.user.email,
+            "course": str(other_course.pk),
+        },
+    )
+
+    assert response.context["adminform"].form.errors["course"] == [NOT_REGISTERED]
+
+
+def test_the_change_page_shows_the_rows_learner_email_and_course(
+    staff_client: Client,
+) -> None:
+    row = LearnerCourseRegistrationMessagingConfigFactory()
+    url = reverse(
+        "admin:freedom_ls_messaging_policy_learnercourseregistrationmessagingconfig_change",
+        args=[row.pk],
+    )
+
+    form = staff_client.get(url).context["adminform"].form
+
+    assert form["learner_email"].value() == row.registration.learner.user.email
+    assert form["course"].value() == row.registration.course_id
+    assert form["organisation"].value() == row.registration.learner.organisation_id
+
+
+def test_saving_the_change_page_unchanged_keeps_the_row(staff_client: Client) -> None:
+    row = LearnerMessagingConfigFactory()
+    url = reverse(
+        "admin:freedom_ls_messaging_policy_learnermessagingconfig_change",
+        args=[row.pk],
+    )
+
+    response = staff_client.post(
+        url, {**POST_DATA, "learner_email": row.learner.user.email}
+    )
+
+    assert response.status_code == 302
+    assert LearnerMessagingConfig.objects.get().learner == row.learner

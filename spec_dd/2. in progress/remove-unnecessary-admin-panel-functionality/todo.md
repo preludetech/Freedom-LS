@@ -35,6 +35,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/admin-interface/SKILL.md`, replace the `CourseReferencePartInline` (`content_engine/admin.py`) inline example with `CoursePauseInline` in `freedom_ls/deadlines/admin.py` (spec "Documentation and downstream")
 - [x] (cmd) Run `/sdd:document`: in `docs/app_conventions.md`, drop `freedom_ls/learner_management/forms.py` from the `ConstraintValidationFormMixin` worked examples, leaving `freedom_ls/organisations/forms.py` (the file is deleted with the learner_management admin)
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Fix the /code-review 288 findings: resume action on the pause admin, learner pickers by email, shared cohort-registration picker, ReadOnlyAdminMixin on the pause and extension admins
+- [ ] (user) Try the new admin flows: resume an open pause from its CoursePause page, and add a learner deadline config and learner messaging config by typing the learner's email
 
 ## 5. Cleanup
 

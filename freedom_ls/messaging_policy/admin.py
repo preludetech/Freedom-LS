@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from django import forms
 from django.contrib import admin
 from django.contrib.sites.models import Site
-from django.db import models
 from django.forms import ModelForm
 from django.http import HttpRequest
 
-from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_management.admin_forms import (
+    CohortRegistrationPickerAdmin,
+    LearnerPickerForm,
+    LearnerRegistrationPickerForm,
+)
 from freedom_ls.messaging_policy.forms import SiteMessagingConfigForm
 from freedom_ls.messaging_policy.models import (
     FLAG_NAMES,
@@ -69,15 +71,18 @@ class CohortMessagingConfigAdmin(SiteAwareModelAdmin):
 
 @admin.register(LearnerMessagingConfig)
 class LearnerMessagingConfigAdmin(SiteAwareModelAdmin):
+    form = LearnerPickerForm
+    fields = ["learner_email", "organisation", *FLAG_NAMES]
     list_display = ["__str__", *FLAG_NAMES]
     list_select_related = ["learner__user", "learner__organisation"]
     list_filter = list(FLAG_NAMES)
-    raw_id_fields = ["learner"]
     search_fields = ["learner__user__email"]
 
 
 @admin.register(LearnerCourseRegistrationMessagingConfig)
 class LearnerCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
+    form = LearnerRegistrationPickerForm
+    fields = ["learner_email", "organisation", "course", "learner_to_course_peer"]
     list_display = ["__str__", "learner_to_course_peer"]
     list_select_related = [
         "registration__learner__user",
@@ -85,29 +90,13 @@ class LearnerCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
         "registration__course",
     ]
     list_filter = ["learner_to_course_peer"]
-    raw_id_fields = ["registration"]
     search_fields = ["registration__learner__user__email"]
 
 
 @admin.register(CohortCourseRegistrationMessagingConfig)
-class CohortCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
+class CohortCourseRegistrationMessagingConfigAdmin(CohortRegistrationPickerAdmin):
+    cohort_registration_field = "registration"
     list_display = ["__str__", "learner_to_course_peer"]
     list_select_related = ["registration__cohort", "registration__course"]
     list_filter = ["learner_to_course_peer"]
     search_fields = ["registration__cohort__name"]
-
-    def formfield_for_foreignkey(
-        self,
-        db_field: models.ForeignKey,
-        request: HttpRequest,
-        **kwargs: object,
-    ) -> forms.ModelChoiceField | None:
-        # Each option's label names the cohort and the course.
-        if db_field.name == "registration":
-            kwargs["queryset"] = CohortCourseRegistration.objects.select_related(
-                "cohort", "course"
-            )
-        field: forms.ModelChoiceField | None = super().formfield_for_foreignkey(
-            db_field, request, **kwargs
-        )
-        return field

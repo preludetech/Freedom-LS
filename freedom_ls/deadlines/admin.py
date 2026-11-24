@@ -1,24 +1,32 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from functools import partial
 from zoneinfo import ZoneInfo
 
 from unfold.admin import ModelAdmin
 from unfold.contrib.filters.admin import (
     RelatedDropdownFilter,
 )
+from unfold.dataclasses import UnfoldAction
+from unfold.decorators import action as unfold_action
 
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
+from django.contrib.auth import get_permission_codename
 from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponseRedirect
+from django.shortcuts import redirect
+from django.urls import URLPattern, URLResolver, path, reverse
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 
 from freedom_ls.base.date_display import days_text, display_date
+from freedom_ls.deadlines.admin_views import resume_view
 from freedom_ls.deadlines.consequences import access_end_instant
 from freedom_ls.deadlines.loader import get_deadline_policy
 from freedom_ls.deadlines.models import (
@@ -40,7 +48,10 @@ from freedom_ls.deadlines.resolver import (
     ResolvedDeadline,
     course_deadlines,
 )
-from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_management.admin_forms import (
+    CohortRegistrationPickerAdmin,
+    LearnerRegistrationPickerForm,
+)
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.admin import ReadOnlyInline, SiteAwareModelAdmin
@@ -156,7 +167,8 @@ def effective_deadline_policy(
 
 class CoursePauseInline(ReadOnlyInline):
     """A record's pauses, newest first. Read-only: a pause is started and ended by the pause
-    and resume services, which write the audit entry and the webhook with it."""
+    and resume services, which write the audit entry and the webhook with it. Staff resume an
+    open pause from its own page in the pause admin."""
 
     model = CoursePause
     fields = [
@@ -225,9 +237,13 @@ class PauseStateFilter(admin.SimpleListFilter):
         return queryset.filter(is_open if self.value() == "paused" else ~is_open)
 
 
+RESUME_URL_NAME = "freedom_ls_deadlines_coursepause_resume"
+
+
 @admin.register(CoursePause)
-class CoursePauseAdmin(SiteAwareModelAdmin):
-    """Every pause on the site, for finding who is paused and who paused them."""
+class CoursePauseAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
+    """Every pause on the site, for finding who is paused and who paused them. An open
+    pause's page offers Resume, the one way to end a pause that has no planned resume day."""
 
     list_display = [
         "course_progress",
@@ -256,14 +272,52 @@ class CoursePauseAdmin(SiteAwareModelAdmin):
         "course_progress__learner__user__last_name",
     )
 
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
+    actions_detail = ["resume_course_action"]
 
-    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
+    def has_resume_permission(
+        self, request: HttpRequest, object_id: str | None = None
+    ) -> bool:
+        """The model's change permission, read directly: has_change_permission is always
+        False, since no pause field is edited by hand."""
+        opts = self.opts
+        allowed: bool = request.user.has_perm(
+            f"{opts.app_label}.{get_permission_codename('change', opts)}"
+        )
+        return allowed
 
-    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
+    @unfold_action(
+        description="Resume course",
+        url_path="resume-course-action",
+        permissions=["resume"],
+    )
+    def resume_course_action(
+        self, request: HttpRequest, object_id: str
+    ) -> HttpResponseRedirect:
+        return redirect(reverse(f"admin:{RESUME_URL_NAME}", args=[object_id]))
+
+    def get_urls(self) -> list[URLPattern | URLResolver]:
+        return [
+            path(
+                "<path:object_id>/resume/",
+                self.admin_site.admin_view(partial(resume_view, model_admin=self)),
+                name=RESUME_URL_NAME,
+            ),
+            *super().get_urls(),
+        ]
+
+    def get_actions_detail(
+        self, request: HttpRequest, object_id: str
+    ) -> list[UnfoldAction]:
+        """Resume shows only on an open pause."""
+        actions: list[UnfoldAction] = super().get_actions_detail(request, object_id)
+        try:
+            pause = CoursePause.objects.filter(pk=unquote(object_id)).first()
+        except ValidationError:
+            return []
+        tz = site_time_zone(Site.objects.get_current(request))
+        if pause is None or not pause.is_open(timezone.now(), tz):
+            return []
+        return actions
 
 
 class DeadlineExtensionInline(ReadOnlyInline):
@@ -293,7 +347,7 @@ class DeadlineExtensionInline(ReadOnlyInline):
 
 
 @admin.register(DeadlineExtension)
-class DeadlineExtensionAdmin(SiteAwareModelAdmin):
+class DeadlineExtensionAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     """Every extension on the site, for finding who was given more time and by whom."""
 
     list_display = [
@@ -326,15 +380,6 @@ class DeadlineExtensionAdmin(SiteAwareModelAdmin):
     def get_queryset(self, request: HttpRequest) -> models.QuerySet[DeadlineExtension]:
         rows: models.QuerySet[DeadlineExtension] = super().get_queryset(request)
         return rows.prefetch_related("collection_item__child")
-
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
-
-    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
-
-    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
 
 
 # CourseProgressAdmin's change page belongs to a lower app in docs/app_structure.md, so the
@@ -426,32 +471,26 @@ class CohortDeadlineConfigAdmin(_DeadlineConfigAdmin):
 
 
 @admin.register(CohortCourseRegistrationDeadlineConfig)
-class CohortCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
+class CohortCourseRegistrationDeadlineConfigAdmin(
+    CohortRegistrationPickerAdmin, _DeadlineConfigAdmin
+):
+    cohort_registration_field = "cohort_registration"
     list_select_related = ["cohort_registration__cohort", "cohort_registration__course"]
     search_fields = ["cohort_registration__cohort__name"]
 
-    def formfield_for_foreignkey(
-        self,
-        db_field: models.ForeignKey,
-        request: HttpRequest,
-        **kwargs: object,
-    ) -> forms.ModelChoiceField | None:
-        # Each option's label names the cohort and the course.
-        if db_field.name == "cohort_registration":
-            kwargs["queryset"] = CohortCourseRegistration.objects.select_related(
-                "cohort", "course"
-            )
-        field: forms.ModelChoiceField | None = super().formfield_for_foreignkey(
-            db_field, request, **kwargs
-        )
-        return field
+
+class LearnerRegistrationDeadlineConfigForm(
+    LearnerRegistrationPickerForm, DeadlineConfigForm
+):
+    learner_field = "learner_registration"
 
 
 @admin.register(LearnerCourseRegistrationDeadlineConfig)
 class LearnerCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
+    form = LearnerRegistrationDeadlineConfigForm
+    fields = ["learner_email", "organisation", "course", *CONFIG_FIELDS]
     list_select_related = [
         "learner_registration__learner__user",
         "learner_registration__course",
     ]
-    raw_id_fields = ["learner_registration"]
     search_fields = ["learner_registration__learner__user__email"]

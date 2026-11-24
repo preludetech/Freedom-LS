@@ -2,10 +2,9 @@
 requires_migrations: false
 requires_template_review: true
 changed_template_paths:
-  - freedom_ls/deadlines/templates/admin/deadlines/_action_form.html       # deleted
   - freedom_ls/deadlines/templates/admin/deadlines/extend_deadline.html    # deleted
   - freedom_ls/deadlines/templates/admin/deadlines/pause_course.html       # deleted
-  - freedom_ls/deadlines/templates/admin/deadlines/resume_course.html      # deleted
+  - freedom_ls/deadlines/templates/admin/deadlines/resume_course.html      # now rendered by the pause admin
 requires_settings_change: false
 changed_settings: []
 requires_package_upgrade: false
@@ -37,8 +36,9 @@ longer reverse:
 A downstream template, link or test that reverses one of these names raises `NoReverseMatch`. A
 downstream admin with `autocomplete_fields` pointing at `Course`, `Cohort`, `Learner`,
 `LearnerCourseRegistration` or `CohortCourseRegistration` now fails `manage.py check` with
-`admin.E039`/`admin.E040`: drop the entry, or use `raw_id_fields` for learner and registration
-fields. The same applies to `AutocompleteSelectFilter` on those relations; FLS now uses unfold's
+`admin.E039`/`admin.E040`: drop the entry. For a learner or learner registration field, use
+`freedom_ls.learner_management.admin_forms.LearnerPickerForm` or `LearnerRegistrationPickerForm`
+(set `learner_field` to the foreign key's name), which pick the row by the learner's email. The same applies to `AutocompleteSelectFilter` on those relations; FLS now uses unfold's
 `RelatedDropdownFilter` instead. A project that still wants one of the removed admins registers its
 own.
 
@@ -46,7 +46,13 @@ own.
 `admin:freedom_ls_learner_progress_courseprogress_resume` and
 `admin:freedom_ls_learner_progress_courseprogress_extend` are gone, along with the pause, resume and
 extend actions on the course progress page and the deadline override inlines on the cohort and
-learner registration pages.
+learner registration pages. Resume moved to the pause admin: an open pause's page offers "Resume
+course", at `admin:freedom_ls_deadlines_coursepause_resume`. It needs the
+`freedom_ls_deadlines.change_coursepause` permission.
+
+**Learner config pickers.** The learner messaging, learner registration messaging and learner
+registration deadline config admins pick their learner or registration by the learner's email (plus
+organisation when ambiguous, and course for a registration) instead of an ID.
 
 **Modules and names removed.** Imports of any of these fail:
 
@@ -56,7 +62,8 @@ learner registration pages.
   `LEARNER_SUMMARIES_FIELD` seams, `LearnerAdmin` (and so `LearnerAdmin.inlines`) and the
   `OrganisationCohortInline` and `OrganisationLearnerInline` that were added to `OrganisationAdmin`
 - `freedom_ls/learner_management/forms.py` (the four admin forms)
-- `freedom_ls/deadlines/admin_views.py` and `freedom_ls/deadlines/forms.py`
+- from `freedom_ls/deadlines/admin_views.py`: `pause_view` and `extend_view`
+- from `freedom_ls/deadlines/forms.py`: every form but `ResumeCourseForm`
 - from `freedom_ls/form_engine/admin.py`: `FormAdmin`, `FormPageAdmin`, `FormQuestionAdmin`,
   `FormContentAdmin`, `QuestionOptionAdmin` and their inlines
 - from `freedom_ls/hr_attributes/admin.py`: `LearnerHRAttributesInline`
@@ -76,7 +83,7 @@ answer-file download still work.
 **Capabilities with no replacement yet:**
 
 - Editing a learner's HR attributes (it was only on the Learner admin page).
-- Deadline overrides, and pausing, resuming and extending a learner's course.
+- Deadline overrides, and pausing and extending a learner's course.
 - The course admin's list of reference parts. Educators see reference parts in the Reference panel
   of the course outline in the educator interface.
 - Erasing, from the admin, a user who has form progress records. `UserAdmin` refuses, as it already
@@ -89,7 +96,9 @@ from `content_save` only.
 
 - Search your project for the removed URL names, modules and names above, and for
   `ReadOnlyAdminMixin` imported from `freedom_ls.referral_tracking.admin`; update or remove each.
-- If you override any of the four deleted `admin/deadlines/` templates, delete the override.
+- If you override any of the deleted `admin/deadlines/` templates (`extend_deadline.html`,
+  `pause_course.html`), delete the override. An override of `resume_course.html` or
+  `_action_form.html` now renders on the pause admin's resume page; check that it still fits.
 - If your admins extended `LearnerAdmin`, the other removed admins, or `LEARNER_SUMMARIES`, register
   your own admin for that model or move the feature to the educator interface.
 - Run `manage.py check` and fix any `admin.E039`/`admin.E040` errors in your own admins.
