@@ -498,3 +498,4 @@ files it as a bug. Verify it by diffing `values("id","progress_percentage","comp
 - [reference_reading_setup_email_links.md](reference_reading_setup_email_links.md) — Setup-email URL: sent OutboundEmail payloads are scrubbed, read Mailpit :8025; mint a link with allauth default_token_generator without sending
 
 - Dev TIME_ZONE is UTC, so `timezone.localdate()` can lag the Africa/Johannesburg site date by a day (after 22:00 UTC). When a request says "today" in the site zone, compute it with `datetime.now(ZoneInfo('Africa/Johannesburg')).date()`.
+- [reference_demo_content_uuid_collision_remap.md](reference_demo_content_uuid_collision_remap.md) — content_save demo_content DemoDev blocked by example.com holding canonical UUIDs; load a UUID-remapped git-committed scratch copy (qa_question_pools_uuid_remap_script.py); educator courses list pages via ?courses-page=2
