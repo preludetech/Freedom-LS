@@ -144,4 +144,17 @@ Actual: the answer form in `partials/revision_card.html` has `hx-post` but no me
 - **Test 10.9 cleanup.** The real `demo_content` was re-saved (dropped question restored, marker cleared). The scratch copy was left in the session scratchpad because recursive deletes are blocked by the security hook.
 - **Test 10.8** feedback: ![](screenshots/page-2026-11-23T04-45-16-634Z.png).
 
+## Re-check: Test 2 after the sidebar restyle
+
+The Revision entry was restyled after this run to match brand rule 6: a "Revision" eyebrow in the Reference link's style, with no divider and no icon. The 2.2 and 2.4 shots above show the old row. Test 2's checklist was re-run against the new look at 1920x1080, with Learner A (36 due at the time):
+
+| Check | Result | Screenshot |
+| --- | --- | --- |
+| 2.2 with reference material: "Revision" label computed style equals the "Reference" link's (12px, 600, uppercase, same colour); 24px space above both; no border, no icon; chip "36 due" on the same line | pass | ![](screenshots/desktop_2.2_sidebar_revision_with_reference.png) |
+| 2.2 without reference material | pass | ![](screenshots/desktop_2.2_sidebar_revision_no_reference.png) |
+| 2.3 on the revision page: Reference-style current highlight, no outline row highlighted | pass | ![](screenshots/desktop_2.3_sidebar_revision_current.png) |
+| 2.4 outline sheet at 375 and 768: chip on the label's line, at the right edge, lowercase; no horizontal overflow | pass | (probe only) |
+
+The reference material for the first shot was added to "QA Revision Course" on the dev database for the screenshot and removed afterwards.
+
 status: ok · reason: 3 bugs — 3 fixed, 0 unresolved; report rendered, screenshots verified
