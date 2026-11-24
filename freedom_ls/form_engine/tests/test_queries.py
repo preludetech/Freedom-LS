@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import cast
 
 import pytest
+from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
@@ -393,13 +394,15 @@ def _drawing_form() -> Form:
 
 @pytest.mark.django_db
 def test_a_sitting_counts_what_each_drawing_page_draws_and_every_question_elsewhere(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     assert count_sitting_questions(_drawing_form()) == 2 + 2 + 3
 
 
 @pytest.mark.django_db
-def test_a_draw_above_the_unit_count_counts_every_unit(mock_site_context):
+def test_a_draw_above_the_unit_count_counts_every_unit(
+    mock_site_context: object,
+) -> None:
     form = FormFactory(strategy=FormStrategy.QUIZ)
     page = FormPageFactory(form=form, draw=9)
     for order in range(3):
@@ -409,7 +412,7 @@ def test_a_draw_above_the_unit_count_counts_every_unit(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_a_page_with_no_draw_has_no_drawing_counts(mock_site_context):
+def test_a_page_with_no_draw_has_no_drawing_counts(mock_site_context: object) -> None:
     page = FormPageFactory()
     FormQuestionFactory(form_page=page)
 
@@ -425,8 +428,8 @@ def test_a_page_with_no_draw_has_no_drawing_counts(mock_site_context):
     ],
 )
 def test_a_drawing_page_reports_its_units_and_questions_per_unit(
-    mock_site_context, page_order, expected
-):
+    mock_site_context: object, page_order: int, expected: DrawingPageCounts
+) -> None:
     form = _drawing_form()
     page = form.pages.get(order=page_order)
 
@@ -437,9 +440,24 @@ def test_a_drawing_page_reports_its_units_and_questions_per_unit(
 
 
 @pytest.mark.django_db
+def test_a_drawing_page_mixing_groups_and_loose_questions_uses_question_wording(
+    mock_site_context: object,
+) -> None:
+    page = FormPageFactory(form=FormFactory(strategy=FormStrategy.QUIZ), draw=2)
+    FormContentFactory(form_page=page, order=0, group="case")
+    FormQuestionFactory(form_page=page, order=1, group="case")
+    for order in range(2, 5):
+        FormQuestionFactory(form_page=page, order=order)
+
+    counts = drawing_page_counts(page)
+
+    assert counts == DrawingPageCounts(2, 4, 1, False)
+
+
+@pytest.mark.django_db
 def test_counting_sitting_questions_stays_within_a_fixed_query_budget(
-    mock_site_context, django_assert_max_num_queries
-):
+    mock_site_context: object, django_assert_max_num_queries: DjangoAssertNumQueries
+) -> None:
     form = Form.objects.get(pk=_drawing_form().pk)
 
     with django_assert_max_num_queries(8):
@@ -467,5 +485,7 @@ def test_counting_sitting_questions_stays_within_a_fixed_query_budget(
         ),
     ],
 )
-def test_a_drawing_page_summary_pluralises_questions_and_groups(counts, expected):
+def test_a_drawing_page_summary_pluralises_questions_and_groups(
+    counts: DrawingPageCounts, expected: str
+) -> None:
     assert counts.summary == expected

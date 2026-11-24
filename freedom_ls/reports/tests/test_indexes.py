@@ -1342,8 +1342,8 @@ class TestASittingIsPairedOnlyWithItsServedQuestions:
 
 class TestADrawnSittingIsPairedOnlyWithTheQuestionsItDrew:
     def test_each_sitting_is_paired_only_with_the_questions_its_own_draw_served(
-        self, mock_site_context
-    ):
+        self, mock_site_context: object
+    ) -> None:
         course: Course = CourseFactory()
         quiz: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
         _attach(course, quiz, order=0)

@@ -7,7 +7,6 @@ import pytest
 
 from freedom_ls.content_engine.validate import (
     IGNORED_PROBLEM,
-    _shuffle_units,
     auto_discovered_children,
     content_key,
     get_all_files,
@@ -24,8 +23,6 @@ from freedom_ls.content_engine.validate import (
     validate_question_sections,
     validate_reference_lists,
 )
-from freedom_ls.form_engine.schema import FormContent, FormQuestion
-from freedom_ls.form_engine.served_paper import shuffle_units
 
 # Tests for the content scanner: file discovery and cross-file validation
 # of an article's `image` path.
@@ -2937,49 +2934,3 @@ def test_validate_lists_a_draw_error_in_the_report(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="Invalid draw"):
         validate(tmp_path)
-
-
-@pytest.mark.parametrize(
-    "layout",
-    [
-        [("question", None), ("question", None)],
-        [("question", "a"), ("question", "a")],
-        [("question", "a"), ("question", "a"), ("question", "b"), ("question", "b")],
-        [("question", None), ("question", "a"), ("question", "a"), ("question", None)],
-        [
-            ("content", None),
-            ("content", "a"),
-            ("question", "a"),
-            ("content", "b"),
-            ("question", "b"),
-            ("content", None),
-        ],
-    ],
-    ids=[
-        "single children only",
-        "one group",
-        "two adjacent groups",
-        "group between single children",
-        "content blocks in and out of groups",
-    ],
-)
-def test_the_validator_and_the_served_paper_form_the_same_units(
-    tmp_path: Path, layout: list[tuple[str, str | None]]
-) -> None:
-    sections = "".join(
-        _quiz_content(f"C{i}", group)
-        if kind == "content"
-        else _quiz_question(f"Q{i}", group)
-        for i, (kind, group) in enumerate(layout)
-    )
-    _quiz_form_with_drawing_page(tmp_path, 1, sections)
-    children = [
-        item
-        for item in _parsed(tmp_path)
-        if isinstance(item, (FormContent, FormQuestion))
-    ]
-
-    validator_units = _shuffle_units([(child, "") for child in children])
-    paper_units = shuffle_units(children)
-
-    assert [[c for c, _ in unit] for unit in validator_units] == paper_units

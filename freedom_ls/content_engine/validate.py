@@ -30,6 +30,7 @@ from freedom_ls.form_engine.schema import (
     FormStrategy,
     QuestionType,
 )
+from freedom_ls.form_engine.units import shuffle_units, unit_question_counts
 
 logger = logging.getLogger(__name__)
 
@@ -1783,27 +1784,12 @@ def validate_form_shuffle(all_parsed: Sequence[BaseBaseContentModel]) -> list[st
     return errors
 
 
-def _shuffle_units(
-    children: list[tuple[_FormChildSection, str]],
-) -> list[list[tuple[_FormChildSection, str]]]:
-    """A run of children sharing a group is one unit; every other child is its own."""
-    units: list[list[tuple[_FormChildSection, str]]] = []
-    for group, run in itertools.groupby(children, key=lambda c: c[0].group):
-        members = list(run)
-        units.extend([members] if group else [[member] for member in members])
-    return units
-
-
 def _draw_error(
     item: _FormSection, label: str, problem: str, fix: str, field: str
 ) -> str:
     return _form_error(
         item.file_path, label, problem, fix, field=field, header="Invalid draw"
     )
-
-
-def _question_count(unit: list[tuple[_FormChildSection, str]]) -> int:
-    return sum(isinstance(child, FormQuestion) for child, _ in unit)
 
 
 def _page_draw_errors(page: _PageSections, form: Form) -> list[str]:
@@ -1823,7 +1809,9 @@ def _page_draw_errors(page: _PageSections, form: Form) -> list[str]:
             )
         ]
     errors: list[str] = []
-    units = _shuffle_units(page.children)
+    labels = {id(child): label for child, label in page.children}
+    units = shuffle_units([child for child, _ in page.children])
+    counts = unit_question_counts(units, lambda c: isinstance(c, FormQuestion))
     if draw_page.draw > len(units):
         errors.append(
             _draw_error(
@@ -1835,9 +1823,10 @@ def _page_draw_errors(page: _PageSections, form: Form) -> list[str]:
                 "draw",
             )
         )
-    for unit in units:
-        if _question_count(unit) == 0:
-            child, label = unit[0]
+    for unit, count in zip(units, counts, strict=True):
+        if count == 0:
+            child = unit[0]
+            label = labels[id(child)]
             errors.append(
                 _draw_error(
                     child,
@@ -1847,22 +1836,27 @@ def _page_draw_errors(page: _PageSections, form: Form) -> list[str]:
                     "group",
                 )
             )
-    with_questions = [unit for unit in units if _question_count(unit) > 0]
+    with_questions = [
+        (labels[id(unit[0])], count)
+        for unit, count in zip(units, counts, strict=True)
+        if count > 0
+    ]
     if with_questions:
-        first = with_questions[0]
+        first_label, first_count = with_questions[0]
         differing = next(
-            (u for u in with_questions if _question_count(u) != _question_count(first)),
+            ((label, count) for label, count in with_questions if count != first_count),
             None,
         )
         if differing is not None:
+            differing_label, differing_count = differing
             errors.append(
                 _draw_error(
                     draw_page,
                     page_label,
                     "questions and groups on a drawing page must each hold the "
-                    f"same number of questions; {first[0][1]} holds "
-                    f"{_question_count(first)} and {differing[0][1]} holds "
-                    f"{_question_count(differing)}.",
+                    f"same number of questions; {first_label} holds "
+                    f"{first_count} and {differing_label} holds "
+                    f"{differing_count}.",
                     "Split the page so each page's questions or groups are the "
                     "same size.",
                     "draw",

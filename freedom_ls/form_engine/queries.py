@@ -20,7 +20,7 @@ from .models import (
     FormStrategy,
     QuestionAnswer,
 )
-from .served_paper import shuffle_units
+from .units import shuffle_units, unit_question_counts
 
 FINAL_GROUP_TITLE = "Questions no longer on the form"
 
@@ -110,19 +110,20 @@ def drawing_page_counts(page: FormPage) -> DrawingPageCounts | None:
     """What one sitting draws from the page, or None when the page has no draw.
 
     Questions per unit are read off the first unit: every unit of a drawing
-    page holds the same number once the content validator accepts it.
+    page holds the same number, which the content validator enforces on
+    authored files and `drawing_page_unit_error` on children edited by hand.
+    Group wording is used only when every unit is a group; a unit is a run
+    sharing one group, so its first child says whether it is one.
     """
     if page.draw is None:
         return None
     units = shuffle_units(page.children())
-    questions_per_unit = (
-        sum(isinstance(child, FormQuestion) for child in units[0]) if units else 0
-    )
+    counts = unit_question_counts(units, lambda c: isinstance(c, FormQuestion))
     return DrawingPageCounts(
         drawn_unit_count=min(page.draw, len(units)),
         unit_count=len(units),
-        questions_per_unit=questions_per_unit,
-        units_are_groups=any(child.group for unit in units for child in unit),
+        questions_per_unit=counts[0] if counts else 0,
+        units_are_groups=bool(units) and all(unit[0].group for unit in units),
     )
 
 

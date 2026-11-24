@@ -11,6 +11,7 @@ from django.core.files.storage import Storage
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.utils import timezone
+from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.base.storage import storage_for_alias
@@ -30,6 +31,7 @@ from .submissions import (
     submitted_text_answer,
 )
 from .typed_answers import RejectedAnswer, answer_error, question_bounds_error
+from .units import shuffle_units, unit_question_counts
 
 if TYPE_CHECKING:
     from django.http import QueryDict
@@ -196,6 +198,11 @@ class FormContent(MarkdownContent):
     def __str__(self):
         return self.content[:50]
 
+    def clean(self) -> None:
+        error = drawing_page_unit_error(self)
+        if error is not None:
+            raise ValidationError(error)
+
 
 class FormQuestion(BaseContent):
     """A question within a form page."""
@@ -252,7 +259,8 @@ class FormQuestion(BaseContent):
     decimal_places = models.PositiveSmallIntegerField(default=0)
 
     def clean(self) -> None:
-        """Refuse a bound the page could only render as an inert attribute.
+        """Refuse a bound the page could only render as an inert attribute, or
+        an edit that leaves a drawing page's units uneven.
 
         The pydantic schema runs this same rule over authored YAML, but nothing
         ran it over a question edited by hand -- so `max = "31/12/2010"` saved
@@ -260,7 +268,7 @@ class FormQuestion(BaseContent):
         """
         error = question_bounds_error(
             self.type, self.min, self.max, self.decimal_places
-        )
+        ) or drawing_page_unit_error(self)
         if error is not None:
             raise ValidationError(error)
 
@@ -304,6 +312,43 @@ class FormQuestion(BaseContent):
 
     def __str__(self):
         return self.question[:50]
+
+
+def drawing_page_unit_error(edited: FormContent | FormQuestion) -> str | None:
+    """Why saving this child would break its drawing page, or None.
+
+    A sitting draws whole units, so the count a learner is told up front only
+    holds while every unit carries the same number of questions. The content
+    validator checks authored files; this checks a child edited by hand. The
+    page is laid out as it would be after the save: the stored row is swapped
+    for the edited one, then children are re-sorted by order.
+    """
+    if not edited.form_page_id:
+        return None
+    page = edited.form_page
+    if page.draw is None:
+        return None
+    children = [
+        child
+        for child in page.children()
+        if not (type(child) is type(edited) and child.pk == edited.pk)
+    ]
+    children.append(edited)
+    children.sort(key=lambda child: child.order)
+    counts = unit_question_counts(
+        shuffle_units(children), lambda child: isinstance(child, FormQuestion)
+    )
+    if 0 in counts:
+        return gettext(
+            "Every content block on a drawing page must share a group with a "
+            "question it introduces."
+        )
+    if len(set(counts)) > 1:
+        return gettext(
+            "Every question or group on a drawing page must hold the same number "
+            "of questions, so each sitting is worth the same."
+        )
+    return None
 
 
 class QuestionOption(SiteAwareModel, TimestampedModel):

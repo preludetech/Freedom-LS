@@ -10,7 +10,6 @@ from __future__ import annotations
 import secrets
 from collections.abc import Callable, Sequence
 from random import Random
-from typing import Protocol
 from uuid import UUID
 
 from django.db.models import prefetch_related_objects
@@ -24,6 +23,7 @@ from .models import (
     FormStrategy,
     QuestionOption,
 )
+from .units import shuffle_units
 
 
 def new_seed() -> int:
@@ -63,27 +63,6 @@ def _served_options(
     return shuffle_with_locks(
         options, lambda o: o.locked, _scope_rng(seed, f"options:{question.id}")
     )
-
-
-class Groupable(Protocol):
-    @property
-    def group(self) -> str | None: ...
-
-
-def shuffle_units[T: Groupable](children: Sequence[T]) -> list[list[T]]:
-    """Split a page's children into the lists that move as one when the page shuffles.
-
-    A run of consecutive children sharing a group is one unit, in authored
-    order; every other child is a unit of its own. Schema items carry None
-    for no group and model rows carry "", so both count as ungrouped.
-    """
-    units: list[list[T]] = []
-    for child in children:
-        if child.group and units and units[-1][0].group == child.group:
-            units[-1].append(child)
-        else:
-            units.append([child])
-    return units
 
 
 def _drawn_units[T](units: list[T], page: FormPage, seed: int) -> list[T]:

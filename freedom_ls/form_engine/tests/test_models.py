@@ -825,10 +825,79 @@ def test_incorrect_answers_without_a_served_paper_list_options_in_authored_order
 
 
 @pytest.mark.django_db
-def test_a_page_draw_of_zero_fails_validation(mock_site_context):
+def test_a_page_draw_of_zero_fails_validation(mock_site_context: object) -> None:
     page = FormPageFactory.build(draw=0)
 
     with pytest.raises(ValidationError) as excinfo:
         page.full_clean(exclude=["form", "site", "condition_option"])
 
     assert "draw" in excinfo.value.message_dict
+
+
+def _even_drawing_page(draw: int | None = 1) -> FormPage:
+    """A page of two groups, each a content block and two questions."""
+    page: FormPage = FormPageFactory(
+        form=FormFactory(strategy=FormStrategy.QUIZ), draw=draw
+    )
+    order = 0
+    for group in ("a", "b"):
+        FormContentFactory(form_page=page, order=order, group=group)
+        FormQuestionFactory(form_page=page, order=order + 1, group=group)
+        FormQuestionFactory(form_page=page, order=order + 2, group=group)
+        order += 3
+    return page
+
+
+@pytest.mark.django_db
+def test_adding_a_loose_question_to_a_drawing_page_fails_validation(
+    mock_site_context: object,
+) -> None:
+    page = _even_drawing_page()
+    loose = FormQuestionFactory.build(form_page=page, order=6)
+
+    with pytest.raises(ValidationError, match="same number of questions"):
+        loose.clean()
+
+
+@pytest.mark.django_db
+def test_moving_a_question_out_of_its_group_on_a_drawing_page_fails_validation(
+    mock_site_context: object,
+) -> None:
+    page = _even_drawing_page()
+    question = page.questions.get(order=2)
+    question.order = 10
+
+    with pytest.raises(ValidationError, match="same number of questions"):
+        question.clean()
+
+
+@pytest.mark.django_db
+def test_a_content_block_with_no_question_on_a_drawing_page_fails_validation(
+    mock_site_context: object,
+) -> None:
+    page = _even_drawing_page()
+    stray = FormContentFactory.build(form_page=page, order=6)
+
+    with pytest.raises(ValidationError, match="share a group with a question"):
+        stray.clean()
+
+
+@pytest.mark.django_db
+def test_an_edit_that_keeps_a_drawing_page_even_passes_validation(
+    mock_site_context: object,
+) -> None:
+    page = _even_drawing_page()
+    question = page.questions.get(order=2)
+    question.question = "Reworded"
+
+    question.clean()
+
+
+@pytest.mark.django_db
+def test_uneven_units_are_allowed_on_a_page_with_no_draw(
+    mock_site_context: object,
+) -> None:
+    page = _even_drawing_page(draw=None)
+    loose = FormQuestionFactory.build(form_page=page, order=6)
+
+    loose.clean()

@@ -12,8 +12,6 @@ import pytest
 
 from django.utils import timezone
 
-from freedom_ls.content_base.schema import ContentType
-from freedom_ls.form_engine import schema
 from freedom_ls.form_engine import served_paper as served_paper_module
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
@@ -36,7 +34,6 @@ from freedom_ls.form_engine.served_paper import (
     build_served_paper,
     ensure_served_paper,
     served_child_ids,
-    shuffle_units,
     shuffle_with_locks,
 )
 
@@ -385,56 +382,6 @@ def test_build_served_paper_option_order_ignores_the_shuffle_pages_knob(
     pages_off = build_served_paper(Form.objects.get(pk=form.pk))["options"]
 
     assert pages_off == pages_on
-
-
-def _schema_children(groups: list[str | None]) -> list[schema.FormContent]:
-    return [
-        schema.FormContent(
-            content_type=ContentType.FORM_CONTENT,
-            file_path=f"c{i}.md",
-            content=f"c{i}",
-            group=g,
-            meta=None,
-            uuid=None,
-            when=None,
-        )
-        for i, g in enumerate(groups)
-    ]
-
-
-@pytest.mark.parametrize(
-    ("groups", "expected_sizes"),
-    [
-        ([None, None, None], [1, 1, 1]),
-        ([None, "a", "a", None], [1, 2, 1]),
-        (["a", "a", "b", "b", "b"], [2, 3]),
-        (["a", None, "a"], [1, 1, 1]),
-    ],
-)
-def test_shuffle_units_on_schema_children_groups_runs_and_leaves_the_rest_alone(
-    groups: list[str | None], expected_sizes: list[int]
-) -> None:
-    children = _schema_children(groups)
-
-    units = shuffle_units(children)
-
-    assert [len(u) for u in units] == expected_sizes
-    assert [c for unit in units for c in unit] == children
-
-
-@pytest.mark.django_db
-def test_shuffle_units_on_model_rows_treats_a_blank_group_as_ungrouped(
-    mock_site_context: object,
-) -> None:
-    page = FormPageFactory()
-    plain = FormContentFactory(form_page=page, order=0)
-    first = FormQuestionFactory(form_page=page, order=1, group="g")
-    second = FormContentFactory(form_page=page, order=2, group="g")
-    last = FormQuestionFactory(form_page=page, order=3)
-
-    units = shuffle_units(page.children())
-
-    assert units == [[plain], [first, second], [last]]
 
 
 @pytest.fixture
