@@ -23,6 +23,10 @@ from freedom_ls.educator_interface.panels.common.actions import (
     _register_title,
     inactive_cohort_response,
 )
+from freedom_ls.educator_interface.panels.common.registration_actions import (
+    ADD_COHORT_REGISTRATION,
+    CohortRegistrationDeactivation,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -46,13 +50,10 @@ from freedom_ls.learner_management.queries import (
     ADD_LEARNER,
     cohort_course_count,
     cohort_is_empty,
-    cohort_learner_count,
     import_into_cohort_in_progress,
     learners_visible_to,
-    members_keeping_access,
 )
 from freedom_ls.learner_management.utils import (
-    deactivate_cohort_registration,
     record_cohort_entry,
     register_cohort_for_course,
 )
@@ -72,7 +73,6 @@ from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.role_based_permissions.utils import delete_role_rows_for
 
 __all__ = [
-    "KEEPING_NAMES_SHOWN",
     "AddExistingLearnersAction",
     "AddLearnerToCohortAction",
     "CohortStateAction",
@@ -309,7 +309,7 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
     label = "Register for a course"
     action_name = "register"
     blocked_phrase = "register it for a course"
-    capability = "freedom_ls_learner_management.add_cohortcourseregistration"
+    capability = ADD_COHORT_REGISTRATION
     form_class = CohortCourseRegistrationForm
     refresh_on_change = ("course",)
     submit_buttons = [
@@ -335,62 +335,22 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
         return navigation_response(ctx.page_url)
 
 
-KEEPING_NAMES_SHOWN = 10
-
-
 class DeactivateCohortRegistrationAction(
-    EducatorReasonMixin, RequiresActiveCohortMixin, ConfirmAction
+    EducatorReasonMixin, RequiresActiveCohortMixin, CohortRegistrationDeactivation
 ):
-    """Deactivates one of the cohort's active course registrations, after
-    confirmation. The registration travels as a `registration` parameter, so
-    the action resolves on the courses tab and renders per row there, never
-    as a footer button."""
+    """Deactivates one of the cohort's active course registrations from its
+    Courses tab, where the action renders per row, never as a footer button."""
 
-    label = "Deactivate"
-    action_name = "deactivate_cohort_registration"
     blocked_phrase = "deactivate one of its course registrations"
-    renders_in_footer = False
-    capability = "freedom_ls_learner_management.change_cohortcourseregistration"
-    loading_text = "Deactivating…"
-    template_name = (
-        "educator_interface/modal/deactivate_cohort_registration_confirmation.html"
-    )
 
-    row_param = "registration"
+    def registration_scope(
+        self, ctx: PanelContext
+    ) -> QuerySet[CohortCourseRegistration]:
+        return cast(Cohort, ctx.instance).course_registrations.all()
 
-    def get_row_queryset(self, ctx: PanelContext) -> QuerySet[CohortCourseRegistration]:
-        return (
-            cast(Cohort, ctx.instance)
-            .course_registrations.select_related("course")
-            .filter(is_active=True)
-        )
-
-    def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
-        return cast(CohortCourseRegistration, self.get_row_object(ctx))
-
-    def get_confirm_context(self, ctx: PanelContext) -> dict[str, object]:
-        cohort = cast(Cohort, ctx.instance)
-        registration = self._registration(ctx)
-        keeping = list(members_keeping_access(registration))
-        member_count = cohort_learner_count(cohort)
-        names = [learner.user.display_name for learner in keeping[:KEEPING_NAMES_SHOWN]]
-        if len(keeping) > KEEPING_NAMES_SHOWN:
-            names.append(f"{len(keeping) - KEEPING_NAMES_SHOWN} more")
-        return {
-            "cohort": cohort,
-            "registration": registration,
-            "course": registration.course,
-            "losing_count": member_count - len(keeping),
-            "losing_phrase": count_noun(Learner, member_count - len(keeping)),
-            "keeping_names": join_prose(names),
-        }
-
-    def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
-        deactivate_cohort_registration(
-            self._registration(ctx),
-            actor=cast("User", ctx.request.user),
-            reason=ctx.reason,
-        )
+    def success_response(
+        self, ctx: PanelContext, registration: CohortCourseRegistration
+    ) -> HttpResponse:
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
         return navigation_response(ctx.page_url)
