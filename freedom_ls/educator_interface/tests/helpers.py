@@ -953,3 +953,23 @@ def _ready_report(cohort: Cohort, **fields: object) -> GeneratedReport:
     )
     report.file.save("r.pdf", ContentFile(b"%PDF-1.4 bytes"), save=True)
     return report
+
+
+def _remove_url_from_cohort(
+    organisation: Organisation, cohort: Cohort, learner: Learner | None = None
+) -> str:
+    url = _cohort_url(
+        organisation, cohort, "/__tabs/learners/__actions/remove_from_cohort"
+    )
+    return f"{url}?learner={learner.pk}" if learner is not None else url
+
+
+def _move_url_from_cohort(
+    organisation: Organisation, source: Cohort, learner: Learner
+) -> str:
+    url = _cohort_url(organisation, source, "/__tabs/learners/__actions/move")
+    return f"{url}?learner={learner.pk}"
+
+
+class _RolledBackError(Exception):
+    pass

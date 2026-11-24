@@ -2,29 +2,49 @@
 
 from __future__ import annotations
 
+import contextlib
+import json
 import uuid
 from typing import cast
 
 import pytest
 
 from django.contrib.sites.models import Site
+from django.http import Http404
 from django.test import Client
+from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.comms.models import Notification
+from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.panels.cohort.bulk_actions import (
+    RegisterCohortForCourseBulkAction,
+)
 from freedom_ls.educator_interface.panels.learner.bulk_actions import (
     DeactivateLearnersBulkAction,
+    RegisterForCourseBulkAction,
 )
 from freedom_ls.educator_interface.tests.helpers import (
+    _bulk_confirm,
     _bulk_learner,
     _bulk_post,
     _bulk_text,
     _learners_bulk_url,
+    course_per_reach_row,
 )
-from freedom_ls.learner_management.factories import LearnerFactory
-from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_management.factories import (
+    LearnerFactory,
+)
+from freedom_ls.learner_management.models import (
+    Cohort,
+    Learner,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.bulk_actions import BulkCount, BulkResult
+from freedom_ls.panel_framework.bulk_actions import (
+    BULK_ACTIONS,
+    BulkCount,
+    BulkResult,
+)
 from freedom_ls.panel_framework.bulk_runs import (
     NOT_FOUND,
     report_finished,
@@ -210,3 +230,194 @@ def test_a_bulk_action_on_rows_that_left_the_scope_answers_the_unavailable_dialo
     assert gone.status_code == 404
     assert "This is no longer available" in _bulk_text(gone)
     assert gone.content == never.content
+
+
+def _task_rows():
+    from django_tasks_db.models import DBTaskResult
+
+    return DBTaskResult.objects.filter(task_path__endswith="_run_bulk_action_task")
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirmation_above_the_threshold_shows_only_the_total_and_runs_in_background(
+    staff_client: Client, settings
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(2)]
+    inactive = _bulk_learner(organisation=organisation, is_active=False)
+
+    response = _bulk_post(
+        staff_client, organisation, "deactivate", [*learners, inactive]
+    )
+
+    text = _bulk_text(response)
+    assert "This will affect 3 learners." in text
+    assert "background" in text
+    assert "already inactive" not in text
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_above_the_threshold_enqueues_one_task_and_keeps_the_reader_on_the_table(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    run = BulkActionRun.objects.get()
+    trigger = json.loads(response["HX-Trigger"])
+    assert response.status_code == 204
+    assert "HX-Redirect" not in response
+    assert "closeModal" in trigger
+    assert trigger["bulkRunStarted"]["status_url"] == reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": f"learners/__runs/{run.pk}",
+        },
+    )
+    assert trigger["bulkRunStarted"]["action"] == "deactivate"
+    assert run.status == RunStatus.QUEUED
+    assert _task_rows().count() == 1
+    assert Learner.objects.filter(is_active=False).count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_above_the_threshold_without_javascript_returns_to_the_list(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 2
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = staff_client.post(
+        _learners_bulk_url(organisation, "deactivate"),
+        {
+            "keys": [str(learner.pk) for learner in learners],
+            "confirmed": "on",
+            "expected_count": "3",
+        },
+        follow=True,
+    )
+
+    assert response.redirect_chain == [
+        (
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": organisation.slug,
+                    "path_string": "learners",
+                },
+            ),
+            303,
+        )
+    ]
+    assert "Deactivate is running in the background." in response.content.decode()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_bulk_confirm_at_the_threshold_still_runs_inline(
+    staff_client: Client, settings, database_task_backend: None
+):
+    settings.BULK_BACKGROUND_THRESHOLD = 3
+    organisation = OrganisationFactory()
+    learners = [_bulk_learner(organisation=organisation) for _ in range(3)]
+
+    response = _bulk_confirm(staff_client, organisation, "deactivate", learners)
+
+    assert response.status_code == 200
+    assert _task_rows().count() == 0
+    assert Learner.objects.filter(is_active=False).count() == 3
+
+
+_BULK_ACTION_WEIGHTS: dict[str, tuple[str, str, str]] = {
+    "AddToCohortBulkAction": ("secondary", "primary", "Adding…"),
+    "RemoveFromCohortBulkAction": ("error", "error", "Removing…"),
+    "DeactivateLearnersBulkAction": ("secondary", "primary", "Deactivating…"),
+    "ReactivateLearnersBulkAction": ("secondary", "primary", "Reactivating…"),
+    "RegisterForCourseBulkAction": ("secondary", "primary", "Registering…"),
+    "DeactivateRegistrationBulkAction": (
+        "secondary",
+        "primary",
+        "Deactivating…",
+    ),
+    "ResendSetupEmailBulkAction": ("secondary", "primary", "Sending…"),
+    "RegisterCohortForCourseBulkAction": ("secondary", "primary", "Registering…"),
+    "DeactivateCohortRegistrationBulkAction": (
+        "secondary",
+        "primary",
+        "Deactivating…",
+    ),
+    "DeactivateCohortsBulkAction": ("secondary", "primary", "Deactivating…"),
+    "ReactivateCohortsBulkAction": ("secondary", "primary", "Reactivating…"),
+}
+
+
+def test_every_bulk_action_has_an_expected_weight_and_loading_text():
+    registered = {cls.__name__ for cls in BULK_ACTIONS.values()}
+
+    assert registered == set(_BULK_ACTION_WEIGHTS)
+
+
+@pytest.mark.parametrize("class_name", sorted(_BULK_ACTION_WEIGHTS))
+def test_bulk_action_trigger_confirm_variant_and_loading_text(class_name: str):
+    (action_class,) = [
+        cls for cls in BULK_ACTIONS.values() if cls.__name__ == class_name
+    ]
+
+    assert (
+        action_class.variant,
+        action_class.confirm_variant,
+        action_class.loading_text,
+    ) == _BULK_ACTION_WEIGHTS[class_name]
+
+
+@pytest.mark.parametrize("count", [1, 12])
+@pytest.mark.parametrize("class_name", sorted(_BULK_ACTION_WEIGHTS))
+def test_bulk_action_confirmation_title_is_a_question_naming_the_count(
+    class_name: str, count: int
+):
+    (action_class,) = [
+        cls for cls in BULK_ACTIONS.values() if cls.__name__ == class_name
+    ]
+    cleaned_data: dict[str, object] = {
+        "cohort": Cohort(name="Cohort A"),
+        "course": Course(title="Algebra"),
+        "course_label": "Algebra",
+    }
+
+    title = action_class().confirmation_title(count, cleaned_data)
+
+    assert title.endswith("?")
+    assert str(count) in title
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "action",
+    [RegisterForCourseBulkAction, RegisterCohortForCourseBulkAction],
+)
+@pytest.mark.parametrize(
+    ("row", "outcome"),
+    [
+        ("no_owner", contextlib.nullcontext()),
+        ("owned", contextlib.nullcontext()),
+        ("shared", contextlib.nullcontext()),
+        ("held", pytest.raises(Http404)),
+        ("unreached", pytest.raises(Http404)),
+    ],
+)
+def test_a_bulk_register_picker_resolves_a_course_only_when_it_is_registerable(
+    mock_site_context: Site,
+    action: type[RegisterForCourseBulkAction | RegisterCohortForCourseBulkAction],
+    row: str,
+    outcome: contextlib.AbstractContextManager[object],
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+
+    with outcome:
+        action().resolve_target(organisation, {"course": str(courses[row].pk)})

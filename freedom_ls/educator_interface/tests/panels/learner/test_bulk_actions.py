@@ -1303,3 +1303,44 @@ def test_bulk_deactivate_entries_name_the_educator_who_ran_it(
     entries = AuditLogEntry.unscoped.filter(action="learner.deactivated")
     assert entries.count() == 2
     assert {entry.actor for entry in entries} == {educator}
+
+
+def _plain_post(client: Client, path: str, **extra: str):
+    return client.post(path, {"keys": ["1"], **extra})
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "path_template",
+    ["learners/__actions/unregister_from_course", "cohorts/__actions/unregister"],
+)
+def test_a_retired_bulk_action_slug_answers_the_unavailable_dialog_for_htmx(
+    staff_client: Client, path_template: str
+):
+    organisation = OrganisationFactory()
+
+    response = staff_client.post(
+        _interface_url(organisation.slug, path_template),
+        {"keys": ["1"]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+    assert "This is no longer available" in _bulk_text(response)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "path_template",
+    ["learners/__actions/unregister_from_course", "cohorts/__actions/unregister"],
+)
+def test_a_retired_bulk_action_slug_answers_404_for_a_plain_request(
+    staff_client: Client, path_template: str
+):
+    organisation = OrganisationFactory()
+
+    response = _plain_post(
+        staff_client, _interface_url(organisation.slug, path_template)
+    )
+
+    assert response.status_code == 404

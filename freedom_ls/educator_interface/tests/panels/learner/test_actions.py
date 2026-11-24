@@ -11,10 +11,12 @@ import pytest
 
 from django.contrib.sites.models import Site
 from django.core import mail
-from django.test import Client
+from django.test import Client, RequestFactory
+from django.urls import reverse
 
 from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseAudience, CourseVisibility
 from freedom_ls.educator_interface.events import (
@@ -22,9 +24,16 @@ from freedom_ls.educator_interface.events import (
     LEARNER_CHANGED,
     REGISTRATION_CHANGED,
 )
+from freedom_ls.educator_interface.panels.cohort.config import CohortConfig
+from freedom_ls.educator_interface.panels.learner.actions import (
+    AddLearnerAction,
+    RemoveFromCohortAction,
+)
 from freedom_ls.educator_interface.tests.helpers import (
+    REGISTERABLE_ROWS,
     _add_learners_list_url,
     _add_to_cohort_url,
+    _cohort,
     _cohort_admin_on,
     _dialog_title,
     _edit_name_url,
@@ -36,6 +45,7 @@ from freedom_ls.educator_interface.tests.helpers import (
     _learner_state_url,
     _learner_unregister_url,
     _membership,
+    _move_url_from_cohort,
     _move_url_from_learner,
     _named_learner,
     _offered_options,
@@ -43,8 +53,10 @@ from freedom_ls.educator_interface.tests.helpers import (
     _pending_learner,
     _picker_dialog,
     _post,
+    _remove_url_from_cohort,
     _remove_url_from_learner,
     _resend_url,
+    _RolledBackError,
     _site_admin_client,
     course_per_reach_row,
 )
@@ -71,6 +83,8 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.tests.audit_assertions import assert_entry
 
 if TYPE_CHECKING:
     pass
@@ -1892,3 +1906,411 @@ def test_a_picker_with_something_to_offer_keeps_its_submit_button(
     document = lxml.html.fromstring(response.content.decode())
     assert document.cssselect("select[name='cohort']")
     assert document.cssselect("button[type='submit']")
+
+
+@pytest.mark.django_db
+def test_remove_fragment_from_the_cohort_page_names_the_courses_lost(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+
+    text = _get_fragment(
+        staff_client, _remove_url_from_cohort(organisation, cohort, learner)
+    )
+
+    assert "They lose access to: Algebra." in text
+
+
+@pytest.mark.django_db
+def test_remove_post_from_the_cohort_page_deletes_the_membership(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+
+    response = _post(
+        staff_client,
+        _remove_url_from_cohort(organisation, cohort),
+        {"learner": str(learner.pk)},
+    )
+
+    assert response.status_code == 204
+    assert not CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
+
+
+@pytest.mark.django_db
+def test_move_post_from_the_cohort_page_moves_the_membership(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = CohortFactory(organisation=organisation)
+
+    response = _post(
+        staff_client,
+        _move_url_from_cohort(organisation, source, learner),
+        {"learner": str(learner.pk), "destination": str(destination.pk)},
+    )
+
+    assert response.status_code == 204
+    assert CohortMembership.objects.filter(learner=learner, cohort=destination).exists()
+
+
+@pytest.mark.django_db
+def test_a_stale_move_post_with_no_other_cohort_answers_422(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+
+    response = _post(
+        staff_client,
+        _move_url_from_cohort(organisation, source, learner),
+        {"learner": str(learner.pk), "destination": str(source.pk)},
+    )
+
+    assert response.status_code == 422
+    assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()
+
+
+@pytest.mark.django_db
+def test_deactivating_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": f"learners/{learner.pk}/__actions/deactivate",
+            },
+        ),
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("learner.deactivated", actor)
+
+
+@pytest.mark.django_db
+def test_adding_a_learner_to_a_cohort_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _add_to_cohort_url(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("cohort_membership.added", actor)
+
+
+@pytest.mark.django_db
+def test_removing_a_learner_from_a_cohort_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _remove_url_from_learner(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("cohort_membership.removed", actor)
+
+
+@pytest.mark.django_db
+def test_moving_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = cast(Cohort, CohortFactory(organisation=organisation))
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(destination.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("cohort_membership.moved", actor)
+
+
+@pytest.mark.django_db
+def test_adding_learners_by_email_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _add_learners_list_url(organisation),
+        {"email": "new@example.com"},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("learner.added", actor)
+
+
+@pytest.mark.django_db
+def test_registering_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _learner_register_url(organisation, learner),
+        {"course": str(CourseFactory().pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("registration.added", actor)
+
+
+@pytest.mark.django_db
+def test_reregistering_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner, is_active=False)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _learner_reregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("registration.reactivated", actor)
+
+
+@pytest.mark.django_db
+def test_unregistering_a_learner_writes_an_entry_by_the_logged_in_user(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _learner_unregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert (entry.action, entry.actor) == ("registration.deactivated", actor)
+
+
+@pytest.mark.django_db
+def test_renaming_a_learner_writes_an_entry_with_the_old_and_new_name(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+    actor = UserFactory(superuser=True)
+
+    _post(
+        logged_in_client(actor),
+        _edit_name_url(organisation, learner),
+        {"first_name": "Grace", "last_name": "Hopper"},
+    )
+
+    assert_entry(
+        action="learner.renamed",
+        actor=actor,
+        target=learner,
+        target_label="Grace Hopper",
+        organisation=organisation,
+        details={"old": "Ada Lovelace", "new": "Grace Hopper"},
+    )
+
+
+@pytest.mark.django_db
+def test_saving_a_learner_under_their_own_name_writes_nothing(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+
+    response = _post(
+        staff_client,
+        _edit_name_url(organisation, learner),
+        {"first_name": "Ada", "last_name": "Lovelace"},
+    )
+
+    assert response.status_code == 204
+    assert not AuditLogEntry.unscoped.exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_resending_a_setup_email_writes_an_entry(
+    mock_site_context, logged_in_client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+    actor = UserFactory(superuser=True)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        _post(logged_in_client(actor), _resend_url(organisation, learner))
+
+    assert_entry(
+        action="learner.setup_email_resent",
+        actor=actor,
+        target=learner,
+        target_label=learner.user.display_name,
+        organisation=organisation,
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_a_refused_resend_writes_nothing(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    set_up = LearnerFactory(organisation=organisation)
+    recent = _pending_learner(organisation)
+    with django_capture_on_commit_callbacks(execute=True):
+        _post(staff_client, _resend_url(organisation, recent))
+    entries_before = AuditLogEntry.unscoped.count()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        too_soon = _post(staff_client, _resend_url(organisation, recent))
+        already = _post(staff_client, _resend_url(organisation, set_up))
+
+    assert (too_soon.status_code, already.status_code) == (422, 422)
+    assert AuditLogEntry.unscoped.count() == entries_before
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_a_failed_entry_sends_no_email_and_leaves_the_resend_open(
+    staff_client: Client, django_capture_on_commit_callbacks, monkeypatch
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+    url = _resend_url(organisation, learner)
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise _RolledBackError
+
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.panels.learner.actions.record_learner_entry",
+        fail,
+    )
+    with (
+        pytest.raises(_RolledBackError),
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        _post(staff_client, url)
+    monkeypatch.undo()
+    assert mail.outbox == []
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, url)
+
+    assert response.status_code == 204
+    assert len(mail.outbox) == 1
+
+
+@pytest.mark.django_db
+def test_posting_to_the_import_link_is_not_allowed(mock_site_context, logged_in_client):
+    """The import action is a link to the import page; it has no submit."""
+    organisation = OrganisationFactory()
+    educator = _organisation_admin_on(organisation)
+
+    response = _post(
+        logged_in_client(educator),
+        _interface_url(organisation.slug, "learners/__actions/import_learners"),
+    )
+
+    assert response.status_code == 405
+
+
+def _superuser_get_ctx(
+    organisation: Organisation, instance: Cohort | None, data: dict[str, str]
+) -> PanelContext:
+    request = RequestFactory().get("/", data)
+    request.user = UserFactory(superuser=True)
+    request.organisation = organisation
+    return PanelContext(
+        request=request, instance=instance, base_url="/", name="", config=CohortConfig
+    )
+
+
+@pytest.mark.django_db
+def test_the_add_learner_dialog_reads_its_preset_cohort_once(
+    organisation: Organisation, django_assert_max_num_queries
+):
+    cohort = _cohort(organisation)
+    action = AddLearnerAction()
+    ctx = _superuser_get_ctx(organisation, None, {"cohort": str(cohort.pk)})
+    action._preset_cohort(ctx)
+
+    with django_assert_max_num_queries(0):
+        preset = action._preset_cohort(ctx)
+
+    assert preset == cohort
+
+
+@pytest.mark.django_db
+def test_a_membership_dialog_on_a_cohort_page_reads_its_learner_once(
+    organisation: Organisation, django_assert_max_num_queries
+):
+    cohort = _cohort(organisation)
+    learner = LearnerFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    action = RemoveFromCohortAction()
+    ctx = _superuser_get_ctx(organisation, cohort, {"learner": str(learner.pk)})
+    action._pair(ctx)
+
+    with django_assert_max_num_queries(0):
+        pair = action._pair(ctx)
+
+    assert pair == (learner, cohort)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("row", "registered"), REGISTERABLE_ROWS)
+def test_registering_a_learner_for_a_course_works_only_when_it_is_registerable(
+    staff_client: Client, row: str, registered: bool
+):
+    organisation = OrganisationFactory()
+    courses = course_per_reach_row(organisation)
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+
+    response = _post(
+        staff_client,
+        _learner_register_url(organisation, learner),
+        {"course": str(courses[row].pk)},
+    )
+
+    assert (
+        response.status_code,
+        LearnerCourseRegistration.objects.filter(
+            learner=learner, course=courses[row]
+        ).exists(),
+    ) == ((204 if registered else 422), registered)
