@@ -18,7 +18,13 @@ from freedom_ls.panel_framework.tests.invariants import template_rules
 EDUCATOR_ROOT = Path(educator_interface.__file__).resolve().parent
 EDUCATOR_TEMPLATES_DIR = EDUCATOR_ROOT / "templates" / "educator_interface"
 EDUCATOR_MODAL_DIR = EDUCATOR_TEMPLATES_DIR / "modal"
-EDUCATOR_PYTHON_FILES = sorted(EDUCATOR_ROOT.glob("*.py"))
+# Tests and migrations are not interface code; the rule is about modules that build actions.
+_SKIPPED_DIRS = {"tests", "migrations"}
+EDUCATOR_PYTHON_FILES = sorted(
+    path
+    for path in EDUCATOR_ROOT.rglob("*.py")
+    if _SKIPPED_DIRS.isdisjoint(path.relative_to(EDUCATOR_ROOT).parts)
+)
 FRAMEWORK_TEMPLATES_DIR = Path(panel_framework.__file__).resolve().parent / "templates"
 FRAMEWORK_MODAL_HOST = (
     FRAMEWORK_TEMPLATES_DIR / "panel_framework" / "partials" / "modal_host.html"
@@ -137,3 +143,7 @@ def test_no_educator_module_sets_the_modal_trigger_template_by_hand() -> None:
     )
 
     assert offenders == []
+
+
+def test_educator_python_files_include_the_panel_modules() -> None:
+    assert EDUCATOR_ROOT / "panels" / "learner" / "actions.py" in EDUCATOR_PYTHON_FILES
