@@ -27,7 +27,6 @@ from freedom_ls.educator_interface.panels.learner.quick_view import (
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.form_engine.conditions import (
     SERVED_TREE_LOOKUPS,
-    SittingPath,
     answers_by_question,
     sitting_path,
 )
@@ -197,13 +196,16 @@ class QuestionMark:
 
 def _mark(
     question: FormQuestion,
-    path: SittingPath,
     answers: Mapping[UUID, QuestionAnswer],
 ) -> QuestionMark:
     """How the sitting's answer to `question` is marked today, and whether
-    there is an answer at all. Reads only the prefetched answers and the
-    path's options."""
-    options = path.options_of(question)
+    there is an answer at all. Reads only the prefetched answers and options.
+
+    Judged against all the question's current options, not only those the
+    sitting was served, so the mark agrees with the recomputed score that
+    `stored_score_outdated` compares against: an option added since the
+    sitting still counts."""
+    options = list(question.options.all())
     answer = answers.get(question.id)
     selected_ids = (
         {option.id for option in answer.selected_options.all()} if answer else set()
@@ -247,7 +249,7 @@ def quiz_attempt_paper_context(sitting: FormProgress) -> dict[str, object]:
         "question_positions": path.question_positions(),
         "existing_answers": answers,
         "show_answer_key": True,
-        "question_marks": {q.id: _mark(q, path, answers) for q in path.questions()},
+        "question_marks": {q.id: _mark(q, answers) for q in path.questions()},
         "score_outdated": stored_score_outdated(sitting, path, answers),
         "has_missing_served_items": path.has_missing_served_items,
         "predates_served_order": sitting.served_paper is None,

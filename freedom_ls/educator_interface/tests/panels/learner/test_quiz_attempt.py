@@ -654,6 +654,33 @@ def test_a_correct_option_changed_after_submission_shows_the_stale_score_note(
     assert "This quiz has changed since the attempt was marked." in text
 
 
+def test_a_correct_option_added_after_submission_marks_the_question_incorrect(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, order=1)
+    question, (one, two) = _question(
+        page, "Question A", 1, [("A one", True), ("A two", False)]
+    )
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of([(page, [question])], {question: [one, two]}),
+        scores={"score": 1, "max_score": 1},
+    )
+    _answer(sitting, question, one)
+    QuestionOptionFactory(question=question, text="A three", correct=True, order=2)
+
+    text = _paper_text(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert "This quiz has changed since the attempt was marked." in text
+    assert "Marked incorrect" in text
+    assert "Marked correct" not in text
+
+
 def _sized_sitting(
     organisation: Organisation, page_count: int, questions_per_page: int
 ) -> FormProgress:
