@@ -20,11 +20,12 @@
         overflow-wrap: anywhere;
     }
 
-    /* Each card cell is a flex box whose label is a ::before pseudo-element. It
+    /* Each card cell, th or td, is a flex box whose label is a ::before pseudo-element. It
        inherits the anywhere wrapping above, which collapses its min-content width
        to one character, so a long value squeezes "Learner" into "Learn" / "er".
        Labels break only between words. */
-    #result_list td::before {
+    #result_list td::before,
+    #result_list th::before {
         overflow-wrap: normal;
     }
 }

@@ -3,7 +3,8 @@
 Below the ``lg`` breakpoint unfold turns each changelist row into a card whose
 cells are flex boxes and whose field label is a ``::before`` pseudo-element. The
 rule that lets long values wrap anywhere is inherited by that label, which then
-shrinks to one character and breaks mid-word ("Learn" / "er"). Computed style
+shrinks to one character and breaks mid-word ("Learn" / "er"). The first column
+is a ``th`` and the rest are ``td``, so both kinds of label are checked. Computed style
 of a pseudo-element is only available in a real browser.
 """
 
@@ -32,8 +33,12 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 _PHONE_VIEWPORT = {"width": 375, "height": 812}
 
 _LABEL_OVERFLOW_WRAP_JS = """
-() => Array.from(document.querySelectorAll("#result_list td[data-label]"))
-    .map((cell) => getComputedStyle(cell, "::before").overflowWrap)
+() => Array.from(
+    document.querySelectorAll("#result_list tbody th, #result_list td[data-label]")
+).map((cell) => ({
+    tag: cell.tagName,
+    overflowWrap: getComputedStyle(cell, "::before").overflowWrap,
+}))
 """
 
 _VALUE_OVERFLOW_WRAP_JS = """
@@ -75,6 +80,6 @@ def test_changelist_card_labels_do_not_break_mid_word(
 
     expect(page.locator("#result_list td[data-label]").first).to_be_visible()
     label_wraps = page.evaluate(_LABEL_OVERFLOW_WRAP_JS)
-    assert label_wraps
-    assert set(label_wraps) == {"normal"}
+    assert {label["tag"] for label in label_wraps} == {"TH", "TD"}
+    assert {label["overflowWrap"] for label in label_wraps} == {"normal"}
     assert "anywhere" in page.evaluate(_VALUE_OVERFLOW_WRAP_JS)
