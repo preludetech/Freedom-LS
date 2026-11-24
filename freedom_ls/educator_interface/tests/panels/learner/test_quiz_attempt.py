@@ -412,8 +412,24 @@ def test_the_page_stays_under_its_query_bound(
     client = _admin_client(organisation, logged_in_client)
     url = _interface_url(organisation.slug, f"quiz-attempts/{sitting.pk}")
 
-    with django_assert_max_num_queries(60):
+    # The attempt's facts are looked up once per request, not once each for
+    # the title, the back link and the subtitle.
+    with django_assert_max_num_queries(45):
         response = client.get(url)
+
+    assert response.status_code == 200
+
+
+def test_the_quick_view_stays_under_its_query_bound(
+    logged_in_client: Callable[[User], Client],
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
+    organisation = OrganisationFactory()
+    sitting = _sitting(LearnerFactory(organisation=organisation))
+    client = _admin_client(organisation, logged_in_client)
+
+    with django_assert_max_num_queries(29):
+        response = _get_quick_view(client, organisation, f"quiz-attempts/{sitting.pk}")
 
     assert response.status_code == 200
 

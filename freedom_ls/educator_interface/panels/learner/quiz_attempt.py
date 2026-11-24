@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
-from functools import cached_property
 from typing import Literal, cast
 from uuid import UUID
 
@@ -127,21 +126,35 @@ class QuizAttemptFacts:
     attempt_number: int
 
 
+_FACTS_CACHE_ATTR = "_quiz_attempt_facts_cache"
+
+
 def quiz_attempt_facts(sitting: FormProgress) -> QuizAttemptFacts:
     """Who sat what, on which course, as which attempt. Raises ValueError
-    for a sitting with no number: one that never passed authorise_instance."""
+    for a sitting with no number: one that never passed authorise_instance.
+
+    Cached on the sitting, so the page title, back link, subtitle and quick
+    view of one request share a single lookup.
+    """
+    cached = sitting.__dict__.get(_FACTS_CACHE_ATTR)
+    if isinstance(cached, QuizAttemptFacts):
+        return cached
     attempt = CourseFormAttempt.objects.select_related(
-        "course_progress__learner__user", "course_progress__course"
+        "course_progress__learner__user",
+        "course_progress__learner__organisation",
+        "course_progress__course",
     ).get(form_progress=sitting)
     number = attempt_number_of(sitting)
     if number is None:
         raise ValueError(f"Sitting {sitting.pk} has no attempt number")
-    return QuizAttemptFacts(
+    facts = QuizAttemptFacts(
         sitting=sitting,
         learner=attempt.course_progress.learner,
         course=attempt.course_progress.course,
         attempt_number=number,
     )
+    sitting.__dict__[_FACTS_CACHE_ATTR] = facts
+    return facts
 
 
 @dataclass(frozen=True)
@@ -278,7 +291,7 @@ class QuizAttemptStack(PanelStack):
 class QuizAttemptInstanceView(InstanceView):
     panel = QuizAttemptStack
 
-    @cached_property
+    @property
     def facts(self) -> QuizAttemptFacts:
         return quiz_attempt_facts(cast(FormProgress, self.instance))
 
