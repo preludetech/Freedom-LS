@@ -29,6 +29,14 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
 - `views.py`: `ListViewConfig` (a section's table page, with its quick view) and
   `ObjectViewConfig` / `InstanceView` (one record's page, with its tabs). `StatusBadge` and
   `HeaderStat` feed the page header.
+  `in_menu = False` on a section keeps it out of the menu while its paths still resolve: use it
+  for a record reached from another section's page rather than from a list. Ask
+  `section.is_in_menu(request)`, which also applies `is_visible` and `is_available`; the menu and
+  `first_visible_section` both use it. The default is `True`. A section with `list_view = None`
+  has no list page, so its bare list path is a 404.
+  `ListViewConfig.get_back_link(request, instance)` returns the `(label, url)` an instance page's
+  back link goes to, or `None` for the section's own list (the default). Override it when the
+  record is reached from another page's row, so going back returns the reader to that page.
 - `tables.py`: `DataTable` and `TableQuery`, each table's own slice of the query string (search,
   sort, page, filters), so two tables on one page never read each other's parameters.
   A table's rows per page are its `page_size`, else the project setting `PANEL_TABLE_PAGE_SIZE`
@@ -41,6 +49,10 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   that template (for a note, not a record: it has no checkbox and no row detail); it renders with
   `object` and `row`. A panel whose rows are computed returns them from
   `DataTablePanel.get_row_sequence` (see Tables).
+  `InstanceDetailsPanel.detail_row(label, value, kind)` builds one row of a details panel. `kind`
+  is `"text"` (default, an already formatted value), `"boolean"`, `"badge"` (a `StatusBadge`),
+  `"date"` or `"datetime"`. Use `"datetime"` for a moment in time: it shows the time of day as
+  well as the date, where `"date"` shows the date alone. It takes a datetime, never a string.
 - `actions.py`: `PanelAction` is a button and what submitting it does; `FormPanelAction`,
   `CreateInstanceAction`, `EditAction` and `DeleteAction` build on it. `renders_in_footer` places
   an action in the panel footer or inline; `submit_buttons` names a form's buttons.
