@@ -29,6 +29,11 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course as CourseModel
 from freedom_ls.content_engine.models import File
+from freedom_ls.educator_interface.panels.course.content_preview import (
+    outline_rows,
+    preview_sequence,
+    reference_rows,
+)
 from freedom_ls.educator_interface.tests.helpers import (
     _content_action_url,
     _get_document,
@@ -1805,3 +1810,240 @@ def test_outline_actions_header_stays_in_table_layout_with_a_hidden_label(
     ]
     assert "sr-only" not in actions.get("class", "").split()
     assert actions.cssselect("span.sr-only")
+
+
+def _stepping_course() -> tuple[CourseModel, dict[str, Model]]:
+    """A course holding topic A, a part holding topic B and a two-page form,
+    an empty part, and a closing topic C, in that order."""
+    course = cast(CourseModel, CourseFactory())
+    items: dict[str, Model] = {}
+
+    def place(parent: Model, child: Model, order: int, name: str) -> Model:
+        item = cast(
+            Model,
+            ContentCollectionItemFactory(
+                collection_object=parent, child_object=child, order=order
+            ),
+        )
+        items[name] = item
+        return item
+
+    place(course, TopicFactory(title="Topic A"), 0, "a")
+    part = CoursePartFactory(title="Part one")
+    place(course, part, 1, "part")
+    place(part, TopicFactory(title="Topic B"), 0, "b")
+    form = FormFactory(title="Survey")
+    pages = [
+        FormPageFactory(form=form, title="Survey page 1", order=0),
+        FormPageFactory(form=form, title="Survey page 2", order=1),
+    ]
+    items["page1"], items["page2"] = pages
+    place(part, form, 1, "form")
+    place(course, CoursePartFactory(title="Empty part"), 2, "empty")
+    place(course, TopicFactory(title="Topic C"), 3, "c")
+    return course, items
+
+
+@pytest.mark.django_db
+def test_the_preview_sequence_runs_depth_first_across_parts_and_form_pages(
+    mock_site_context: object,
+) -> None:
+    course, _items = _stepping_course()
+
+    sequence = preview_sequence(outline_rows(course))
+
+    assert [row.title for row in sequence] == [
+        "Course details",
+        "Topic A",
+        "Topic B",
+        "Survey",
+        "Survey page 1",
+        "Survey page 2",
+        "Topic C",
+    ]
+
+
+@pytest.mark.django_db
+def test_an_empty_course_has_only_the_course_details_to_step_through(
+    mock_site_context: object,
+) -> None:
+    course = cast(CourseModel, CourseFactory())
+
+    sequence = preview_sequence(outline_rows(course))
+
+    assert [row.title for row in sequence] == ["Course details"]
+
+
+@pytest.mark.django_db
+def test_a_one_topic_course_sequence_is_the_details_then_the_topic(
+    mock_site_context: object,
+) -> None:
+    course, _item = _course_with_topic(TopicFactory(title="Only"))
+
+    sequence = preview_sequence(outline_rows(cast(CourseModel, course)))
+
+    assert [row.title for row in sequence] == ["Course details", "Only"]
+
+
+@pytest.mark.django_db
+def test_the_reference_sequence_has_no_details_row_and_no_parts(
+    mock_site_context: object,
+) -> None:
+    course = cast(CourseModel, CourseFactory())
+    _reference_topic_item(course, "Cheat sheet")
+
+    sequence = preview_sequence(reference_rows(course))
+
+    assert [row.title for row in sequence] == ["Cheat sheet"]
+
+
+def _stepping_buttons(
+    response: _MonkeyPatchedWSGIResponse,
+) -> dict[str, lxml.html.HtmlElement]:
+    document = lxml.html.fromstring(response.content.decode())
+    (footer,) = document.cssselect("footer[data-modal-footer]")
+    return {
+        (button.text_content().strip()): button for button in footer.cssselect("button")
+    }
+
+
+def _step_target(button: lxml.html.HtmlElement) -> str:
+    """The `item` and `page` query of a stepping button, or the details
+    marker when it opens the course details."""
+    url = str(button.get("hx-get"))
+    if url.endswith("preview_course_details"):
+        return "details"
+    return url.split("?", 1)[1]
+
+
+@pytest.mark.django_db
+def test_the_course_details_preview_has_previous_disabled_and_next_on_the_first_item(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course, items = _stepping_course()
+
+    response = staff_client.get(
+        _course_details_preview_url(organisation, course), HTTP_HX_REQUEST="true"
+    )
+
+    buttons = _stepping_buttons(response)
+    assert buttons["Previous"].get("disabled") is not None
+    assert buttons["Previous"].get("hx-get") is None
+    assert _step_target(buttons["Next"]) == f"item={items['a'].pk}"
+
+
+@pytest.mark.django_db
+def test_a_topic_preview_steps_across_a_part_boundary_both_ways(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course, items = _stepping_course()
+    url = _content_action_url(organisation, course, "preview_content")
+
+    first = _stepping_buttons(
+        staff_client.get(f"{url}?item={items['a'].pk}", HTTP_HX_REQUEST="true")
+    )
+    middle = _stepping_buttons(
+        staff_client.get(f"{url}?item={items['b'].pk}", HTTP_HX_REQUEST="true")
+    )
+
+    assert _step_target(first["Previous"]) == "details"
+    assert _step_target(first["Next"]) == f"item={items['b'].pk}"
+    assert _step_target(middle["Previous"]) == f"item={items['a'].pk}"
+    assert _step_target(middle["Next"]) == f"item={items['form'].pk}"
+
+
+@pytest.mark.django_db
+def test_a_multi_page_form_steps_to_its_first_page_and_its_last_page_to_the_next_item(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course, items = _stepping_course()
+    url = _content_action_url(organisation, course, "preview_content")
+    form_pk, page1, page2 = items["form"].pk, items["page1"].pk, items["page2"].pk
+
+    own = _stepping_buttons(
+        staff_client.get(f"{url}?item={form_pk}", HTTP_HX_REQUEST="true")
+    )
+    last_page = _stepping_buttons(
+        staff_client.get(f"{url}?item={form_pk}&page={page2}", HTTP_HX_REQUEST="true")
+    )
+
+    assert _step_target(own["Next"]) == f"item={form_pk}&page={page1}"
+    assert _step_target(last_page["Previous"]) == f"item={form_pk}&page={page1}"
+    assert _step_target(last_page["Next"]) == f"item={items['c'].pk}"
+
+
+@pytest.mark.django_db
+def test_the_last_row_has_next_disabled(staff_client: Client) -> None:
+    organisation = OrganisationFactory()
+    course, items = _stepping_course()
+    url = _content_action_url(organisation, course, "preview_content")
+
+    response = staff_client.get(f"{url}?item={items['c'].pk}", HTTP_HX_REQUEST="true")
+
+    buttons = _stepping_buttons(response)
+    assert buttons["Next"].get("disabled") is not None
+    assert buttons["Next"].get("hx-get") is None
+    assert buttons["Previous"].get("hx-get") is not None
+
+
+@pytest.mark.django_db
+def test_a_reference_preview_steps_only_within_the_reference_list(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course = cast(CourseModel, CourseFactory())
+    ContentCollectionItemFactory(
+        collection_object=course, child_object=TopicFactory(title="Path"), order=0
+    )
+    part = CoursePartFactory()
+    CourseReferencePartFactory(course=course, course_part=part, order=0)
+    first = ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(title="Ref 1"), order=0
+    )
+    second = ContentCollectionItemFactory(
+        collection_object=part, child_object=TopicFactory(title="Ref 2"), order=1
+    )
+
+    buttons = _stepping_buttons(
+        _reference_preview(staff_client, organisation, course, cast(Model, first))
+    )
+
+    assert buttons["Previous"].get("disabled") is not None
+    assert buttons["Previous"].get("hx-get") is None
+    next_url = str(buttons["Next"].get("hx-get"))
+    assert "/__panels/reference/__actions/preview_content" in next_url
+    assert next_url.endswith(f"?item={second.pk}")
+
+
+@pytest.mark.django_db
+def test_the_stepping_footer_has_no_close_and_swaps_the_whole_dialog(
+    staff_client: Client,
+) -> None:
+    organisation = OrganisationFactory()
+    course, items = _stepping_course()
+    url = _content_action_url(organisation, course, "preview_content")
+
+    response = staff_client.get(f"{url}?item={items['b'].pk}", HTTP_HX_REQUEST="true")
+
+    buttons = _stepping_buttons(response)
+    assert list(buttons) == ["Previous", "Next"]
+    for button in buttons.values():
+        assert button.get("hx-target") == "#app-modal-body"
+        assert button.get("hx-swap") == "innerHTML"
+
+
+@pytest.mark.django_db
+def test_a_topic_preview_query_count_stays_bounded_with_parts_and_a_multi_page_form(
+    staff_client: Client, django_assert_max_num_queries
+) -> None:
+    organisation = OrganisationFactory()
+    course, items = _stepping_course()
+    url = _content_action_url(organisation, course, "preview_content")
+    request_url = f"{url}?item={items['b'].pk}"
+    assert staff_client.get(request_url, HTTP_HX_REQUEST="true").status_code == 200
+
+    with django_assert_max_num_queries(20):
+        assert staff_client.get(request_url, HTTP_HX_REQUEST="true").status_code == 200

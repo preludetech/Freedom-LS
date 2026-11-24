@@ -271,6 +271,30 @@ def test_educator_previews_course_content(
             _press_escape_and_expect_closed(page)
             expect(topic_preview).to_be_focused()
 
+            # Next steps across the part boundary to the first topic inside
+            # it, Previous steps back, focus lands on each new title, and the
+            # footer offers no Close.
+            topic_preview.click()
+            expect(modal.get_by_role("button", name="Close", exact=True)).to_have_count(
+                1
+            )  # the header's close button only
+            expect(modal.locator("footer").get_by_role("button")).to_have_count(2)
+            expect(modal.get_by_role("button", name="Previous")).to_be_enabled()
+            modal.get_by_role("button", name="Next").click()
+            expect(
+                modal.get_by_role("heading", name="Inside the part (Preview)")
+            ).to_be_visible()
+            expect(page.locator("#app-modal-title")).to_be_focused()
+            modal.get_by_role("button", name="Previous").click()
+            expect(modal.get_by_role("heading", name="Cards (Preview)")).to_be_visible()
+            expect(page.locator("#app-modal-title")).to_be_focused()
+            _press_escape_and_expect_closed(page)
+
+            # The header's close button closes the dialog too.
+            topic_preview.click()
+            modal.get_by_role("button", name="Close", exact=True).click()
+            expect(page.locator("#app-modal[open]")).to_have_count(0)
+
             page.get_by_role("button", name="Preview Check yourself").click()
             expect(modal.get_by_text("Option B")).to_be_visible()
             assert_no_horizontal_overflow(page)

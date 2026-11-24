@@ -1,4 +1,4 @@
-<c-vars cancel="Cancel" cancel_href="" cancel_click="cancel" focus_cancel="" cancel_describedby="" class="" />
+<c-vars cancel="Cancel" cancel_href="" cancel_click="cancel" focus_cancel="" cancel_describedby="" stepping="" class="" />
 
 {% comment %}
 The footer every dialog and bottom sheet ends with. It renders its own
@@ -14,14 +14,22 @@ ever receives a URL the server built. `focus_cancel` makes the button take
 initial focus and `cancel_describedby` names the element describing it. The default slot holds the actions, right aligned with the
 primary last, and wraps onto its own row below sm when it does not fit.
 It stays in view because only the body between it and the header scrolls.
+
+With `stepping` the footer steps through a list of dialogs instead of
+leaving: the left box renders the `previous` slot, the right one the `next`
+slot, and there is no cancel button and no default slot. A stepping dialog
+has no Close because the header's close button, Escape and a backdrop click
+already close it. The shape, spacing and `justify-between` are the same.
 {% endcomment %}
 <footer data-modal-footer class="panel-surface shrink-0 flex items-center justify-between gap-3 border-t border-border px-6 py-4 max-sm:flex-wrap {{ class }}" {{ attrs }}>
     <div class="shrink-0">
-        {% if cancel_href %}
+        {% if stepping %}
+            {{ previous }}
+        {% elif cancel_href %}
             <c-panel-button variant="secondary" href="{{ cancel_href }}" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-panel-button>
         {% else %}
             <c-panel-button type="button" variant="secondary" x-on:click="{{ cancel_click }}" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-panel-button>
         {% endif %}
     </div>
-    <div class="flex min-w-0 grow flex-wrap items-center justify-end gap-3">{{ slot }}</div>
+    <div class="flex min-w-0 grow flex-wrap items-center justify-end gap-3">{% if stepping %}{{ next }}{% else %}{{ slot }}{% endif %}</div>
 </footer>

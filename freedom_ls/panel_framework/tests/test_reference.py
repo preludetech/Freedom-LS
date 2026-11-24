@@ -139,6 +139,7 @@ def test_examples_partial_has_no_duplicate_ids() -> None:
         "reason-dialog-required",
         "reason-dialog-choices",
         "reason-dialog-choices-required",
+        "modal-footer-stepping",
         "lazy-panel-as-of",
         "data-table-row-detail",
         "data-table-child-rows",

@@ -21,6 +21,9 @@ HAND_PADDED_BODY = re.compile(r'<div class="[^"]*\bpx-6\b[^"]*"')
 EXTENDS_FRAMEWORK_DIALOG = re.compile(
     r'\{% extends "(panel_framework/modal/[a-z_]+\.html)" %\}'
 )
+FOOTER_PARTIAL_INCLUDE = re.compile(
+    r'\{% include "([\w/]+/partials/[a-z_]*footer\.html)" %\}'
+)
 STEP_BRANCH = re.compile(r"\bstep == ")
 DROPDOWN_CHEVRON = re.compile(r'<c-(?:panel-)?icon name="dropdown"[^>]*>')
 LOADING_TEXT = re.compile(r'loading_text="[^"]*"')
@@ -151,8 +154,15 @@ def expand_chevrons_that_do_not_turn(root: Path) -> list[str]:
 
 def dialog_parts_source(path: Path, framework_templates: Path) -> str:
     """The template's text, with the parts of the framework dialog it extends
-    (message.html, confirm.html) counted for it."""
+    (message.html, confirm.html) and the footer partials it includes counted
+    for it."""
     text = path.read_text()
+    templates_root = next(
+        (parent for parent in path.parents if parent.name == "templates"), None
+    )
+    if templates_root is not None:
+        for partial in FOOTER_PARTIAL_INCLUDE.findall(text):
+            text += (templates_root / partial).read_text()
     parent = EXTENDS_FRAMEWORK_DIALOG.search(text)
     if parent:
         text += dialog_parts_source(

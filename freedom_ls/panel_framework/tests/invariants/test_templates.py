@@ -376,6 +376,47 @@ def test_every_dialog_ends_in_the_modal_footer_not_a_button_group() -> None:
     assert offenders == []
 
 
+def test_a_dialog_using_the_stepping_footer_passes_the_footer_and_component_rules(
+    tmp_path: Path,
+) -> None:
+    dialog = tmp_path / "stepping_dialog.html"
+    dialog.write_text(
+        "<c-modal-header>Title</c-modal-header>\n"
+        "<c-modal-body>Body</c-modal-body>\n"
+        '<c-modal-footer stepping="true">\n'
+        '    <c-slot name="previous"><c-button disabled>Previous</c-button></c-slot>\n'
+        '    <c-slot name="next"><c-button>Next</c-button></c-slot>\n'
+        "</c-modal-footer>\n"
+    )
+
+    assert template_rules.dialog_footer_problems(dialog) == []
+    assert (
+        template_rules.dialogs_using_a_button_group([dialog], "panel-button-group")
+        == []
+    )
+    assert (
+        template_rules.dialogs_matching(
+            [dialog],
+            template_rules.forbidden_in_dialogs("panel-button")[
+                "a hand-written Cancel button"
+            ],
+        )
+        == []
+    )
+
+
+def test_a_dialog_with_a_hand_written_button_group_still_fails(tmp_path: Path) -> None:
+    dialog = tmp_path / "grouped_dialog.html"
+    dialog.write_text(
+        "<c-modal-body>Body</c-modal-body>\n"
+        "<c-panel-button-group><c-panel-button>Next</c-panel-button></c-panel-button-group>\n"
+    )
+
+    assert template_rules.dialogs_using_a_button_group(
+        [dialog], "panel-button-group"
+    ) == ["grouped_dialog.html"]
+
+
 # Dialogs that do not take the header, body and footer parts, each with its reason.
 DIALOG_PART_EXEMPTIONS: dict[str, str] = {
     "modal_host.html": "the host holds the parts only inside its discard prompt",

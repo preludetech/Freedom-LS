@@ -566,6 +566,20 @@ somewhere on the page to land.
     </section>
 
     <section class="space-y-6">
+        <h2>Modal footer</h2>
+
+        <div id="modal-footer-stepping">
+            <p class="text-sm text-muted">Use <code>stepping="true"</code> when a dialog steps through a list of dialogs. Previous sits at the left and Next at the right; at either end the button stays, disabled, so the footer never moves. There is no Close: the header's close button, Escape and a backdrop click close the dialog.</p>
+            <div hx-disable class="max-w-lg rounded-lg border border-border">
+                <c-modal-footer stepping="true">
+                    <c-slot name="previous"><c-panel-button variant="secondary" disabled="true">Previous</c-panel-button></c-slot>
+                    <c-slot name="next"><c-panel-button variant="secondary">Next</c-panel-button></c-slot>
+                </c-modal-footer>
+            </div>
+        </div>
+    </section>
+
+    <section class="space-y-6">
         <h2>Lazy panel</h2>
 
         <div id="lazy-panel-as-of">

@@ -68,3 +68,31 @@ def test_the_footer_pushes_cancel_and_the_actions_apart_and_never_scrolls() -> N
     assert {"flex", "justify-between", "shrink-0"} <= set(classes)
     assert "sticky" not in classes
     assert "justify-end" in footer.findall("div")[1].get("class", "").split()
+
+
+def _render_stepping() -> lxml.html.HtmlElement:
+    return lxml.html.fromstring(
+        render_cotton(
+            '<c-modal-footer stepping="true">'
+            '<c-slot name="previous"><button type="button">Back</button></c-slot>'
+            '<c-slot name="next"><button type="button">Onward</button></c-slot>'
+            "</c-modal-footer>"
+        )
+    )
+
+
+def test_a_stepping_footer_renders_both_slots_and_no_cancel_button() -> None:
+    footer = _render_stepping()
+
+    left, right = footer.findall("div")
+
+    assert [button.text for button in left.findall("button")] == ["Back"]
+    assert [button.text for button in right.findall("button")] == ["Onward"]
+    assert footer.cssselect("[x-on\\:click]") == []
+    assert "Cancel" not in footer.text_content()
+
+
+def test_a_stepping_footer_keeps_the_footer_shape() -> None:
+    classes = _render_stepping().get("class", "").split()
+
+    assert {"flex", "justify-between", "shrink-0"} <= set(classes)

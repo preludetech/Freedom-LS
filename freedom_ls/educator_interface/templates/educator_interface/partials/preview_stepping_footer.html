@@ -1,0 +1,21 @@
+{% comment %}
+The preview footer: Previous and Next step through the list the preview came
+from, swapping the whole dialog. At either end the button stays, disabled, so
+the footer never shifts.
+{% endcomment %}
+<c-modal-footer stepping="true">
+    <c-slot name="previous">
+        {% if previous_url %}
+            <c-button type="button" variant="secondary" hx-get="{{ previous_url }}" hx-target="#app-modal-body" hx-swap="innerHTML" hx-disabled-elt="this">Previous</c-button>
+        {% else %}
+            <c-button type="button" variant="secondary" disabled>Previous</c-button>
+        {% endif %}
+    </c-slot>
+    <c-slot name="next">
+        {% if next_url %}
+            <c-button type="button" variant="secondary" hx-get="{{ next_url }}" hx-target="#app-modal-body" hx-swap="innerHTML" hx-disabled-elt="this">Next</c-button>
+        {% else %}
+            <c-button type="button" variant="secondary" disabled>Next</c-button>
+        {% endif %}
+    </c-slot>
+</c-modal-footer>

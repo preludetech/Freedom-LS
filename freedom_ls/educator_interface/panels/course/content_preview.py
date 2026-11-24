@@ -50,6 +50,7 @@ __all__ = [
     "_outline_item_rows",
     "_preview_available",
     "outline_rows",
+    "preview_sequence",
     "reference_rows",
 ]
 
@@ -70,6 +71,14 @@ class OutlineRow:
     note: str = ""
     # The form a page row belongs to, so its Preview names both.
     form_title: str = ""
+    # The collection item and form page this row previews, for finding it in
+    # its preview sequence. None for a part, a note and the course row.
+    item_pk: UUID | None = None
+    page_pk: UUID | None = None
+
+    @property
+    def has_preview(self) -> bool:
+        return not self.note and (self.kind == "course" or bool(self.preview_query))
 
     @property
     def kind_label(self) -> str:
@@ -102,6 +111,8 @@ def _form_page_rows(
             kind="page",
             preview_query=f"item={item.pk}&page={page.pk}",
             form_title=form.title,
+            item_pk=item.pk,
+            page_pk=page.pk,
         )
         for position, page in enumerate(form.pages.all(), start=1)
     )
@@ -144,6 +155,7 @@ def _outline_item_rows(
                 title=child.title,
                 kind="form",
                 preview_query=f"item={item.pk}",
+                item_pk=item.pk,
                 children=pages,
             )
         kind: Literal["form", "topic"] = "form"
@@ -154,6 +166,7 @@ def _outline_item_rows(
         title=str(getattr(child, "title", "")),
         kind=kind,
         preview_query=f"item={item.pk}",
+        item_pk=item.pk,
     )
 
 
@@ -184,9 +197,9 @@ def outline_rows(course: Course) -> list[OutlineRow]:
     """The top-level rows of the course outline: the course details first,
     then every collection item in order, numbered as the learner outline
     numbers them, each holding its own child rows."""
-    _prefetch_form_pages(course.collection_items())
-    rows = [OutlineRow(number="", title="Course details", kind="course")]
     items = course.collection_items()
+    _prefetch_form_pages(items)
+    rows = [OutlineRow(number="", title="Course details", kind="course")]
     rows.extend(
         _outline_item_rows(item, str(position), nested=False)
         for position, item in enumerate(items, start=1)
@@ -201,6 +214,40 @@ def outline_rows(course: Course) -> list[OutlineRow]:
             )
         )
     return rows
+
+
+def preview_sequence(rows: Sequence[OutlineRow]) -> list[OutlineRow]:
+    """The rows of one outline list a preview can step through, depth first:
+    the course details row and every topic, form and form page. Parts and
+    notes have nothing to show."""
+    sequence: list[OutlineRow] = []
+    for row in rows:
+        if row.has_preview:
+            sequence.append(row)
+        sequence.extend(preview_sequence(row.children))
+    return sequence
+
+
+def _stepping_urls(
+    ctx: PanelContext,
+    sequence: list[OutlineRow],
+    index: int,
+    course_list: CourseList,
+) -> dict[str, str]:
+    """The URLs of the rows either side of `index`, empty at either end. The
+    course row opens the course details preview; any other row opens this
+    list's content preview."""
+
+    def url(row: OutlineRow) -> str:
+        if row.kind == "course":
+            return PreviewCourseDetailsAction().get_action_url(ctx)
+        content = PreviewContentAction(course_list=course_list).get_action_url(ctx)
+        return f"{content}?{row.preview_query}"
+
+    return {
+        "previous_url": url(sequence[index - 1]) if index > 0 else "",
+        "next_url": url(sequence[index + 1]) if index + 1 < len(sequence) else "",
+    }
 
 
 def _reference_parts(course: Course) -> list[CourseReferencePart]:
@@ -482,6 +529,21 @@ class PreviewContentAction(PanelAction):
         }
         page_param = ctx.request.GET.get("page")
         page_pk = uuid_or_404(page_param) if page_param is not None else None
+        sequence = preview_sequence(
+            outline_rows(course)
+            if self.course_list == "learning_path"
+            else reference_rows(course)
+        )
+        index = next(
+            (
+                position
+                for position, row in enumerate(sequence)
+                if (row.item_pk, row.page_pk) == (collection_item.pk, page_pk)
+            ),
+            None,
+        )
+        if index is not None:
+            context.update(_stepping_urls(ctx, sequence, index, self.course_list))
         if isinstance(collection_item.child, Form):
             context.update(_form_preview_context(collection_item.child, page_pk))
         elif page_pk is not None:
@@ -509,6 +571,9 @@ class PreviewCourseDetailsAction(PanelAction):
         course = cast(Course, ctx.instance)
         return {
             **course_details_context(course),
+            **_stepping_urls(
+                ctx, preview_sequence(outline_rows(course)), 0, "learning_path"
+            ),
             "course": course,
             "in_modal": True,
             "extra_stats": [],
