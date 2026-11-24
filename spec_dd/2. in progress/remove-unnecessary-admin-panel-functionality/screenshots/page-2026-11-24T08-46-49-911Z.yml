@@ -1,0 +1,197 @@
+- generic [active] [ref=f166e1]:
+  - generic [ref=f166e3]:
+    - generic [ref=f166e8]:
+      - generic [ref=f166e9] [cursor=pointer]: dock_to_right
+      - heading "Learner progress chevron_right Course progress records" [level=1] [ref=f166e12]:
+        - link "Learner progress" [ref=f166e13] [cursor=pointer]:
+          - /url: /admin/freedom_ls_learner_progress/
+        - generic [ref=f166e14]: chevron_right
+        - link "Course progress records" [ref=f166e15] [cursor=pointer]:
+          - /url: /admin/freedom_ls_learner_progress/courseprogress/
+    - generic [ref=f166e20]:
+      - generic [ref=f166e21]:
+        - list [ref=f166e23]:
+          - listitem [ref=f166e24]:
+            - link "arrow_back All dates" [ref=f166e25] [cursor=pointer]:
+              - /url: "?"
+              - generic [ref=f166e26]: arrow_back
+              - text: All dates
+          - listitem [ref=f166e27]:
+            - link "March 2026" [ref=f166e28] [cursor=pointer]:
+              - /url: "?created_at__month=3&created_at__year=2026"
+          - listitem [ref=f166e29]:
+            - link "August 2026" [ref=f166e30] [cursor=pointer]:
+              - /url: "?created_at__month=8&created_at__year=2026"
+          - listitem [ref=f166e31]:
+            - link "November 2026" [ref=f166e32] [cursor=pointer]:
+              - /url: "?created_at__month=11&created_at__year=2026"
+        - generic [ref=f166e33]:
+          - search [ref=f166e35]:
+            - generic [ref=f166e36]:
+              - button "search" [ref=f166e37]
+              - textbox "Type to search" [ref=f166e39]
+              - generic [ref=f166e40]: /
+          - generic [ref=f166e41] [cursor=pointer]:
+            - text: Filters
+            - generic [ref=f166e42]: filter_list
+        - region "scrollable content" [ref=f166e48]:
+          - table [ref=f166e50]:
+            - rowgroup:
+              - row
+            - rowgroup [ref=f166e51]:
+              - row [ref=f166e52]:
+                - rowheader [ref=f166e53]:
+                  - text: learner
+                  - link "qa_deadline_fresh@email.com - QA Deadlines Org" [ref=f166e54] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/e570d2d0-e03e-4976-aaf9-ee19d87656f6/change/
+                - cell "course Functionality Demo - Course Parts" [ref=f166e55]
+                - cell "Status Not started" [ref=f166e56]:
+                  - text: Status
+                  - generic [ref=f166e57]: Not started
+                - cell "progress percentage 0" [ref=f166e58]
+                - cell "learner registration qa_deadline_fresh@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [ref=f166e59]
+                - cell "cohort registration -" [ref=f166e60]
+                - cell "created at Nov. 24, 2026, 8:35 a.m." [ref=f166e61]
+                - cell "started at -" [ref=f166e62]
+                - cell "last accessed time -" [ref=f166e63]
+                - cell "completed time -" [ref=f166e64]
+            - rowgroup [ref=f166e65]:
+              - row [ref=f166e66]:
+                - rowheader [ref=f166e67]:
+                  - text: learner
+                  - link "qa_deadline_solo@email.com - QA Deadlines Org" [ref=f166e68] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/21977583-61c1-4da2-b479-8210a1b178f6/change/
+                - cell "course Functionality Demo - show end with Topic" [ref=f166e69]
+                - cell "Status Not started" [ref=f166e70]:
+                  - text: Status
+                  - generic [ref=f166e71]: Not started
+                - cell "progress percentage 0" [ref=f166e72]
+                - cell "learner registration qa_deadline_solo@email.com - QA Deadlines Org - Functionality Demo - show end with Topic" [ref=f166e73]
+                - cell "cohort registration -" [ref=f166e74]
+                - cell "created at Nov. 23, 2026, 3:17 p.m." [ref=f166e75]
+                - cell "started at -" [ref=f166e76]
+                - cell "last accessed time -" [ref=f166e77]
+                - cell "completed time -" [ref=f166e78]
+            - rowgroup [ref=f166e79]:
+              - row [ref=f166e80]:
+                - rowheader [ref=f166e81]:
+                  - text: learner
+                  - link "qa_deadline_paused@email.com - QA Deadlines Org" [ref=f166e82] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/b934ff09-0c1c-4e38-a98c-507b3752a9cf/change/
+                - cell "course Functionality Demo - Course Parts" [ref=f166e83]
+                - cell "Status Not started" [ref=f166e84]:
+                  - text: Status
+                  - generic [ref=f166e85]: Not started
+                - cell "progress percentage 0" [ref=f166e86]
+                - cell "learner registration qa_deadline_paused@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [ref=f166e87]
+                - cell "cohort registration -" [ref=f166e88]
+                - cell "created at Nov. 14, 2026, 8:35 a.m." [ref=f166e89]
+                - cell "started at -" [ref=f166e90]
+                - cell "last accessed time -" [ref=f166e91]
+                - cell "completed time -" [ref=f166e92]
+            - rowgroup [ref=f166e93]:
+              - row [ref=f166e94]:
+                - rowheader [ref=f166e95]:
+                  - text: learner
+                  - link "qa_deadline_resumed@email.com - QA Deadlines Org" [ref=f166e96] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/6d50b2dd-316f-4470-9479-70ea842a7229/change/
+                - cell "course Functionality Demo - Course Parts" [ref=f166e97]
+                - cell "Status Not started" [ref=f166e98]:
+                  - text: Status
+                  - generic [ref=f166e99]: Not started
+                - cell "progress percentage 0" [ref=f166e100]
+                - cell "learner registration qa_deadline_resumed@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [ref=f166e101]
+                - cell "cohort registration -" [ref=f166e102]
+                - cell "created at Nov. 14, 2026, 8:35 a.m." [ref=f166e103]
+                - cell "started at -" [ref=f166e104]
+                - cell "last accessed time -" [ref=f166e105]
+                - cell "completed time -" [ref=f166e106]
+            - rowgroup [ref=f166e107]:
+              - row [ref=f166e108]:
+                - rowheader [ref=f166e109]:
+                  - text: learner
+                  - link "qa_deadline_extended@email.com - QA Deadlines Org" [ref=f166e110] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/4dbb12ec-4bbc-40b3-8ca2-987b2b89c32c/change/
+                - cell "course Functionality Demo - Course Parts" [ref=f166e111]
+                - cell "Status Not started" [ref=f166e112]:
+                  - text: Status
+                  - generic [ref=f166e113]: Not started
+                - cell "progress percentage 0" [ref=f166e114]
+                - cell "learner registration qa_deadline_extended@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [ref=f166e115]
+                - cell "cohort registration -" [ref=f166e116]
+                - cell "created at Nov. 14, 2026, 8:35 a.m." [ref=f166e117]
+                - cell "started at -" [ref=f166e118]
+                - cell "last accessed time -" [ref=f166e119]
+                - cell "completed time -" [ref=f166e120]
+            - rowgroup [ref=f166e121]:
+              - row [ref=f166e122]:
+                - rowheader [ref=f166e123]:
+                  - text: learner
+                  - link "qa_deadline_paused_open@email.com - QA Deadlines Org" [ref=f166e124] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/48737119-11e6-4c87-8aa0-e6adce112422/change/
+                - cell "course Functionality Demo - Course Parts" [ref=f166e125]
+                - cell "Status Not started" [ref=f166e126]:
+                  - text: Status
+                  - generic [ref=f166e127]: Not started
+                - cell "progress percentage 0" [ref=f166e128]
+                - cell "learner registration qa_deadline_paused_open@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [ref=f166e129]
+                - cell "cohort registration -" [ref=f166e130]
+                - cell "created at Nov. 14, 2026, 8:35 a.m." [ref=f166e131]
+                - cell "started at -" [ref=f166e132]
+                - cell "last accessed time -" [ref=f166e133]
+                - cell "completed time -" [ref=f166e134]
+            - rowgroup [ref=f166e135]:
+              - row [ref=f166e136]:
+                - rowheader [ref=f166e137]:
+                  - text: learner
+                  - link "qa_deadline_restored@email.com - QA Deadlines Org" [ref=f166e138] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/194d061e-2d6c-4337-8479-fe68a7c7390d/change/
+                - cell "course Functionality Demo - Course Parts" [ref=f166e139]
+                - cell "Status Not started" [ref=f166e140]:
+                  - text: Status
+                  - generic [ref=f166e141]: Not started
+                - cell "progress percentage 0" [ref=f166e142]
+                - cell "learner registration qa_deadline_restored@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [ref=f166e143]
+                - cell "cohort registration -" [ref=f166e144]
+                - cell "created at Aug. 16, 2026, 8:35 a.m." [ref=f166e145]
+                - cell "started at -" [ref=f166e146]
+                - cell "last accessed time -" [ref=f166e147]
+                - cell "completed time -" [ref=f166e148]
+            - rowgroup [ref=f166e149]:
+              - row [ref=f166e150]:
+                - rowheader [ref=f166e151]:
+                  - text: learner
+                  - link "qa_deadline_solo@email.com - QA Deadlines Org" [ref=f166e152] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/4246cb9a-b881-485a-ac55-026f51913f63/change/
+                - cell "course Functionality Demo - Course Parts" [ref=f166e153]
+                - cell "Status Not started" [ref=f166e154]:
+                  - text: Status
+                  - generic [ref=f166e155]: Not started
+                - cell "progress percentage 0" [ref=f166e156]
+                - cell "learner registration qa_deadline_solo@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [ref=f166e157]
+                - cell "cohort registration -" [ref=f166e158]
+                - cell "created at Aug. 16, 2026, 8:35 a.m." [ref=f166e159]
+                - cell "started at -" [ref=f166e160]
+                - cell "last accessed time -" [ref=f166e161]
+                - cell "completed time -" [ref=f166e162]
+            - rowgroup [ref=f166e163]:
+              - row [ref=f166e164]:
+                - rowheader [ref=f166e165]:
+                  - text: learner
+                  - link "qa_deadline_cohort@email.com - QA Deadlines Org" [ref=f166e166] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/c0d89d27-05b9-41ca-9825-65c275d8e264/change/
+                - cell "course Functionality Demo - Course Parts" [ref=f166e167]
+                - cell "Status Not started" [ref=f166e168]:
+                  - text: Status
+                  - generic [ref=f166e169]: Not started
+                - cell "progress percentage 0" [ref=f166e170]
+                - cell "learner registration -" [ref=f166e171]
+                - cell "cohort registration QA Deadlines Cohort - Functionality Demo - Course Parts" [ref=f166e172]
+                - cell "created at March 1, 2026, 10 a.m." [ref=f166e173]
+                - cell "started at -" [ref=f166e174]
+                - cell "last accessed time -" [ref=f166e175]
+                - cell "completed time -" [ref=f166e176]
+      - text: expand_more expand_more expand_more update calendar_today warning update schedule warning update calendar_today warning update schedule warning update calendar_today warning update schedule warning update calendar_today warning update schedule warning
+    - generic [ref=f166e177]: 9 course progress records
+  - generic "Show toolbar" [ref=f166e181]: DJDT
+  - text: navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next

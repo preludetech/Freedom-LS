@@ -1,0 +1,151 @@
+- generic [active] [ref=f127e1]:
+  - banner [ref=f127e2]:
+    - link [ref=f127e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f127e4]
+      - heading "FirstClass" [level=1] [ref=f127e5]
+    - navigation [ref=f127e6]:
+      - generic [ref=f127e7]:
+        - generic [ref=f127e8]:
+          - button "Notifications, none new" [ref=f127e9]
+          - status:
+            - generic [ref=f127e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f127e15] [cursor=pointer]:
+          - generic [ref=f127e16]:
+            - generic [ref=f127e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f127e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f127e19]:
+    - generic [ref=f127e21]:
+      - dialog "Navigation" [ref=f127e22]:
+        - generic [ref=f127e24]:
+          - generic [ref=f127e25]:
+            - paragraph [ref=f127e26]: Organisation
+            - button "Switch organisation" [ref=f127e28] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f127e29]: QO
+              - generic "QA Deadlines Org" [ref=f127e30]
+          - navigation "Sections" [ref=f127e33]:
+            - heading "Teaching" [level=2] [ref=f127e34]
+            - list [ref=f127e35]:
+              - listitem [ref=f127e36]:
+                - link "Dashboard" [ref=f127e37] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/dashboard
+              - listitem [ref=f127e42]:
+                - link "Cohorts" [ref=f127e43] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/cohorts
+              - listitem [ref=f127e48]:
+                - link "Learners" [ref=f127e49] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/learners
+              - listitem [ref=f127e54]:
+                - link "Courses" [ref=f127e55] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/courses
+            - heading "Administration" [level=2] [ref=f127e60]
+            - list [ref=f127e61]:
+              - listitem [ref=f127e62]:
+                - link "Staff" [ref=f127e63] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/staff
+              - listitem [ref=f127e68]:
+                - link "Audit log" [ref=f127e69] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/audit-log
+          - generic [ref=f127e74]:
+            - generic [ref=f127e76]:
+              - generic [aria-hidden] [ref=f127e77]: DE
+              - generic [ref=f127e78]: demodev@email.com
+            - link "Account settings" [ref=f127e80] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f127e85]:
+        - navigation "Back" [ref=f127e87]:
+          - link "Learners" [ref=f127e88] [cursor=pointer]:
+            - /url: /educator/organisations/qa-deadlines-org/learners
+        - generic [ref=f127e92]:
+          - generic [ref=f127e94]:
+            - generic [ref=f127e96]:
+              - heading "qa_deadline_paused@email.com" [level=1] [ref=f127e99]
+              - paragraph [ref=f127e100]: qa_deadline_paused@email.com
+            - navigation "Learner sections" [ref=f127e101]:
+              - list [ref=f127e102]:
+                - listitem [ref=f127e103]:
+                  - link "Overview" [ref=f127e104] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/overview
+                - listitem [ref=f127e105]:
+                  - link "Courses" [ref=f127e106] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/courses
+                - listitem [ref=f127e107]:
+                  - link "Messages" [ref=f127e108] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/messages
+                - listitem [ref=f127e109]:
+                  - link "Settings" [ref=f127e110] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/settings
+                - listitem [ref=f127e111]:
+                  - link "History" [ref=f127e112] [cursor=pointer]:
+                    - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/history
+          - generic [ref=f127e116]:
+            - generic [ref=f127e118]:
+              - heading "Details" [level=2] [ref=f127e121]
+              - generic [ref=f127e123]:
+                - generic [ref=f127e124]:
+                  - term [ref=f127e125]: Name
+                  - definition [ref=f127e126]: qa_deadline_paused@email.com
+                - generic [ref=f127e127]:
+                  - term [ref=f127e128]: Email
+                  - definition [ref=f127e129]: qa_deadline_paused@email.com
+                - generic [ref=f127e130]:
+                  - term [ref=f127e131]: Status
+                  - definition [ref=f127e132]:
+                    - generic [ref=f127e133]: Active
+                - generic [ref=f127e134]:
+                  - term [ref=f127e135]: Date added
+                  - definition [ref=f127e136]:
+                    - time [ref=f127e137]: 23 Nov 2026
+            - generic [ref=f127e139]:
+              - heading "Cohorts" [level=2] [ref=f127e142]
+              - generic [ref=f127e144]:
+                - generic [ref=f127e147]:
+                  - generic [ref=f127e148]: Search
+                  - searchbox "Search" [ref=f127e150]
+                - region "Cohorts" [ref=f127e152]:
+                  - table [ref=f127e153]:
+                    - caption [ref=f127e154]: Cohorts
+                    - rowgroup [ref=f127e155]:
+                      - row [ref=f127e156]:
+                        - columnheader [ref=f127e157]:
+                          - link "Name" [ref=f127e158] [cursor=pointer]:
+                            - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/overview?cohorts-sort=-name
+                        - columnheader "Status" [ref=f127e162]
+                        - columnheader [ref=f127e163]:
+                          - link "Learners" [ref=f127e164] [cursor=pointer]:
+                            - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/overview?cohorts-sort=learner_count
+                        - columnheader "Courses" [ref=f127e168]
+                        - columnheader [ref=f127e169]:
+                          - link "Created" [ref=f127e170] [cursor=pointer]:
+                            - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/overview?cohorts-sort=created_at
+                        - columnheader [ref=f127e174]:
+                          - link "Joined" [ref=f127e175] [cursor=pointer]:
+                            - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134/__tabs/overview?cohorts-sort=joined_at
+                        - columnheader [ref=f127e179]
+                    - rowgroup [ref=f127e180]:
+                      - row [ref=f127e181]:
+                        - cell [ref=f127e182]:
+                          - paragraph [ref=f127e184]: This learner is not in any cohorts yet. Their cohorts will appear here.
+              - button "Add to cohort" [ref=f127e187] [cursor=pointer]
+            - generic [ref=f127e189]:
+              - heading "Registrations" [level=2] [ref=f127e192]
+              - list [ref=f127e194]:
+                - listitem [ref=f127e195]:
+                  - generic [ref=f127e196]:
+                    - text: Functionality Demo - Course Parts
+                    - paragraph [ref=f127e197]: Individual
+                    - button "Deactivate" [ref=f127e200] [cursor=pointer]
+                  - generic [ref=f127e201]: Active
+  - contentinfo [ref=f127e205]:
+    - generic [ref=f127e206]:
+      - paragraph [ref=f127e207]: © 2026 FirstClass
+      - navigation "Legal" [ref=f127e208]:
+        - link "Terms and Conditions" [ref=f127e209] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f127e210] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f127e211] [cursor=pointer]: remove-unnecessary-admin-panel-functionality
+  - generic "Show toolbar" [ref=f127e213]: DJDT
