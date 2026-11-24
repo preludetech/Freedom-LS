@@ -1190,16 +1190,16 @@ def test_a_missed_question_lists_only_the_correct_options_the_paper_offered(
 
 
 @pytest.mark.django_db
-def test_a_sitting_with_no_paper_is_scored_on_the_live_options(
+def test_a_sitting_with_no_paper_is_scored_on_every_option_retired_ones_included(
     retired_correct_option: RetiredCorrectOption,
 ) -> None:
     scores = retired_correct_option.progress.compute_quiz_scores()
 
-    assert scores == {"score": 1, "max_score": 1}
+    assert scores == {"score": 0, "max_score": 1}
 
 
 @pytest.mark.django_db
-def test_a_sitting_with_no_paper_is_not_marked_on_a_retired_question_or_page(
+def test_a_sitting_with_no_paper_is_still_marked_on_a_retired_question_and_page(
     retired_correct_option: RetiredCorrectOption,
 ) -> None:
     sitting = retired_correct_option
@@ -1209,7 +1209,7 @@ def test_a_sitting_with_no_paper_is_not_marked_on_a_retired_question_or_page(
 
     scores = sitting.progress.compute_quiz_scores()
 
-    assert scores["max_score"] == 1
+    assert scores["max_score"] == 3
 
 
 @pytest.mark.django_db

@@ -1505,7 +1505,7 @@ class TestASittingIsScoredOnTheOptionsItWasOffered:
 
         assert self._verdicts(quiz, record) == [True]
 
-    def test_a_sitting_with_no_paper_is_scored_on_the_live_options(
+    def test_a_sitting_with_no_paper_is_scored_on_every_option_retired_ones_included(
         self, question_with_a_retired_correct_option
     ):
         quiz, _page, question, kept, record = question_with_a_retired_correct_option
@@ -1514,4 +1514,25 @@ class TestASittingIsScoredOnTheOptionsItWasOffered:
             form_progress=sitting, question=question
         ).selected_options.add(kept)
 
-        assert self._verdicts(quiz, record) == [True]
+        assert self._verdicts(quiz, record) == [False]
+
+    def test_a_sitting_with_no_paper_keeps_its_right_answer_to_a_retired_question(
+        self, question_with_a_retired_correct_option
+    ):
+        quiz, page, _question, _kept, record = question_with_a_retired_correct_option
+        gone: FormQuestion = FormQuestionFactory(
+            form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=1
+        )
+        right: QuestionOption = QuestionOptionFactory(
+            question=gone, correct=True, order=0
+        )
+        QuestionOptionFactory(question=gone, correct=False, order=1)
+        sitting = form_progress(record, quiz, completed_time=timezone.now())
+        QuestionAnswerFactory(
+            form_progress=sitting, question=gone
+        ).selected_options.add(right)
+        retire(gone)
+        for option in gone.options.all():
+            retire(option)
+
+        assert self._verdicts(quiz, record)[-1] is True

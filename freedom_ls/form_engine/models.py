@@ -34,7 +34,7 @@ from freedom_ls.site_aware_models.models import (
 )
 
 from .enums import FREE_TEXT_QUESTION_TYPES, FormStrategy, QuestionType
-from .live_tree import live_children, live_options, live_pages
+from .live_tree import live_pages
 from .phone_numbers import e164_phone_answer
 from .scoring import is_quiz_answer_correct
 from .signals import form_attempt_completed
@@ -442,10 +442,14 @@ def _offered_options(
     question: FormQuestion, served: SittingPath | None
 ) -> list[QuestionOption]:
     """The options a sitting was offered for the question: the served paper's when it
-    has one, the live ones when it does not."""
+    has one, every option the question has, retired ones included, when it does not.
+
+    Only a quiz sitting completed before served papers existed has none, and it
+    was offered the whole question, so its stored history is never re-marked
+    against what is live today."""
     if served is not None:
         return served.options_of(question)
-    return live_options(question)
+    return list(question.options.all())
 
 
 class FormProgress(SiteAwareModel):
@@ -804,14 +808,15 @@ class FormProgress(SiteAwareModel):
         """The questions this quiz sitting is marked on.
 
         A sitting with a served paper is marked on the questions it was served.
-        One without is marked on every live question the form currently has.
+        One without, a quiz sitting completed before served papers existed, is
+        marked on every question the form has, retired ones included.
         """
         served = self._served_path(path)
         if served is None:
             return [
                 child
-                for page in live_pages(self.form)
-                for child in live_children(page)
+                for page in self.form.pages.all()
+                for child in page.children()
                 if isinstance(child, FormQuestion)
             ]
         return served.questions()

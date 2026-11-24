@@ -670,17 +670,16 @@ def _offered_options_by_pair(
     """The options each (sitting, question) pair was offered.
 
     A sitting with a served paper was offered the options the paper names that
-    the question still has; one without was offered the question's live options. Reads the options already
-    loaded for the question index, so it issues no queries.
+    the question still has. One without, a quiz sitting completed before served
+    papers existed, was offered every option, retired ones included. Reads the
+    options already loaded for the question index, so it issues no queries.
     """
     offered: dict[tuple[UUID, UUID], list[QuestionOption]] = {}
     for attempt_id, question in pairs:
         loaded = questions.options_by_question[question.id]
         served = forms.served_option_ids_by_attempt_id.get(attempt_id)
         if served is None:
-            offered[(attempt_id, question.id)] = [
-                option for option in loaded if not option.is_retired
-            ]
+            offered[(attempt_id, question.id)] = loaded
         else:
             served_ids = served.get(question.id, frozenset())
             # With none of its served options left the question shows what it has,
