@@ -34,12 +34,14 @@ from django.test import RequestFactory
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.learner_import import check_import_gate
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
 from freedom_ls.educator_interface.panels.course.actions import (
     DeactivateCourseCohortRegistrationAction,
+    RegisterCohortOnCourseAction,
 )
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.tests.interface_walk import (
@@ -1105,6 +1107,59 @@ def test_the_course_page_deactivation_follows_the_registrations_own_cohort(
                 role=role,
                 relation=relation,
             )
+
+    walk.report()
+
+
+def _course_register_context(world: World, user: User, course: Course) -> PanelContext:
+    request = cast(OrganisationScopedRequest, RequestFactory().get("/x"))
+    request.user = user
+    request.organisation = cast(Organisation, world.scopes[("organisation", OWN)])
+    return PanelContext(
+        request=request,
+        instance=course,
+        base_url="/x",
+        name="cohorts",
+        config=CourseConfig,
+    )
+
+
+def _course_register_cohorts(world: World, user: User, course: Course) -> set[str]:
+    """The relations (own, other_cohort) of the world's cohorts that the
+    course page's Register picker offers `user`; empty when the action is
+    not permitted."""
+    action = RegisterCohortOnCourseAction()
+    ctx = _course_register_context(world, user, course)
+    if not action.has_permission(ctx):
+        return set()
+    offered = set(action._cohorts(ctx).values_list("pk", flat=True))
+    return {
+        relation
+        for relation in (OWN, OTHER_COHORT)
+        if world.scopes[("cohort", relation)].pk in offered
+    }
+
+
+@pytest.mark.django_db
+def test_the_course_page_register_picker_offers_the_cohorts_the_role_may_register(
+    mock_site_context: Site,
+) -> None:
+    world = _build_world(mock_site_context)
+    course = CourseFactory()
+    walk = _Walk("the course page's Register action")
+    for role in ROLES:
+        walk.check(
+            lambda role=role: {
+                relation
+                for (kind, relation) in MATRIX[ADD_COHORTCOURSEREGISTRATION][role]
+                if kind == "cohort" and relation in (OWN, OTHER_COHORT)
+            },
+            partial(
+                _course_register_cohorts, world, cast(User, world.users[role]), course
+            ),
+            same=operator.eq,
+            role=role,
+        )
 
     walk.report()
 

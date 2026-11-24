@@ -9,12 +9,16 @@ from typing import cast
 
 from django.db.models import Model
 
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import Cohort, Learner
-from freedom_ls.learner_management.queries import can_on_any
+from freedom_ls.learner_management.queries import (
+    can_on_any,
+    is_course_available_to_organisation,
+)
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 
@@ -42,6 +46,13 @@ class CoursePageActionMixin(PanelAction):
         if self.row_param not in params:
             return None
         return self.subject_of(self.get_row_object(ctx))
+
+    def course_open_here(self, ctx: PanelContext) -> bool:
+        """Whether the course is available to the organisation in view, which
+        a registration made from this page needs."""
+        return is_course_available_to_organisation(
+            cast(Course, ctx.instance), scoped(ctx).organisation
+        )
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return scoped(ctx).organisation

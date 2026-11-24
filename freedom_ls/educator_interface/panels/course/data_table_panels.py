@@ -16,6 +16,7 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.educator_interface.panels.course.actions import (
     DeactivateCourseCohortRegistrationAction,
+    RegisterCohortOnCourseAction,
 )
 from freedom_ls.educator_interface.panels.course.data_tables import (
     CourseCohortRegistrationDataTable,
@@ -37,7 +38,10 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
     def get_actions(self) -> list[PanelAction]:
         # Deactivate renders per row, not in the footer: the actions cell
         # reads its URL from row_action_urls.
-        return [DeactivateCourseCohortRegistrationAction()]
+        return [
+            RegisterCohortOnCourseAction(),
+            DeactivateCourseCohortRegistrationAction(),
+        ]
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()

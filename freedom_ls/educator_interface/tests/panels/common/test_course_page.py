@@ -134,3 +134,48 @@ def test_can_is_never_asked_about_the_course(organisation: Organisation) -> None
 
     assert asked
     assert not any(isinstance(scope, Course) for scope in asked)
+
+
+class _OpenHereAction(CoursePageActionMixin):
+    pass
+
+
+def _open_here(organisation: Organisation, course: Course) -> bool:
+    request = cast(OrganisationScopedRequest, RequestFactory().get("/x"))
+    request.organisation = organisation
+    ctx = PanelContext(
+        request=request,
+        instance=course,
+        base_url="/x",
+        name="cohorts",
+        config=CourseConfig,
+    )
+    return _OpenHereAction().course_open_here(ctx)
+
+
+@pytest.mark.django_db
+def test_a_course_with_no_owning_organisation_is_open_here(
+    organisation: Organisation,
+) -> None:
+    assert _open_here(organisation, CourseFactory()) is True
+
+
+@pytest.mark.django_db
+def test_a_course_owned_by_another_organisation_is_not_open_here(
+    organisation: Organisation,
+) -> None:
+    course = CourseFactory()
+    course.organisations.add(OrganisationFactory())
+
+    assert _open_here(organisation, course) is False
+
+
+@pytest.mark.django_db
+def test_a_course_shared_with_the_organisation_is_open_here(
+    organisation: Organisation,
+) -> None:
+    course = CourseFactory()
+    course.organisations.add(OrganisationFactory())
+    course.shared_with.add(organisation)
+
+    assert _open_here(organisation, course) is True

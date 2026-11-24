@@ -55,3 +55,42 @@ def test_deactivating_a_cohort_registration_from_the_course_overview(
     expect(row.get_by_text("Inactive", exact=True)).to_be_visible()
     expect(row.get_by_role("button", name="Deactivate Cohort A")).to_have_count(0)
     assert page.evaluate("window.__noReload") is True
+
+
+def test_registering_a_cohort_from_the_course_overview_and_again_after_deactivating(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    course = CourseFactory(title="Algebra")
+    CohortFactory(organisation=organisation, name="Cohort A")
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    page.goto(interface_url(live_server, organisation.slug, f"courses/{course.pk}"))
+    modal = page.locator("#app-modal")
+    panel = page.locator("section[data-panel='cohorts']")
+    row = panel.get_by_role("row").filter(has_text="Cohort A")
+    page.evaluate("window.__noReload = true")
+
+    panel.get_by_role("button", name="Register", exact=True).click()
+    modal.get_by_label("Cohort").select_option(label="Cohort A")
+    modal.get_by_role("button", name="Register", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(row.get_by_role("button", name="Deactivate Cohort A")).to_be_visible()
+
+    row.get_by_role("button", name="Deactivate Cohort A").click()
+    modal.get_by_label("Reason").fill("Course retired")
+    modal.get_by_role("button", name="Deactivate", exact=True).click()
+    expect(row.get_by_text("Inactive", exact=True)).to_be_visible()
+
+    panel.get_by_role("button", name="Register", exact=True).click()
+    modal.get_by_label("Cohort").select_option(label="Cohort A")
+    modal.get_by_role("button", name="Register", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(row).to_have_count(1)
+    expect(row.get_by_role("button", name="Deactivate Cohort A")).to_be_visible()
+    assert page.evaluate("window.__noReload") is True
