@@ -275,3 +275,19 @@ def test_a_row_template_replaces_the_card_body() -> None:
     assert template.get("data-row-id") == "region-row-3"
     assert card.cssselect("[data-card-primary-line]") == []
     assert card.get("id") == "region-row-3-card"
+
+
+def test_a_card_footer_hides_itself_when_its_action_cells_render_no_control() -> None:
+    """An action cell that shows no button for this row still renders its
+    wrapper, so the footer hides itself rather than leaving its top margin
+    as an empty gap under the card's values."""
+    card = _card(
+        "<c-data-table-card :row='row' :primary_column='primary' "
+        ":action_columns='actions' />",
+        row=_row(),
+        primary=_name_column(),
+        actions=[Column(header="", template_name=_TEXT_CELL, attr="kind")],
+    )
+
+    (footer,) = card.cssselect("[data-item-footer]")
+    assert "[&:not(:has(button,a))]:hidden" in footer.get("class").split()

@@ -16,7 +16,7 @@ from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     LEARNER_CHANGED,
@@ -46,6 +46,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
+    Learner,
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
@@ -87,9 +88,14 @@ def _deactivate_buttons(document: lxml.html.HtmlElement) -> list[str]:
     )
 
 
-def _register(organisation: Organisation, course: Course, **cohort_fields: object):
-    cohort = CohortFactory(organisation=organisation, **cohort_fields)
-    return cohort, CohortCourseRegistrationFactory(cohort=cohort, course=course)
+def _register(
+    organisation: Organisation, course: Course, **cohort_fields: object
+) -> tuple[Cohort, CohortCourseRegistration]:
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, **cohort_fields))
+    return cohort, cast(
+        CohortCourseRegistration,
+        CohortCourseRegistrationFactory(cohort=cohort, course=course),
+    )
 
 
 @pytest.mark.django_db
@@ -910,12 +916,17 @@ def _learner_footer_buttons(document: lxml.html.HtmlElement) -> list[str]:
     ]
 
 
-def _named_learner(organisation: Organisation, first_name: str, **fields: object):
-    return LearnerFactory(
-        organisation=organisation,
-        user__first_name=first_name,
-        user__last_name="Test",
-        **fields,
+def _named_learner(
+    organisation: Organisation, first_name: str, **fields: object
+) -> Learner:
+    return cast(
+        Learner,
+        LearnerFactory(
+            organisation=organisation,
+            user__first_name=first_name,
+            user__last_name="Test",
+            **fields,
+        ),
     )
 
 
@@ -1152,3 +1163,67 @@ def test_a_learner_registration_the_service_finds_closed_is_a_422_form_error(
     assert response.status_code == 422
     assert "This course is not open to the organisation." in response.content.decode()
     assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
+
+
+def _course_seen_but_not_available(organisation: Organisation) -> Course:
+    """Another organisation's public course. The organisation's educators see
+    it only because one of its cohorts holds a registration, so they may not
+    register anyone else for it."""
+    course = cast(Course, CourseFactory(audience=CourseAudience.PUBLIC))
+    course.organisations.add(OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=CohortFactory(organisation=organisation), course=course
+    )
+    return course
+
+
+@pytest.mark.django_db
+def test_registering_a_cohort_for_a_course_not_available_here_is_422(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = _course_seen_but_not_available(organisation)
+    cohort = CohortFactory(organisation=organisation)
+    client = role_holder_client(organisation)
+
+    response = _post(
+        client, _register_url(organisation, course), {"cohort": str(cohort.pk)}
+    )
+
+    assert response.status_code == 422
+    assert COURSE_NOT_OPEN_MESSAGE in response.content.decode()
+    assert not CohortCourseRegistration.objects.filter(cohort=cohort).exists()
+
+
+@pytest.mark.django_db
+def test_registering_a_learner_for_a_course_not_available_here_is_422(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = _course_seen_but_not_available(organisation)
+    learner = _named_learner(organisation, "Ada")
+    client = role_holder_client(organisation)
+
+    response = _post(
+        client,
+        _register_learner_url(organisation, course),
+        {"learner": str(learner.pk)},
+    )
+
+    assert response.status_code == 422
+    assert COURSE_NOT_OPEN_MESSAGE in response.content.decode()
+    assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
+
+
+@pytest.mark.django_db
+def test_an_inactive_direct_row_offers_no_reactivate_on_a_course_not_available_here(
+    role_holder_client: RoleHolderClient,
+) -> None:
+    organisation = OrganisationFactory()
+    course = _course_seen_but_not_available(organisation)
+    _direct(organisation, course, is_active=False)
+    client = role_holder_client(organisation)
+
+    document = _get_document(client, _page_url(organisation, course))
+
+    assert _direct_buttons(document, "Reactivate") == []

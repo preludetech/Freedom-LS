@@ -89,7 +89,7 @@ checkbox's slot but not the checkbox.
                 </c-panel-definition-list>
             {% endif %}
             {% if action_columns %}
-                <div data-item-footer class="mt-3">
+                <div data-item-footer class="mt-3 [&:not(:has(button,a))]:hidden">
                     {% for column in action_columns %}{% include column.template_name with object=row.object column=column %}{% endfor %}
                 </div>
             {% endif %}

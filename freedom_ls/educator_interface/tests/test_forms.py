@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.http import QueryDict
 
 from freedom_ls.audit_log.models import REASON_LENGTH as AUDIT_REASON_LENGTH
@@ -142,7 +143,9 @@ def test_learner_picker_labels_each_learner_by_display_name(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_single_learner_picker_labels_each_learner_by_display_name(mock_site_context):
+def test_single_learner_picker_labels_each_learner_by_display_name(
+    mock_site_context: Site,
+) -> None:
     named = LearnerFactory(
         user__first_name="Ada",
         user__last_name="Lovelace",
@@ -162,8 +165,8 @@ def test_single_learner_picker_labels_each_learner_by_display_name(mock_site_con
 
 @pytest.mark.django_db
 def test_single_learner_picker_rejects_a_learner_outside_its_queryset(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     listed = LearnerFactory()
     unlisted = LearnerFactory()
 

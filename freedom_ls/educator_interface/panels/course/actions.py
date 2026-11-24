@@ -43,6 +43,7 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
+    COURSE_NOT_OPEN_MESSAGE,
     CourseNotOpenError,
     cohorts_visible_to,
     learners_permitted_for,
@@ -128,7 +129,12 @@ class ReactivateCourseLearnerRegistrationAction(
     CoursePageActionMixin, LearnerRegistrationReactivation
 ):
     """Reactivates one of the course's inactive direct registrations from its
-    Overview tab, where the action renders per row."""
+    Overview tab, where the action renders per row. It is offered only while
+    the course is open to the organisation in view, since a reactivation
+    elsewhere always fails."""
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return self.course_open_here(ctx)
 
     def registration_scope(
         self, ctx: PanelContext
@@ -153,9 +159,14 @@ class CourseRegisterAction(CoursePageActionMixin, FormPanelAction):
         register: Callable[[], object],
         success: Callable[[], HttpResponse],
     ) -> HttpResponse:
-        """Runs the registration service. A course the service finds closed
-        to the organisation re-renders the dialog with that as a form error
-        and writes nothing."""
+        """Runs the registration service. A course not open to the
+        organisation in view, or one the service finds closed to it,
+        re-renders the dialog with that as a form error and writes nothing.
+        The page check comes first because the service accepts another
+        organisation's public course, which this page may not register for."""
+        if not self.course_open_here(ctx):
+            form.add_error(None, COURSE_NOT_OPEN_MESSAGE)
+            return self.form_invalid(ctx, form)
         try:
             register()
         except CourseNotOpenError as error:
