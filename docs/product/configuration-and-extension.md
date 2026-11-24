@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-11-21_
+_Last updated: 2026-11-24_
 
 ## Summary
 
@@ -174,6 +174,7 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `MESSAGING_OFFERED_EDUCATOR_ROLES` | Educator roles a learner may be offered to message; defaults to cohort admins. |
 | `DEADLINE_POLICY_DEFAULTS` | Deployment-wide default deadline policy, beneath the admin's per-level settings. See [Deadline Policy](#deadline-policy). |
 | `DEADLINE_POLICY` | The policy that combines the deadline settings; the shipped layered policy unless set. |
+| `REVISION_SESSION_SIZE`, `REVISION_DESIRED_RETENTION` | How many questions one [revision](./learner-experience.md#revision) session holds, and how likely a learner is to remember a question when it comes back, which sets how soon questions return. Defaults are 15 and 0.9. |
 | `REGISTRATION_RULE_KINDS` | The ways a registration rule can decide who it matches; a project can add its own. Only attribute matching ships, and it is the default. See [registration rules](./registration-rules.md). |
 | `REGISTRATION_RULE_BATCH_SIZE` | How many learners a rule evaluation handles at a time; defaults to 500. See [registration rules](./registration-rules.md). |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |

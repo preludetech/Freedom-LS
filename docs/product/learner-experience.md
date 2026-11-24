@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-11-23_
+_Last updated: 2026-11-24_
 
 ## Summary
 
@@ -13,6 +13,7 @@ _Last updated: 2026-11-23_
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - A course can offer **reference material**, such as a glossary or regulations, outside its learning path. A learner who can open the course reads it from the course player at any time, without unlocking anything first, and reading it records no progress. Visitors see it listed on the course detail page. See [Reference Material](#reference-material).
+- A registered learner can **revise a course's questions** in the course player. Once they finish a section, its scored choice questions join their revision bank, and a spaced-repetition scheduler decides which come back and when. See [Revision](#revision).
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in. A quiz can be set to shuffle its pages, questions and answer options, with a different order for each learner and each re-sit. A quiz page can also serve a set number of questions drawn at random from a larger pool, with its own selection for each learner and each re-sit.
 - A form, whether an application form or one in a course, can show a page, a question or a block of text only to learners whose earlier answers call for it. A learner sees and is counted against only what applies to them. See [Multi-Page Forms](#multi-page-forms).
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
@@ -245,6 +246,12 @@ The course player displays one content item at a time. The breadcrumb trail star
 ### Reference Material
 
 The course player gives a learner a route to the course's reference material from every page, with a page listing all of it. A reference topic is always open: it is not part of the sequential unlock, it does not count toward completion, and reading it starts nothing and records no progress. Courses mark reference material in their content; see [content editing workflow](./content-editing-workflow.md).
+
+### Revision
+
+A registered learner can revise a course's questions from the course player. A question joins their revision bank once they have finished the section it tests and, for a quiz question, completed that quiz. The bank holds scored choice questions only, from the course's quizzes and from bank forms (question-only forms that belong to no course). A spaced-repetition scheduler picks which questions come back and when. After each answer the learner sees whether it was right, the author's explanation where there is one, and a link to the section to revisit; a session ends with a "Revision done" summary. When nothing is due, a learner can still practise their weakest questions. The course player's outline shows a **Revision** entry with the number of questions due.
+
+Revision answers are kept apart from quiz attempts: they never change a quiz score, a learner's progress or a report. The session length and how soon questions return are settings ([configuration and extension](./configuration-and-extension.md)); writing explanations and bank forms is covered in [content editing workflow](./content-editing-workflow.md). Revision has no educator analytics, no view of weak sections, and no streaks or flashcards yet, and nothing about it appears on the course detail page or the dashboard.
 
 ### Sequential Item Unlock
 
