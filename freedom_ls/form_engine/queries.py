@@ -183,6 +183,9 @@ class AnswerRow:
     # False when the sitting's path never reached the question; its row then
     # carries no answer, even one an in-progress sitting still holds.
     is_asked: bool = True
+    question_retired: bool = False
+    # The ids of the chosen options a content save has retired.
+    retired_option_ids: frozenset[UUID] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -191,13 +194,37 @@ class AnswerGroup:
     rows: list[AnswerRow]
 
 
+def _row(
+    question: FormQuestion, answer: QuestionAnswer | None, is_asked: bool = True
+) -> AnswerRow:
+    retired_option_ids = (
+        frozenset(
+            option.pk for option in answer.selected_options.all() if option.is_retired
+        )
+        if answer is not None
+        else frozenset()
+    )
+    return AnswerRow(
+        question,
+        answer,
+        is_asked,
+        question_retired=question.is_retired,
+        retired_option_ids=retired_option_ids,
+    )
+
+
 def _answer_row(
     question: FormQuestion,
     answers: dict[UUID, QuestionAnswer],
     path: SittingPath,
 ) -> AnswerRow:
-    is_asked = path.has_question(question.id)
-    return AnswerRow(question, answers.get(question.id) if is_asked else None, is_asked)
+    answer = answers.get(question.id)
+    # The path is built from live questions, so it never reaches a retired one;
+    # an answer to it proves the sitting was asked.
+    is_asked = path.has_question(question.id) or (
+        question.is_retired and answer is not None
+    )
+    return _row(question, answer if is_asked else None, is_asked)
 
 
 def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
@@ -234,7 +261,7 @@ def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
     # A question can leave every page but never be deleted while answered (the
     # answer's FK protects it), so an answer with no page is still an answer.
     off_page_rows = [
-        AnswerRow(answer.question, answer)
+        _row(answer.question, answer)
         for answer in form_progress.answers.all()
         if answer.question_id not in page_question_ids
     ]

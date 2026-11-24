@@ -44,7 +44,7 @@ from freedom_ls.form_engine.queries import (
     quiz_verdict,
     stored_score_outdated,
 )
-from freedom_ls.tests.retire import retire
+from freedom_ls.tests.retire import retired
 
 # A scores dict written under another strategy: populated, but with no quiz
 # score to read. `qa_complete_form` used to write exactly this onto quiz forms.
@@ -622,8 +622,8 @@ def test_count_form_questions_skips_a_retired_question_and_a_retired_page(
     form = FormFactory()
     page = FormPageFactory(form=form, order=0)
     FormQuestionFactory(form_page=page, order=0)
-    retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=1)))
-    retired_page = retire(cast("FormPage", FormPageFactory(form=form, order=1)))
+    retired(cast("FormQuestion", FormQuestionFactory(form_page=page, order=1)))
+    retired_page = retired(cast("FormPage", FormPageFactory(form=form, order=1)))
     FormQuestionFactory(form_page=retired_page, order=0)
 
     assert count_form_questions(form) == 1
@@ -647,12 +647,61 @@ def test_count_sitting_questions_skips_retired_rows_on_plain_and_drawing_pages(
     form = FormFactory(strategy=FormStrategy.QUIZ)
     plain_page = FormPageFactory(form=form, order=0)
     FormQuestionFactory(form_page=plain_page, order=0)
-    retire(cast("FormQuestion", FormQuestionFactory(form_page=plain_page, order=1)))
+    retired(cast("FormQuestion", FormQuestionFactory(form_page=plain_page, order=1)))
     drawing_page = FormPageFactory(form=form, order=1, draw=3)
     FormQuestionFactory(form_page=drawing_page, order=0)
     FormQuestionFactory(form_page=drawing_page, order=1)
-    retire(cast("FormQuestion", FormQuestionFactory(form_page=drawing_page, order=2)))
-    retired_page = retire(cast("FormPage", FormPageFactory(form=form, order=2)))
+    retired(cast("FormQuestion", FormQuestionFactory(form_page=drawing_page, order=2)))
+    retired_page = retired(cast("FormPage", FormPageFactory(form=form, order=2)))
     FormQuestionFactory(form_page=retired_page, order=0)
 
     assert count_sitting_questions(Form.objects.get(pk=form.pk)) == 3
+
+
+@pytest.mark.django_db
+def test_a_retired_question_is_flagged_and_its_answer_is_still_returned(
+    mock_site_context,
+):
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    live = FormQuestionFactory(form_page=page, order=0)
+    gone = retired(FormQuestionFactory(form_page=page, order=1))
+    progress = FormProgressFactory(form=form)
+    answer = QuestionAnswerFactory(form_progress=progress, question=gone)
+
+    rows = answer_groups(progress)[0].rows
+
+    assert [(row.question, row.question_retired, row.answer) for row in rows] == [
+        (live, False, None),
+        (gone, True, answer),
+    ]
+
+
+@pytest.mark.django_db
+def test_a_chosen_retired_option_is_flagged_and_the_unchosen_one_is_not(
+    mock_site_context,
+):
+    form = FormFactory()
+    question = FormQuestionFactory(form_page=FormPageFactory(form=form))
+    kept = QuestionOptionFactory(question=question)
+    gone = retired(QuestionOptionFactory(question=question))
+    unchosen_gone = retired(QuestionOptionFactory(question=question))
+    progress = FormProgressFactory(form=form)
+    answer = QuestionAnswerFactory(form_progress=progress, question=question)
+    answer.selected_options.add(kept, gone)
+
+    row = answer_groups(progress)[0].rows[0]
+
+    assert row.retired_option_ids == frozenset({gone.pk})
+    assert unchosen_gone.pk not in row.retired_option_ids
+
+
+@pytest.mark.django_db
+def test_an_off_page_retired_question_is_flagged(mock_site_context):
+    form = FormFactory()
+    FormQuestionFactory(form_page=FormPageFactory(form=form))
+    moved = retired(FormQuestionFactory(form_page=FormPageFactory(form=FormFactory())))
+    progress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(form_progress=progress, question=moved)
+
+    assert answer_groups(progress)[-1].rows[0].question_retired is True
