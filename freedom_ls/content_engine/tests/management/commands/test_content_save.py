@@ -5133,6 +5133,20 @@ def test_an_uncommitted_file_is_refused_and_listed_with_its_kind(
 
 
 @pytest.mark.django_db
+def test_an_uncommitted_file_saves_when_debug_is_on(
+    site, mock_site_context, committed_content_repo, settings
+):
+    settings.DEBUG = True
+    (committed_content_repo / "topic.md").write_text(
+        f"---\ncontent_type: TOPIC\ntitle: Edited Topic\nuuid: {TOPIC_UUID}\n---\n\nBody.\n"
+    )
+
+    _save_from_repo(committed_content_repo, site)
+
+    assert Topic.objects.filter(title="Edited Topic").exists()
+
+
+@pytest.mark.django_db
 def test_a_path_outside_any_repo_is_refused(site, mock_site_context, tmp_path: Path):
     with pytest.raises(CommandError, match="not inside a git repository"):
         _save_from_repo(tmp_path, site)

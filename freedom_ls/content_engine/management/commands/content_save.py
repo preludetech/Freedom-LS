@@ -1892,7 +1892,8 @@ def check_committed(
     group per path headed by the path as it was typed. Returns the HEAD commit
     each path will be loaded from, in the order the paths were given. `ignores`
     holds each path's ignore list, in the same order: it narrows which gitignored
-    files count as read, and exempts nothing from the dirty-file list.
+    files count as read, and exempts nothing from the dirty-file list. With
+    `settings.DEBUG` on, uncommitted files are not refused.
     """
     commits: list[SourceCommit] = []
     root_entries: dict[Path, UncommittedPath] = {}
@@ -1945,7 +1946,9 @@ def check_committed(
             entries = [e for e in entries if e.path != CONFIG_FILE_NAME]
         if entries:
             dirty.append((f"Source path: {path}", entries, root, ignore))
-    if root_entries or dirty:
+    # Under DEBUG, uncommitted files load as they are on disk, so authors can
+    # preview edits locally before committing them.
+    if (root_entries or dirty) and not settings.DEBUG:
         groups = [
             (
                 f"Content repo root: {root}",
