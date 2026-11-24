@@ -36,12 +36,19 @@ meets first when it has several.
                     {% for entry in preview_pages %}{% partial form_page %}{% endfor %}
                 {% else %}
                     {% if child.content %}<c-markdown-container width="full">{{ child.rendered_content }}</c-markdown-container>{% endif %}
-                    {% if total_pages > 1 %}
+                    {% if quiz_facts %}
+                        <c-panel-definition-list>
+                            {% for label, value in quiz_facts %}
+                                <c-panel-definition-row label="{{ label }}">{{ value }}</c-panel-definition-row>
+                            {% endfor %}
+                        </c-panel-definition-list>
+                    {% endif %}
+                    {% if total_pages > 1 and not quiz_facts %}
                         {% comment %}The learner's start page: the counts, and no way to start.{% endcomment %}
                         <div class="flex flex-wrap gap-2">
                             {% include "form_engine/partials/form_facts.html" with page_count=total_pages %}
                         </div>
-                    {% else %}
+                    {% elif total_pages == 1 %}
                         {% for entry in preview_pages %}{% partial form_page %}{% endfor %}
                     {% endif %}
                 {% endif %}

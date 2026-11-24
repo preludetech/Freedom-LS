@@ -26,7 +26,7 @@ from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
 from freedom_ls.form_engine.conditions import full_path
-from freedom_ls.form_engine.models import Form, FormPage
+from freedom_ls.form_engine.models import Form, FormPage, FormStrategy
 from freedom_ls.form_engine.queries import count_sitting_questions, drawing_page_counts
 from freedom_ls.learner_management.queries import is_course_available_to_organisation
 from freedom_ls.panel_framework.actions import PanelAction, count_phrase
@@ -495,6 +495,31 @@ def _form_preview_context(form: Form, page_pk: UUID | None) -> dict[str, object]
     }
 
 
+def _quiz_facts(
+    form: Form, total_pages: int, question_count: int
+) -> list[tuple[str, str]]:
+    """What an educator checks about a quiz before learners sit it."""
+
+    def yes_no(value: bool | None) -> str:
+        return "Yes" if value else "No"
+
+    pass_mark = (
+        "None set"
+        if form.quiz_pass_percentage is None
+        else f"{form.quiz_pass_percentage}%"
+    )
+    return [
+        ("Pages", str(total_pages)),
+        ("Questions", str(question_count)),
+        ("Pass mark", pass_mark),
+        ("Shows incorrect answers", yes_no(form.quiz_show_incorrect)),
+        ("Submits on exit", yes_no(form.submit_on_exit)),
+        ("Shuffle pages", yes_no(form.shuffle_pages)),
+        ("Shuffle questions", yes_no(form.shuffle_questions)),
+        ("Shuffle options", yes_no(form.shuffle_options)),
+    ]
+
+
 class PreviewContentAction(PanelAction):
     """Shows one child of the course read-only in the app modal. The
     target is found among the authorised course's own collection items,
@@ -545,7 +570,15 @@ class PreviewContentAction(PanelAction):
         if index is not None:
             context.update(_stepping_urls(ctx, sequence, index, self.course_list))
         if isinstance(collection_item.child, Form):
-            context.update(_form_preview_context(collection_item.child, page_pk))
+            form = collection_item.child
+            form_context = _form_preview_context(form, page_pk)
+            context.update(form_context)
+            if form.strategy == FormStrategy.QUIZ and page_pk is None:
+                context["quiz_facts"] = _quiz_facts(
+                    form,
+                    cast(int, form_context["total_pages"]),
+                    cast(int, form_context["question_count"]),
+                )
         elif page_pk is not None:
             # Only a form has pages.
             raise Http404

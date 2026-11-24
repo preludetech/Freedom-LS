@@ -1133,7 +1133,7 @@ def test_a_page_with_no_draw_has_no_drawing_line(staff_client: Client) -> None:
 def test_the_start_page_counts_only_what_a_sitting_draws(
     staff_client: Client,
 ) -> None:
-    form = FormFactory(strategy=FormStrategy.QUIZ)
+    form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
     pool = FormPageFactory(form=form, order=0, draw=2)
     for order in range(5):
         FormQuestionFactory(form_page=pool, order=order)
@@ -2047,3 +2047,105 @@ def test_a_topic_preview_query_count_stays_bounded_with_parts_and_a_multi_page_f
 
     with django_assert_max_num_queries(20):
         assert staff_client.get(request_url, HTTP_HX_REQUEST="true").status_code == 200
+
+
+def _quiz(pages: int, **fields: object) -> tuple[Model, list[Model]]:
+    """A quiz with the given number of pages, each holding one question that
+    draws nothing; returns the form and its pages."""
+    form = FormFactory(title="Safety quiz", strategy=FormStrategy.QUIZ, **fields)
+    form_pages = [
+        FormPageFactory(form=form, title=f"Quiz page {number}", order=number)
+        for number in range(pages)
+    ]
+    for form_page in form_pages:
+        FormQuestionFactory(form_page=form_page, question="Is it safe?", order=0)
+    return cast(Model, form), [cast(Model, page) for page in form_pages]
+
+
+def _quiz_facts_block(document: lxml.html.HtmlElement) -> dict[str, str]:
+    """The label and value of each row of the preview's definition list."""
+    return {
+        " ".join(row.cssselect("dt")[0].text_content().split()): " ".join(
+            row.cssselect("dd")[0].text_content().split()
+        )
+        for row in document.cssselect("dl > div")
+    }
+
+
+@pytest.mark.django_db
+def test_a_multi_page_quiz_row_shows_its_facts_in_place_of_the_count_chips(
+    staff_client: Client,
+) -> None:
+    form, _pages = _quiz(
+        2,
+        quiz_pass_percentage=80,
+        quiz_show_incorrect=True,
+        submit_on_exit=True,
+        shuffle_pages=False,
+        shuffle_questions=True,
+        shuffle_options=False,
+    )
+
+    document = _drawing_page_preview(staff_client, form, None)
+
+    assert _quiz_facts_block(document) == {
+        "Pages": "2",
+        "Questions": "2",
+        "Pass mark": "80%",
+        "Shows incorrect answers": "Yes",
+        "Submits on exit": "Yes",
+        "Shuffle pages": "No",
+        "Shuffle questions": "Yes",
+        "Shuffle options": "No",
+    }
+    text = document.text_content()
+    assert "2 questions" not in text
+    assert "2 pages" not in text
+
+
+@pytest.mark.django_db
+def test_a_one_page_quiz_row_shows_its_facts_and_then_its_page(
+    staff_client: Client,
+) -> None:
+    form, _pages = _quiz(1, quiz_pass_percentage=50)
+
+    document = _drawing_page_preview(staff_client, form, None)
+
+    assert _quiz_facts_block(document)["Pages"] == "1"
+    html = lxml.html.tostring(document, encoding="unicode")
+    assert html.index("Pass mark") < html.index("Quiz page 0")
+    assert "Is it safe?" in html
+
+
+@pytest.mark.django_db
+def test_a_quiz_without_a_pass_mark_or_incorrect_answer_setting_says_so(
+    staff_client: Client,
+) -> None:
+    form, _pages = _quiz(2, quiz_pass_percentage=None, quiz_show_incorrect=None)
+
+    facts = _quiz_facts_block(_drawing_page_preview(staff_client, form, None))
+
+    assert facts["Pass mark"] == "None set"
+    assert facts["Shows incorrect answers"] == "No"
+
+
+@pytest.mark.django_db
+def test_a_survey_row_shows_the_count_chips_and_no_facts(
+    staff_client: Client,
+) -> None:
+    form, _second = _three_page_form()
+
+    document = _drawing_page_preview(staff_client, form, None)
+
+    assert document.cssselect("dl") == []
+    assert "3 pages" in document.text_content()
+
+
+@pytest.mark.django_db
+def test_a_quiz_page_row_shows_no_facts(staff_client: Client) -> None:
+    form, pages = _quiz(2)
+
+    document = _drawing_page_preview(staff_client, form, pages[1])
+
+    assert document.cssselect("dl") == []
+    assert "Quiz page 1" in document.text_content()
