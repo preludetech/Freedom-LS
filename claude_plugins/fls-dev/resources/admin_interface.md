@@ -9,10 +9,10 @@ All site-aware models MUST use `SiteAwareModelAdmin`:
 ```python
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
-@admin.register(Topic)
-class TopicAdmin(SiteAwareModelAdmin):
-    list_display = ("title", "subtitle")
-    # site field automatically excluded
+@admin.register(SiteTimeZoneConfig)
+class SiteTimeZoneConfigAdmin(SiteAwareModelAdmin):
+    list_display = ["time_zone", "show_time_zone_to_learners"]
+    fields = ["time_zone", "show_time_zone_to_learners"]
 ```
 
 **What it does:**
@@ -32,20 +32,23 @@ An admin that needs an export extends `SiteAwareExportModelAdmin` and names a re
 from import_export.fields import Field
 from import_export.widgets import ForeignKeyWidget
 
+from django.contrib.auth import get_user_model
+
 from freedom_ls.site_aware_models.admin import SiteAwareExportModelAdmin
 from freedom_ls.site_aware_models.admin_exports import SiteAwareModelResource
 
 
-class TopicResource(SiteAwareModelResource):
-    course = Field(attribute="course", widget=ForeignKeyWidget(Course, "title"))
+class SignupAttributionResource(SiteAwareModelResource):
+    user = Field(attribute="user", widget=ForeignKeyWidget(get_user_model(), "email"))
 
     class Meta:
-        model = Topic
+        model = SignupAttribution
 
 
-@admin.register(Topic)
-class TopicAdmin(SiteAwareExportModelAdmin):
-    resource_classes = [TopicResource]
+@admin.register(SignupAttribution)
+class SignupAttributionAdmin(SiteAwareExportModelAdmin):
+    list_display = ["user", "referral_code", "signed_up_at"]
+    resource_classes = [SignupAttributionResource]
 ```
 
 **What it gives:** an "Export selected ..." action and an "Export" changelist button, both downloading CSV immediately and gated on the model's view permission. The shared
@@ -57,19 +60,31 @@ with a `ForeignKeyWidget` picks a readable column, as above.
 `IMPORT_EXPORT_ESCAPE_FORMULAE_ON_EXPORT` (the package's own escaping is weaker and would run
 first); if `<app>` is imported by `accounts`, resolve the user model with `get_user_model()`.
 
-## django-guardian variant
+## View-only admins
 
-`GuardedModelAdmin` does NOT inherit from `SiteAwareModelAdmin`, so you must manually `exclude = ["site"]` for site-aware models:
+An admin whose rows are written by the app, never by hand, puts `ReadOnlyAdminMixin` (`freedom_ls/site_aware_models/admin.py`) first in its bases. It denies add, change and delete to every user, superusers included, and drops the `delete_selected` action. It also works on inlines.
 
 ```python
-@admin.register(Cohort)
-class CohortAdmin(GuardedModelAdmin):
-    list_display = ["name"]
-    search_fields = ["name"]
-    exclude = ["site"]  # Required for site-aware models
+@admin.register(SignupAttribution)
+class SignupAttributionAdmin(ReadOnlyAdminMixin, SiteAwareExportModelAdmin):
+    readonly_fields = _readonly_field_names(SignupAttribution)
+    resource_classes = [SignupAttributionResource]
 ```
 
-Any admin that does not subclass `SiteAwareModelAdmin` needs `exclude = ["site"]` for a site-aware model.
+`readonly_fields` lists every field so the detail page still shows them. Export stays available, because it is gated on view permission.
+
+## django-guardian variant
+
+Use `GuardedSiteAwareModelAdmin` (`freedom_ls/site_aware_models/admin.py`) for a site-aware model that needs guardian's object permissions. It combines unfold's `ModelAdmin` with `GuardedModelAdmin` and excludes `site`:
+
+```python
+@admin.register(Organisation)
+class OrganisationAdmin(GuardedSiteAwareModelAdmin):
+    list_display = ["name", "slug"]
+    search_fields = ["name"]
+```
+
+A bare `GuardedModelAdmin` does NOT inherit from `SiteAwareModelAdmin`, so it needs `exclude = ["site"]` for a site-aware model. Any admin that does not subclass `SiteAwareModelAdmin` needs the same.
 
 ## FLS key rules
 
