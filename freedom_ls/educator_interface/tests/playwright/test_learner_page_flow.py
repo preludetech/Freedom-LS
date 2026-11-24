@@ -247,7 +247,22 @@ def test_an_attempt_opens_from_the_courses_tab_to_its_paper_and_back(
     assert box["height"] >= 44, f"attempt number trigger is {size} on a phone"
     page.set_viewport_size({"width": 1280, "height": 800})
 
-    quick_view.get_by_role("link", name="Open full review").click()
+    review_link = quick_view.get_by_role("link", name="Open full review")
+    # The link's own padding used to push its text about 24px right of the rows.
+    text_left = review_link.evaluate(
+        """el => {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            return range.getBoundingClientRect().left;
+        }"""
+    )
+    list_box = quick_view.locator("dl").first.bounding_box()
+    assert list_box is not None
+    assert abs(text_left - list_box["x"]) <= 1, (
+        f"link text starts at {text_left}, the list at {list_box['x']}"
+    )
+
+    review_link.click()
     expect(page.get_by_role("heading", name="Unit quiz, attempt 1")).to_be_visible()
     expect(page.get_by_text("What is two plus two?")).to_be_visible()
     expect(page.get_by_text("Learner's answer").first).to_be_visible()
