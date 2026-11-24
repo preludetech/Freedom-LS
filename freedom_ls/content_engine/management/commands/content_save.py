@@ -83,6 +83,7 @@ from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.schema import CoursePart as CoursePartSchema
 from freedom_ls.content_engine.signals import (
     collection_items_synced,
+    course_retirement_changed,
     part_placement_removed,
 )
 from freedom_ls.content_engine.validate import (
@@ -196,6 +197,42 @@ def _retire_count_line(ledger: _RunLedger) -> str:
         if ledger.unretired(model)
     }
     return f"{describe('Retired', retired)} {describe('Un-retired', unretired)}"
+
+
+def _placing_collections(
+    site: Site, children: Mapping[type[Model], Collection[Hashable]]
+) -> dict[str, set[uuid.UUID]]:
+    """The collections that place any of the given children, grouped by the lowercase
+    model name of the collection."""
+    placing: dict[str, set[uuid.UUID]] = defaultdict(set)
+    for child_model, child_pks in children.items():
+        if not child_pks:
+            continue
+        rows = ContentCollectionItem._base_manager.filter(
+            site=site,
+            child_type=DjangoContentType.objects.get_for_model(child_model),
+            child_id__in=child_pks,
+        ).select_related("collection_type")
+        for row in rows:
+            placing[row.collection_type.model].add(row.collection_id)
+    return placing
+
+
+def _courses_with_retirement_changes(site: Site, ledger: _RunLedger) -> set[uuid.UUID]:
+    """The courses whose content tree had a child or part retired or un-retired.
+
+    A child placed in a part reaches its course through the part's own placement.
+    """
+    changed: dict[type[Model], Collection[Hashable]] = {
+        model: ledger.retired[model] | ledger.unretired(model)
+        for model in (Topic, Activity, Form, CoursePart)
+    }
+    placing = _placing_collections(site, changed)
+    courses = placing["course"]
+    part_pks = placing["coursepart"]
+    if part_pks:
+        courses |= _placing_collections(site, {CoursePart: part_pks})["course"]
+    return courses
 
 
 def represent_str(dumper, data):
@@ -1935,6 +1972,10 @@ def _write_sources(
         # catches a course whose file parsed but was never written.
         if refuse_course_retire and ledger.retired[Course]:
             raise CommandError(_course_retire_refusal(ledger.retired[Course]))
+        for course in Course._base_manager.filter(
+            site=site, pk__in=_courses_with_retirement_changes(site, ledger)
+        ):
+            course_retirement_changed.send(sender=Course, site=site, course=course)
 
     if source_commits is not None:
         content_save = ContentSave.objects.create(

@@ -17,7 +17,8 @@ from freedom_ls.content_engine.factories import (
     CourseFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import ContentCollectionItem
+from freedom_ls.content_engine.models import ContentCollectionItem, Course, Topic
+from freedom_ls.content_engine.signals import course_retirement_changed
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_management.factories import (
@@ -55,6 +56,7 @@ from freedom_ls.learner_progress.tests.helpers import (
     cohort_registration,
     make_move_world,
 )
+from freedom_ls.tests.retire import retire
 
 
 def _webhook_events():
@@ -1339,3 +1341,55 @@ class TestCarryingCourseProgressOnMove:
                 "cohort_id", flat=True
             )
         ) == [world.source.pk]
+
+
+def _course_with_two_topics_one_completed() -> tuple[
+    Course, CourseProgress, Topic, Topic
+]:
+    course = cast(Course, CourseFactory())
+    record: CourseProgress = CourseProgressFactory(course=course)
+    kept, retiring = cast(Topic, TopicFactory()), cast(Topic, TopicFactory())
+    for order, topic in enumerate((kept, retiring)):
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=order
+        )
+    kept_item = ContentCollectionItem.objects.get(child_id=kept.pk)
+    TopicProgressFactory(
+        course_progress=record,
+        collection_item=kept_item,
+        topic=kept,
+        complete_time=timezone.now(),
+    )
+    CourseProgress._base_manager.filter(pk=record.pk).update(progress_percentage=50)
+    return course, record, kept, retiring
+
+
+@pytest.mark.django_db
+def test_retiring_a_topic_recalculates_the_course_percentage_of_each_record(
+    mock_site_context,
+):
+    course, record, _, retiring = _course_with_two_topics_one_completed()
+    retire(retiring)
+
+    course_retirement_changed.send(sender=Course, site=course.site, course=course)
+
+    record.refresh_from_db()
+    assert record.progress_percentage == 100
+
+
+@pytest.mark.django_db
+def test_a_course_left_with_nothing_to_complete_keeps_its_stored_percentage_and_completed_time(
+    mock_site_context,
+):
+    course, record, kept, retiring = _course_with_two_topics_one_completed()
+    finished_at = timezone.now()
+    CourseProgress._base_manager.filter(pk=record.pk).update(
+        progress_percentage=100, completed_time=finished_at
+    )
+    retire(kept)
+    retire(retiring)
+
+    course_retirement_changed.send(sender=Course, site=course.site, course=course)
+
+    record.refresh_from_db()
+    assert (record.progress_percentage, record.completed_time) == (100, finished_at)

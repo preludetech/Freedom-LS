@@ -25,7 +25,10 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from freedom_ls.content_engine.models import ContentCollectionItem, Course, CoursePart
-from freedom_ls.content_engine.signals import part_placement_removed
+from freedom_ls.content_engine.signals import (
+    course_retirement_changed,
+    part_placement_removed,
+)
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.form_engine.signals import form_attempt_completed
 from freedom_ls.learner_management.models import (
@@ -192,6 +195,24 @@ def recalculate_course_progress_on_form_attempt(
     recalculate_progress_percentage(course_attempt.course_progress)
 
 
+def _recalculate_course_records(site: Site, course: Course) -> None:
+    """Rewrite the stored percentage of every record of a course whose path changed.
+
+    A course left with nothing to complete keeps its records as they are: the
+    percentage of an empty path is 0, which would undo a finished learner's 100.
+    """
+    # A fresh instance, shared by every record: Course memoizes its tree, and the
+    # caller's may predate the change.
+    fresh_course = Course._base_manager.get(pk=course.pk)
+    if not completable_items(fresh_course):
+        return
+    for record in CourseProgress._base_manager.filter(
+        site=site, course=course
+    ).iterator():
+        record.course = fresh_course
+        recalculate_progress_percentage(record)
+
+
 @receiver(
     part_placement_removed, dispatch_uid="learner_progress.part_placement_removed"
 )
@@ -206,20 +227,25 @@ def recalculate_course_progress_on_placement_removal(
 
     No completion fires for this: the learner did nothing, the course lost a part. A
     record left alone would keep the percentage it had against the longer path.
-
-    A course left with nothing to complete keeps its records as they are: the
-    percentage of an empty path is 0, which would undo a finished learner's 100.
     """
-    # A fresh instance, shared by every record: Course memoizes its tree, and the
-    # caller's may predate the removal.
-    fresh_course = Course._base_manager.get(pk=course.pk)
-    if not completable_items(fresh_course):
-        return
-    for record in CourseProgress._base_manager.filter(
-        site=site, course=course
-    ).iterator():
-        record.course = fresh_course
-        recalculate_progress_percentage(record)
+    _recalculate_course_records(site, course)
+
+
+@receiver(
+    course_retirement_changed, dispatch_uid="learner_progress.course_retirement_changed"
+)
+def recalculate_course_progress_on_retirement_change(
+    sender: type[Course],
+    site: Site,
+    course: Course,
+    **kwargs: object,
+) -> None:
+    """Recalculate every record of a course whose content a load retired or un-retired.
+
+    Retired children drop out of the learning path, and a returning one rejoins it, so
+    each record's stored percentage is measured against a different path than before.
+    """
+    _recalculate_course_records(site, course)
 
 
 def _ensure_and_announce(

@@ -19,3 +19,8 @@ collection_items_synced = Signal()
 # mapping of model label to rows deleted, and content_save adds it to the counts it
 # reports. A receiver that raises rolls the load back.
 part_placement_removed = Signal()
+
+# Sent inside the load's transaction, once per course whose content tree had a
+# child or part retired or un-retired by the load, with `site` and `course`.
+# A receiver that raises rolls the load back.
+course_retirement_changed = Signal()

@@ -69,6 +69,7 @@ from freedom_ls.content_engine.models import (
     PriceKind,
     Topic,
 )
+from freedom_ls.content_engine.signals import course_retirement_changed
 from freedom_ls.content_engine.tests.helpers import write_organisation_course
 from freedom_ls.content_engine.validate import parse_single_file, resolve_author_path
 from freedom_ls.form_engine.factories import FormFactory
@@ -6894,3 +6895,94 @@ def test_category_slug_refusal_for_a_live_owner_omits_retired(
         save_content_to_db(tmp_path, site.name)
 
     assert "another CourseCategory" in str(exc_info.value)
+
+
+@pytest.fixture
+def retirement_signal_courses() -> Iterator[list[uuid.UUID]]:
+    """The pk of the course each `course_retirement_changed` send names."""
+    sent: list[uuid.UUID] = []
+
+    def receiver(sender: type[Course], course: Course, **kwargs: object) -> None:
+        sent.append(course.pk)
+
+    course_retirement_changed.connect(receiver, weak=False)
+    yield sent
+    course_retirement_changed.disconnect(receiver)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "remove",
+    [
+        pytest.param(_remove_path("main", "01. Part", "01. inside.md"), id="topic"),
+        pytest.param(_remove_path("main", "01. Part"), id="part_with_its_topic"),
+    ],
+)
+def test_run_sends_the_retirement_signal_once_for_the_course_of_a_retired_row(
+    site, mock_site_context, tmp_path, retirement_signal_courses, remove
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    retirement_signal_courses.clear()
+    remove(tmp_path)
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert retirement_signal_courses == [uuid.UUID(MAIN_COURSE_UUID)]
+
+
+@pytest.mark.django_db
+def test_run_sends_the_retirement_signal_for_the_course_of_a_topic_inside_a_retired_part(
+    site, mock_site_context, tmp_path, retirement_signal_courses
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    retirement_signal_courses.clear()
+    (tmp_path / "main" / "01. Part" / "part.yaml").unlink()
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert retirement_signal_courses == [uuid.UUID(MAIN_COURSE_UUID)]
+
+
+@pytest.mark.django_db
+def test_run_sends_the_retirement_signal_for_the_course_of_an_un_retired_topic(
+    site, mock_site_context, tmp_path, retirement_signal_courses
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    _remove_path("main", "01. Part", "01. inside.md")(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    retirement_signal_courses.clear()
+    _write_topic(
+        tmp_path / "main" / "01. Part", "01. inside.md", "Inside", PART_TOPIC_UUID
+    )
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert retirement_signal_courses == [uuid.UUID(MAIN_COURSE_UUID)]
+
+
+@pytest.mark.django_db
+def test_run_sends_no_retirement_signal_when_a_topic_outside_every_course_retires(
+    site, mock_site_context, tmp_path, retirement_signal_courses
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    _remove_path("loose_topic.md")(tmp_path)
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert retirement_signal_courses == []
+
+
+@pytest.mark.django_db
+def test_run_sends_no_retirement_signal_when_nothing_changes(
+    site, mock_site_context, tmp_path, retirement_signal_courses
+):
+    _write_source_with_one_of_each(tmp_path)
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    assert retirement_signal_courses == []
