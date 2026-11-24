@@ -81,8 +81,7 @@ would validate without it, but it's also the wrong spelling for the codebase's o
 convention. Spell it `"site"`, and any model with a live admin form takes
 `ConstraintValidationFormMixin` (`freedom_ls/site_aware_models/forms.py`) so the
 constraint's errors land on the form instead of surfacing as an `IntegrityError` 500
-at the database. `freedom_ls/organisations/forms.py` and
-`freedom_ls/learner_management/forms.py` are worked examples.
+at the database. `freedom_ls/organisations/forms.py` is a worked example.
 
 ## `default_auto_field` on every model-defining app
 
