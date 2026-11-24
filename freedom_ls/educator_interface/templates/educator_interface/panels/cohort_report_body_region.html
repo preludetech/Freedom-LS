@@ -67,7 +67,7 @@ refresh_url.
                                             <th scope="col">When</th>
                                         {% endif %}
                                         {% for quiz in table.quizzes %}
-                                            <th scope="col">{{ quiz.abbreviation }}</th>
+                                            <th scope="col">{{ quiz.abbreviation }}{% if quiz.retired %} <c-panel-status-badge label="Retired" data-testid="retired-badge" />{% endif %}</th>
                                         {% endfor %}
                                     </tr>
                                 </c-slot>
@@ -120,6 +120,7 @@ refresh_url.
             {% for card in confusions %}
                 <section aria-labelledby="report-confusion-{{ forloop.counter }}-title" class="space-y-3">
                     <c-panel-heading tag="h4" id="report-confusion-{{ forloop.counter }}-title">{{ card.heading }}</c-panel-heading>
+                    {% if card.quiz.retired %}<c-panel-status-badge label="Retired" data-testid="retired-badge" />{% endif %}
                     <c-panel-table caption="{{ card.heading }}">
                         <c-slot name="head">
                             <tr>
@@ -133,7 +134,7 @@ refresh_url.
                             <tr class="align-top">
                                 <td class="whitespace-nowrap">Q{{ question.question_number }}</td>
                                 <td>
-                                    {{ question.question_text }}
+                                    {{ question.question_text }}{% if question.question_retired %} <c-panel-status-badge label="Retired" data-testid="retired-badge" />{% endif %}
                                     <div class="mt-1 flex flex-wrap gap-1">{% for text in question.correct_option_texts %}<c-chip variant="success" size="xs">{{ text }}</c-chip>{% endfor %}</div>
                                 </td>
                                 <td>

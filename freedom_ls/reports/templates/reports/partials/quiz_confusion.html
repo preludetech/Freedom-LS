@@ -5,7 +5,7 @@ number a question's options, and labelling them here would invent an ordering
 the learner never saw.
 {% endcomment %}
 <div class="quiz-confusion" id="confusions-{{ quiz.form_id }}">
-  <h3 class="confusion-heading">{{ quiz.title }}</h3>
+  <h3 class="confusion-heading">{{ quiz.title }}{% if quiz.retired %} <span class="chip chip-neutral">Retired</span>{% endif %}</h3>
   <table class="confusion-table">
     <colgroup>
       <col class="col-question-number">
@@ -26,7 +26,7 @@ the learner never saw.
       <tr>
         <td class="col-question-number">Q{{ question.question_number }}</td>
         <td class="confusion-question">
-          {{ question.question_text }}
+          {{ question.question_text }}{% if question.question_retired %} <span class="chip chip-neutral">Retired</span>{% endif %}
           <span class="correct-answers">{% for text in question.correct_option_texts %}<span class="chip chip-success">{{ text }}</span>{% endfor %}</span>
         </td>
         <td class="confusion-distractors">{% for text, count in question.distractors %}<span class="chip chip-error">{{ text }} <span class="chip-count">×{{ count }}</span></span>{% endfor %}</td>

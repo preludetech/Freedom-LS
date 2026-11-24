@@ -36,7 +36,7 @@ and the column budget is the constraint that decides whether a table splits.
         <th>When</th>
         {% endif %}
         {% for quiz in table.quizzes %}
-        <th class="col-quiz-head">{{ quiz.abbreviation }}</th>
+        <th class="col-quiz-head">{{ quiz.abbreviation }}{% if quiz.retired %} <span class="chip chip-neutral">Retired</span>{% endif %}</th>
         {% endfor %}
       </tr>
     </thead>

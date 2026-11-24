@@ -1031,6 +1031,70 @@ class TestCohortReportBody:
         assert "Astronomy" in headings
         assert "Orbit Quiz" in headings
 
+    def test_a_retired_quiz_column_and_question_carry_a_retired_badge(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        quiz = QuizColumn(
+            form_id=uuid4(),
+            title="Orbit Quiz",
+            abbreviation="OQ",
+            pass_percentage=50,
+            retired=True,
+        )
+        row = LearnerRow(
+            learner_id=uuid4(),
+            full_name="Ada Able",
+            completion_percentage=50,
+            completed_item_count=1,
+            total_item_count=2,
+            last_completed_title=None,
+            last_completed_at=None,
+            quiz_cells={quiz.form_id: None},
+        )
+        section = course_section(
+            title="Astronomy",
+            quizzes=[quiz],
+            learner_rows=[row],
+            summary_tables=[
+                SummaryTable(
+                    quizzes=[quiz], rows=[summary_row(row, [quiz])], continued=False
+                )
+            ],
+            confusions_by_quiz={
+                quiz.form_id: ConfusionBlock(
+                    questions=[_confusion(question_retired=True)], shown=1, total=1
+                )
+            },
+        )
+        cache.set(
+            _cache_key(cohort.site_id, cohort.pk, "report"),
+            cohort_report_data(courses=[section]),
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        (column_badge,) = region.cssselect(
+            "section[aria-labelledby='report-summary-title'] thead [data-testid='retired-badge']"
+        )
+        assert column_badge.text_content().strip() == "Retired"
+        (question_badge,) = region.cssselect(
+            "section[aria-labelledby='report-confusions-title'] tbody [data-testid='retired-badge']"
+        )
+        assert question_badge.text_content().strip() == "Retired"
+
+    def test_a_live_quiz_column_carries_no_retired_badge(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_report_cache(cohort, _confusion())
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert region.cssselect("[data-testid='retired-badge']") == []
+
     def test_a_learner_name_in_a_summary_row_links_to_the_learner_page(
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:

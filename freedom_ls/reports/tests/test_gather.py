@@ -123,6 +123,7 @@ from freedom_ls.reports.tests.gather_input_builders import (
 )
 from freedom_ls.reports.tests.helpers import form_progress, topic_progress
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retired
 
 # Organisation.name allows 150 characters, and this is one of exactly that
 # length, so both the wordmark and the footer budget have to cut it.
@@ -2273,7 +2274,10 @@ class TestTallyQuizAnswers:
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
         counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
-        assert list(counts.items()) == [(("Venus", False), 2), (("Mercury", False), 1)]
+        assert list(counts.items()) == [
+            (("Venus", False, False), 2),
+            (("Mercury", False, False), 1),
+        ]
 
     def test_a_correct_sittings_selections_are_not_counted(self) -> None:
         quiz = a_quiz()
@@ -2319,7 +2323,10 @@ class TestTallyQuizAnswers:
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
         counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
-        assert list(counts.items()) == [(("Mars", True), 1), (("Sun", False), 1)]
+        assert list(counts.items()) == [
+            (("Mars", True, False), 1),
+            (("Sun", False, False), 1),
+        ]
 
     def test_an_option_with_no_verdict_is_tallied_as_neither(self) -> None:
         """`correct` is nullable, and None is not True -- it is also not False.
@@ -2344,7 +2351,7 @@ class TestTallyQuizAnswers:
         tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
 
         counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
-        assert list(counts.items()) == [(("Pluto", None), 1)]
+        assert list(counts.items()) == [(("Pluto", None, False), 1)]
 
 
 class TestBuildWrongAnswersByUserQuiz:
@@ -2382,7 +2389,7 @@ class TestBuildWrongAnswersByUserQuiz:
         tallies = QuizTallies(
             wrong_counts={(LEARNER_ID, quiz.id, question.id): 2},
             wrong_selected_counts={
-                (LEARNER_ID, quiz.id, question.id): {("Sun", False): 2}
+                (LEARNER_ID, quiz.id, question.id): {("Sun", False, False): 2}
             },
             respondent_counts={},
             wrong_counts_first={},
@@ -2405,9 +2412,9 @@ class TestBuildWrongAnswersByUserQuiz:
             wrong_counts={(LEARNER_ID, quiz.id, question.id): 1},
             wrong_selected_counts={
                 (LEARNER_ID, quiz.id, question.id): {
-                    ("Mars", True): 1,
-                    ("Sun", False): 1,
-                    ("Pluto", None): 1,
+                    ("Mars", True, False): 1,
+                    ("Sun", False, False): 1,
+                    ("Pluto", None, False): 1,
                 }
             },
             respondent_counts={},
@@ -3106,3 +3113,187 @@ class TestAttemptNumberOf:
         sitting = FormProgressFactory(form=quiz, completed_time=timezone.now())
 
         assert attempt_number_of(sitting) is None
+
+
+def _course_with_a_topic_and_quiz_each_to_retire() -> tuple[
+    Course, Topic, Topic, Form, Form
+]:
+    """A course of a live topic, a "gone" topic, a live quiz and a "gone" quiz.
+
+    Nothing is retired yet: progress can only be recorded against content that is
+    still placed, so a test retires the two "gone" items once it has recorded any.
+    """
+    course: Course = CourseFactory()
+    live_topic: Topic = TopicFactory(title="Live Topic")
+    gone_topic: Topic = TopicFactory(title="Gone Topic")
+    live_quiz: Form = FormFactory(title="Live Quiz", strategy=FormStrategy.QUIZ)
+    gone_quiz: Form = FormFactory(title="Gone Quiz", strategy=FormStrategy.QUIZ)
+    for order, child in enumerate([live_topic, gone_topic, live_quiz, gone_quiz]):
+        _attach(course, child, order=order)
+    return course, live_topic, gone_topic, live_quiz, gone_quiz
+
+
+@pytest.mark.django_db
+class TestRetiredContentInTheReport:
+    def test_a_retired_quiz_stays_as_a_column_flagged_retired(
+        self, mock_site_context
+    ) -> None:
+        course, _topic, _gone_topic, _live_quiz, gone_quiz = (
+            _course_with_a_topic_and_quiz_each_to_retire()
+        )
+        retired(gone_quiz)
+        cohort, _record = _one_learner_cohort(course)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        assert [(q.title, q.retired) for q in data.courses[0].quizzes] == [
+            ("Live Quiz", False),
+            ("Gone Quiz", True),
+        ]
+
+    def test_a_retired_quiz_column_still_shows_the_recorded_result(
+        self, mock_site_context
+    ) -> None:
+        course, _live_topic, _gone_topic, _live_quiz, gone_quiz = (
+            _course_with_a_topic_and_quiz_each_to_retire()
+        )
+        cohort, record = _one_learner_cohort(course)
+        form_progress(
+            record,
+            gone_quiz,
+            completed_time=timezone.now(),
+            scores={"score": 1, "max_score": 2},
+        )
+        retired(gone_quiz)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        result = data.courses[0].learner_rows[0].quiz_cells[gone_quiz.id]
+        assert result is not None
+        assert (result.latest_score, result.latest_max_score) == (1, 2)
+
+    def test_a_retired_topic_and_quiz_are_out_of_the_completion_denominator(
+        self, mock_site_context
+    ) -> None:
+        course, live_topic, gone_topic, _live_quiz, gone_quiz = (
+            _course_with_a_topic_and_quiz_each_to_retire()
+        )
+        cohort, record = _one_learner_cohort(course)
+        topic_progress(record, live_topic, complete_time=timezone.now())
+        topic_progress(record, gone_topic, complete_time=timezone.now())
+        form_progress(
+            record,
+            gone_quiz,
+            completed_time=timezone.now(),
+            scores={"score": 1, "max_score": 1},
+        )
+        retired(gone_topic)
+        retired(gone_quiz)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        row = data.courses[0].learner_rows[0]
+        assert (row.completed_item_count, row.total_item_count) == (1, 2)
+        assert row.completion_percentage == 50
+        detail = data.learners[0]
+        assert (detail.completed_item_count, detail.total_item_count) == (1, 2)
+        assert [item.title for item in detail.completed_items] == ["Live Topic"]
+
+    def test_a_wrong_answer_to_a_retired_question_is_listed_and_flagged(
+        self, mock_site_context
+    ) -> None:
+        cohort, record, quiz, questions = _cohort_with_two_question_quiz()
+        (gone, _), (kept, _) = questions
+        retired(gone)
+        attempt = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 2},
+        )
+        for question in (gone, kept):
+            wrong = question.options.get(text="Wrong")
+            QuestionAnswerFactory(
+                form_progress=attempt, question=question
+            ).selected_options.add(wrong)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        answers = data.learners[0].wrong_answers[0].answers
+        assert [(a.question_text, a.question_retired) for a in answers] == [
+            ("Question 1?", True),
+            ("Question 2?", False),
+        ]
+
+    def test_a_retired_question_is_flagged_in_the_cohort_confusions(
+        self, mock_site_context
+    ) -> None:
+        cohort, record, quiz, questions = _cohort_with_two_question_quiz()
+        (gone, _), _ = questions
+        retired(gone)
+        attempt = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 2},
+        )
+        QuestionAnswerFactory(
+            form_progress=attempt, question=gone
+        ).selected_options.add(gone.options.get(text="Wrong"))
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        confusions = data.courses[0].confusions_by_quiz[quiz.id].questions
+        assert {c.question_text: c.question_retired for c in confusions} == {
+            "Question 1?": True,
+            "Question 2?": False,
+        }
+
+    def test_a_chosen_retired_option_is_flagged(self, mock_site_context) -> None:
+        cohort, record, quiz, questions = _cohort_with_two_question_quiz()
+        (question, _), _ = questions
+        old = QuestionOptionFactory(
+            question=question, text="Old distractor", correct=False, order=2
+        )
+        retired(old)
+        attempt = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 0, "max_score": 2},
+        )
+        answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+        answer.selected_options.add(old)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        (wrong,) = [
+            a
+            for a in data.learners[0].wrong_answers[0].answers
+            if a.question_text == "Question 1?"
+        ]
+        assert [(o.text, o.retired) for o in wrong.selected_options] == [
+            ("Old distractor", True)
+        ]
+
+
+class TestCompletionFiguresSkipRetiredItems:
+    def test_a_retired_item_is_in_neither_completed_nor_total(self) -> None:
+        live, gone = a_topic(), a_topic()
+        progress = a_progress_index(
+            completed_topic_ids_by_learner={LEARNER_ID: {live.id, gone.id}}
+        )
+
+        counts = _completion_counts(
+            [live, gone], LEARNER_ID, progress, frozenset({gone.id})
+        )
+
+        assert counts == (1, 1)
+
+    def test_a_completed_retired_item_is_not_listed_as_completed(self) -> None:
+        gone = a_topic("Gone")
+        progress = a_progress_index(topic_complete_time={(LEARNER_ID, gone.id): JAN_1})
+
+        completed = _completed_items([gone], LEARNER_ID, progress, frozenset({gone.id}))
+
+        assert completed == []

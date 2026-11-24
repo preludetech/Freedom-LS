@@ -2460,6 +2460,42 @@ def _any_page_has_image_xobject(reader: PdfReader) -> bool:
     return any(_page_has_image_xobject(page) for page in reader.pages)
 
 
+def _with_a_retired_quiz_and_question() -> CohortReportData:
+    data = full_report_data()
+    (section,) = [course for course in data.courses if course.quizzes]
+    quiz = dataclasses.replace(section.quizzes[0], retired=True)
+    block = section.confusions_by_quiz[quiz.form_id]
+    retired_block = dataclasses.replace(
+        block,
+        questions=[
+            dataclasses.replace(question, question_retired=True)
+            for question in block.questions
+        ],
+    )
+    retired_section = dataclasses.replace(
+        section,
+        quizzes=[quiz],
+        summary_tables=[
+            dataclasses.replace(table, quizzes=[quiz])
+            for table in section.summary_tables
+        ],
+        confusions_by_quiz={quiz.form_id: retired_block},
+    )
+    return dataclasses.replace(
+        data,
+        courses=[retired_section if c is section else c for c in data.courses],
+    )
+
+
+@pytest.mark.weasyprint
+@requires_tailwind_bundle
+class TestRetiredContentInThePdf:
+    def test_a_retired_quiz_and_question_are_marked_retired(self) -> None:
+        pdf = render_report_pdf(_with_a_retired_quiz_and_question())
+
+        assert "Retired" in _joined_text(_reader(pdf))
+
+
 @pytest.mark.weasyprint
 @requires_tailwind_bundle
 class TestRenderReportPdf:

@@ -150,6 +150,7 @@ def a_catalogue(
     forms_by_id: dict[UUID, Form] | None = None,
     quiz_form_ids: set[UUID] | None = None,
     ordered_quiz_form_ids: list[UUID] | None = None,
+    retired_item_ids: frozenset[UUID] = frozenset(),
 ) -> CourseCatalogue:
     items = course_items if course_items is not None else {}
     all_items = [item for course in items.values() for item in course]
@@ -175,6 +176,7 @@ def a_catalogue(
             if ordered_quiz_form_ids is not None
             else [form_id for form_id in forms if form_id in quiz_ids]
         ),
+        retired_item_ids=retired_item_ids,
     )
 
 

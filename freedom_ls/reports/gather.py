@@ -145,10 +145,12 @@ class QuizTallies:
     # selected in. A single attempt cannot select the same option twice, so a
     # count never exceeds the matching wrong_counts entry. The verdict rides in
     # the key so a multi-select answer's right ticks stay distinguishable from
-    # the tick that cost the mark. Key order is first-seen order -- see the
-    # ordering note on FormProgressIndex.completed_attempt_ids.
+    # the tick that cost the mark. Whether the option is retired rides in the
+    # key too, so a retired option is marked on the row that lists it. Key order
+    # is first-seen order -- see the ordering note on
+    # FormProgressIndex.completed_attempt_ids.
     wrong_selected_counts: dict[
-        tuple[UUID, UUID, UUID], dict[tuple[str, bool | None], int]
+        tuple[UUID, UUID, UUID], dict[tuple[str, bool | None, bool], int]
     ]
     # Cohort-wide confusion tally, first attempts only.
     respondent_counts: dict[UUID, int]
@@ -285,10 +287,26 @@ def _completion_percentage(completed_count: int, total_count: int) -> int:
     return min(99, max(1, round(completed_count / total_count * 100)))
 
 
+def _live_items(
+    items: list[Topic | Form], retired_item_ids: frozenset[UUID]
+) -> list[Topic | Form]:
+    """The items that count toward completion: everything not retired."""
+    return [item for item in items if item.id not in retired_item_ids]
+
+
 def _completion_counts(
-    items: list[Topic | Form], learner_id: UUID, progress: ProgressIndex
+    items: list[Topic | Form],
+    learner_id: UUID,
+    progress: ProgressIndex,
+    retired_item_ids: frozenset[UUID] = frozenset(),
 ) -> tuple[int, int]:
-    """(completed_count, total_count) for one learner over the given items."""
+    """(completed_count, total_count) for one learner over the given items.
+
+    Retired items are in neither number, so a learner who finished a topic that
+    was later retired is not shown as having completed more than the course now
+    holds.
+    """
+    items = _live_items(items, retired_item_ids)
     completed_topic_ids = progress.topics.completed_topic_ids_by_learner.get(
         learner_id, set()
     )
@@ -333,8 +351,12 @@ def _latest_completion(
 
 
 def _completed_items(
-    items: list[Topic | Form], learner_id: UUID, progress: ProgressIndex
+    items: list[Topic | Form],
+    learner_id: UUID,
+    progress: ProgressIndex,
+    retired_item_ids: frozenset[UUID] = frozenset(),
 ) -> list[CompletedItem]:
+    items = _live_items(items, retired_item_ids)
     completed: list[CompletedItem] = []
     completed_form_ids = progress.forms.completed_form_ids_by_learner.get(
         learner_id, set()
@@ -461,7 +483,7 @@ def tally_quiz_answers(
     """
     wrong_counts: dict[tuple[UUID, UUID, UUID], int] = defaultdict(int)
     wrong_selected_counts: dict[
-        tuple[UUID, UUID, UUID], dict[tuple[str, bool | None], int]
+        tuple[UUID, UUID, UUID], dict[tuple[str, bool | None, bool], int]
     ] = defaultdict(lambda: defaultdict(int))
     respondent_counts: dict[UUID, int] = defaultdict(int)
     wrong_counts_first: dict[UUID, int] = defaultdict(int)
@@ -474,7 +496,9 @@ def tally_quiz_answers(
             for option in sat.selected_options_by_pair.get(
                 (attempt_id, question.id), []
             ):
-                wrong_selected_counts[wrong_key][(option.text, option.correct)] += 1
+                wrong_selected_counts[wrong_key][
+                    (option.text, option.correct, option.is_retired)
+                ] += 1
         if attempt_id in first_attempt_ids:
             respondent_counts[question.id] += 1
             if not is_correct:
@@ -502,12 +526,19 @@ def build_wrong_answers_by_learner_quiz(
                 question_text=questions.by_id[question_id].question,
                 times_wrong=times_wrong,
                 selected_options=[
-                    SelectedOption(text=text, correct=correct, count=count)
-                    for (text, correct), count in tallies.wrong_selected_counts[
+                    SelectedOption(
+                        text=text, correct=correct, count=count, retired=retired
+                    )
+                    for (
+                        text,
+                        correct,
+                        retired,
+                    ), count in tallies.wrong_selected_counts[
                         (learner_id, form_id, question_id)
                     ].items()
                 ],
                 correct_option_texts=questions.correct_option_texts[question_id],
+                question_retired=questions.by_id[question_id].is_retired,
             )
         )
     for per_quiz in wrong_answers_by_learner_quiz.values():
@@ -557,6 +588,7 @@ def build_confusion_block(
                 else None,
                 distractors=distractors_by_question.get(question.id, []),
                 correct_option_texts=questions.correct_option_texts[question.id],
+                question_retired=question.is_retired,
             )
         )
     return ConfusionBlock(
@@ -594,6 +626,7 @@ def _build_quiz_columns(items: list[Topic | Form]) -> list[QuizColumn]:
             title=form.title,
             abbreviation=abbreviation,
             pass_percentage=form.quiz_pass_percentage,
+            retired=form.is_retired,
         )
         for form, abbreviation in zip(quiz_forms, abbreviations, strict=True)
     ]
@@ -607,7 +640,9 @@ def _build_learner_row(
     catalogue: CourseCatalogue,
     progress: ProgressIndex,
 ) -> LearnerRow:
-    completed_count, total_count = _completion_counts(items, learner_id, progress)
+    completed_count, total_count = _completion_counts(
+        items, learner_id, progress, catalogue.retired_item_ids
+    )
     last_title, last_at = _latest_completion(items, learner_id, progress)
     quiz_cells: dict[UUID, QuizResult | None] = {
         column.form_id: _quiz_result_for(
@@ -672,7 +707,7 @@ def _build_course_section(
         course_id=course.id,
         title=course.title,
         is_active=reg.is_active,
-        item_count=len(items),
+        item_count=len(_live_items(items, catalogue.retired_item_ids)),
         quizzes=quiz_columns,
         learner_rows=learner_rows,
         summary_tables=_build_summary_tables(
@@ -717,9 +752,13 @@ def _build_learner_detail(
 ) -> LearnerDetail:
     user = roster.learners_by_id[learner_id]
     all_items = catalogue.all_items
-    completed_count, total_count = _completion_counts(all_items, learner_id, progress)
+    completed_count, total_count = _completion_counts(
+        all_items, learner_id, progress, catalogue.retired_item_ids
+    )
     last_title, last_at = _latest_completion(all_items, learner_id, progress)
-    completed_items = _completed_items(all_items, learner_id, progress)
+    completed_items = _completed_items(
+        all_items, learner_id, progress, catalogue.retired_item_ids
+    )
     quiz_results = [
         result
         for result in (
@@ -1038,14 +1077,19 @@ def _build_course_detail(
     if record_id is None:
         # No course progress record yet: nothing to look up, so the entry is
         # built as not started rather than searching the indexes for nothing.
-        completed_count, total_count, last_title, last_at = 0, len(items), None, None
+        completed_count, last_title, last_at = 0, None, None
+        total_count = len(_live_items(items, catalogue.retired_item_ids))
         completed_items: list[CompletedItem] = []
         quiz_results: list[QuizResult] = []
         has_any_progress = False
     else:
-        completed_count, total_count = _completion_counts(items, record_id, progress)
+        completed_count, total_count = _completion_counts(
+            items, record_id, progress, catalogue.retired_item_ids
+        )
         last_title, last_at = _latest_completion(items, record_id, progress)
-        completed_items = _completed_items(items, record_id, progress)
+        completed_items = _completed_items(
+            items, record_id, progress, catalogue.retired_item_ids
+        )
         quiz_results = [
             result
             for result in (

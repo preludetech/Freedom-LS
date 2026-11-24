@@ -69,7 +69,7 @@ class CohortRoster:
 
 @dataclasses.dataclass(frozen=True)
 class CourseCatalogue:
-    """Every viewable item in the cohort's courses, indexed for lookup."""
+    """Every viewable item in the cohort's courses, retired ones included, indexed for lookup."""
 
     course_items: dict[UUID, list[Topic | Form]]
     # Every course's items concatenated, in registration order. An item shared
@@ -84,6 +84,10 @@ class CourseCatalogue:
     # table columns and a learner's wrong-answer blocks both follow.
     # Deduplicated across courses, unlike all_items.
     ordered_quiz_form_ids: list[UUID]
+    # The topics and forms a content save retired. They stay in the catalogue so
+    # their recorded progress still shows, but they are out of every completion
+    # figure: a learner is never marked down for content nobody can reach.
+    retired_item_ids: frozenset[UUID]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -257,14 +261,17 @@ def build_course_catalogue(
     form_ids: set[UUID] = set()
     quiz_form_ids: set[UUID] = set()
     ordered_quiz_form_ids: list[UUID] = []
+    retired_item_ids: set[UUID] = set()
     for reg in registrations:
         items = [
             item
-            for item in reg.course.viewable_items()
+            for item in reg.course.viewable_items(include_retired=True)
             if isinstance(item, Topic | Form)
         ]
         course_items[reg.course_id] = items
         for item in items:
+            if item.is_retired:
+                retired_item_ids.add(item.id)
             if isinstance(item, Topic):
                 topic_ids.add(item.id)
             else:
@@ -282,6 +289,7 @@ def build_course_catalogue(
         form_ids=form_ids,
         quiz_form_ids=quiz_form_ids,
         ordered_quiz_form_ids=ordered_quiz_form_ids,
+        retired_item_ids=frozenset(retired_item_ids),
     )
 
 

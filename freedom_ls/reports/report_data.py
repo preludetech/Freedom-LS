@@ -90,6 +90,8 @@ class SelectedOption:
     # Wrong attempts this option was selected in. A sitting cannot select the
     # same option twice, so the count never exceeds times_wrong.
     count: int
+    # The option is one a content save retired.
+    retired: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -104,6 +106,9 @@ class WrongAnswer:
     # mistakes against the correct-answer column alongside.
     selected_options: list[SelectedOption]
     correct_option_texts: list[str]
+    # The question is one a content save retired; the wrong answer is still
+    # listed, so a reader can tell why it is no longer in the quiz.
+    question_retired: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -119,6 +124,9 @@ class QuizColumn:
     title: str
     abbreviation: str
     pass_percentage: int | None
+    # The quiz is one a content save retired. Its column stays so recorded
+    # results are still readable, but it counts toward no completion figure.
+    retired: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -233,6 +241,7 @@ class QuizConfusion:
     wrong_percentage: int | None
     distractors: list[tuple[str, int]]
     correct_option_texts: list[str]
+    question_retired: bool = False
 
 
 @dataclasses.dataclass(frozen=True)

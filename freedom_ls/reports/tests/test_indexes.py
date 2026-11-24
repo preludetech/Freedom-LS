@@ -100,7 +100,7 @@ from freedom_ls.tests.images import (
     jpeg_bytes,
     png_bytes,
 )
-from freedom_ls.tests.retire import retire
+from freedom_ls.tests.retire import retire, retired
 
 pytestmark = pytest.mark.django_db
 
@@ -387,6 +387,26 @@ class TestBuildCourseCatalogue:
         )
 
         assert catalogue.ordered_quiz_form_ids == [first.id, second.id]
+
+    def test_a_retired_topic_and_form_stay_in_the_catalogue_and_are_recorded_as_retired(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        live = TopicFactory()
+        gone_topic = retired(TopicFactory())
+        gone_form = retired(FormFactory(strategy=FormStrategy.QUIZ))
+        for order, child in enumerate([live, gone_topic, gone_form]):
+            _attach(course, child, order=order)
+
+        catalogue = build_course_catalogue(
+            load_registrations(cohort, mock_site_context.pk)
+        )
+
+        assert catalogue.all_items == [live, gone_topic, gone_form]
+        assert catalogue.retired_item_ids == {gone_topic.id, gone_form.id}
+        assert catalogue.quiz_form_ids == {gone_form.id}
 
 
 class TestRegistrationIds:
