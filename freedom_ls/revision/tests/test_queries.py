@@ -1,11 +1,13 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.content_engine.models.question_sections import FormQuestionTopic
 from freedom_ls.form_engine.factories import (
     FormFactory,
@@ -15,7 +17,7 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import FormQuestion
 from freedom_ls.learner_progress.factories import TopicProgressFactory
-from freedom_ls.learner_progress.models import TopicProgress
+from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.revision.factories import (
     RevisionReviewFactory,
@@ -47,7 +49,7 @@ from freedom_ls.revision.tests.helpers import (
 @pytest.mark.django_db
 def test_completion_with_no_signal_still_banks_the_sections_questions(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     topic, item = place_topic(course)
     question = question_testing_topic(topic)
@@ -70,7 +72,7 @@ def test_completion_with_no_signal_still_banks_the_sections_questions(
 
 
 @pytest.mark.django_db
-def test_a_question_dropped_from_its_file_is_not_banked(mock_site_context):
+def test_a_question_dropped_from_its_file_is_not_banked(mock_site_context) -> None:
     course = CourseFactory()
     topic, item = place_topic(course)
     question = question_testing_topic(topic)
@@ -96,7 +98,7 @@ def test_a_question_dropped_from_its_file_is_not_banked(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_unfinished_topic_banks_nothing(mock_site_context):
+def test_unfinished_topic_banks_nothing(mock_site_context) -> None:
     course = CourseFactory()
     topic, _item = place_topic(course)
     question_testing_topic(topic)
@@ -108,7 +110,9 @@ def test_unfinished_topic_banks_nothing(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_part_with_one_nested_placement_unfinished_banks_nothing(mock_site_context):
+def test_part_with_one_nested_placement_unfinished_banks_nothing(
+    mock_site_context,
+) -> None:
     course = CourseFactory()
     part, (first, _second) = place_part_with_topics(course, 2)
     question_testing_part(part)
@@ -123,7 +127,7 @@ def test_part_with_one_nested_placement_unfinished_banks_nothing(mock_site_conte
 @pytest.mark.django_db
 def test_part_with_every_nested_placement_finished_banks_its_questions(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     part, (first, second) = place_part_with_topics(course, 2)
     question = question_testing_part(part)
@@ -137,7 +141,7 @@ def test_part_with_every_nested_placement_finished_banks_its_questions(
 
 
 @pytest.mark.django_db
-def test_part_with_nothing_nested_banks_nothing(mock_site_context):
+def test_part_with_nothing_nested_banks_nothing(mock_site_context) -> None:
     course = CourseFactory()
     part, _topics = place_part_with_topics(course, 0)
     question_testing_part(part)
@@ -151,7 +155,7 @@ def test_part_with_nothing_nested_banks_nothing(mock_site_context):
 @pytest.mark.django_db
 def test_topic_placed_in_two_courses_gives_each_course_its_own_bank(
     mock_site_context,
-):
+) -> None:
     topic = TopicFactory()
     finished_course = CourseFactory()
     finished_course.items.create(child=topic, order=0)
@@ -168,7 +172,7 @@ def test_topic_placed_in_two_courses_gives_each_course_its_own_bank(
 
 
 @pytest.mark.django_db
-def test_topic_finished_in_its_own_course_banks_there(mock_site_context):
+def test_topic_finished_in_its_own_course_banks_there(mock_site_context) -> None:
     topic = TopicFactory()
     finished_course = CourseFactory()
     finished_course.items.create(child=topic, order=0)
@@ -184,7 +188,7 @@ def test_topic_finished_in_its_own_course_banks_there(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_free_text_question_is_not_banked(mock_site_context):
+def test_free_text_question_is_not_banked(mock_site_context) -> None:
     course = CourseFactory()
     topic, _item = place_topic(course)
     page = FormPageFactory()
@@ -199,7 +203,9 @@ def test_free_text_question_is_not_banked(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_question_whose_options_are_all_unmarked_is_not_banked(mock_site_context):
+def test_question_whose_options_are_all_unmarked_is_not_banked(
+    mock_site_context,
+) -> None:
     course = CourseFactory()
     topic, _item = place_topic(course)
     question = FormQuestionFactory(form_page=FormPageFactory(), type="multiple_choice")
@@ -217,7 +223,7 @@ def test_question_whose_options_are_all_unmarked_is_not_banked(mock_site_context
 @pytest.mark.django_db
 def test_question_naming_one_finished_and_one_unfinished_section_is_not_banked(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     finished, _item = place_topic(course, order=0)
     unfinished, _other_item = place_topic(course, order=1)
@@ -234,7 +240,7 @@ def test_question_naming_one_finished_and_one_unfinished_section_is_not_banked(
 @pytest.mark.django_db
 def test_question_of_a_quiz_placed_in_the_course_is_not_banked_before_the_quiz_is_completed(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     topic, _item = place_topic(course, order=0)
     quiz = place_form(course, order=1)
@@ -250,7 +256,7 @@ def test_question_of_a_quiz_placed_in_the_course_is_not_banked_before_the_quiz_i
 @pytest.mark.django_db
 def test_question_of_a_quiz_placed_in_the_course_is_banked_once_the_quiz_is_completed(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     topic, _item = place_topic(course, order=0)
     quiz = place_form(course, order=1)
@@ -267,7 +273,7 @@ def test_question_of_a_quiz_placed_in_the_course_is_banked_once_the_quiz_is_comp
 @pytest.mark.django_db
 def test_question_of_a_form_placed_in_no_course_needs_no_completion(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     topic, _item = place_topic(course)
     bank_form = FormFactory()
@@ -281,7 +287,7 @@ def test_question_of_a_form_placed_in_no_course_needs_no_completion(
 
 
 @pytest.mark.django_db
-def test_question_scheduled_for_later_is_not_ready(mock_site_context):
+def test_question_scheduled_for_later_is_not_ready(mock_site_context) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     question = question_testing_topic(topic)
@@ -295,7 +301,9 @@ def test_question_scheduled_for_later_is_not_ready(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_question_without_a_schedule_and_one_that_is_due_are_ready(mock_site_context):
+def test_question_without_a_schedule_and_one_that_is_due_are_ready(
+    mock_site_context,
+) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     unscheduled = question_testing_topic(topic)
@@ -313,7 +321,7 @@ def test_question_without_a_schedule_and_one_that_is_due_are_ready(mock_site_con
 
 
 @pytest.mark.django_db
-def test_due_questions_follow_course_order(mock_site_context):
+def test_due_questions_follow_course_order(mock_site_context) -> None:
     course = CourseFactory()
     first, _ = place_topic(course, order=0)
     second, _ = place_topic(course, order=1)
@@ -329,7 +337,14 @@ def test_due_questions_follow_course_order(mock_site_context):
     assert [q.pk for q in questions] == [earlier_question.pk, later_question.pk]
 
 
-def _banked_question_with_schedule(topic, user, *, now, due, stability):
+def _banked_question_with_schedule(
+    topic: Topic,
+    user: User,
+    *,
+    now: datetime,
+    due: datetime,
+    stability: float,
+) -> FormQuestion:
     question = question_testing_topic(topic)
     RevisionScheduleFactory(
         user=user,
@@ -344,7 +359,7 @@ def _banked_question_with_schedule(topic, user, *, now, due, stability):
 
 
 @pytest.mark.django_db
-def test_due_question_with_lower_retrievability_comes_first(mock_site_context):
+def test_due_question_with_lower_retrievability_comes_first(mock_site_context) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     user = UserFactory()
@@ -365,7 +380,9 @@ def test_due_question_with_lower_retrievability_comes_first(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_due_reviewed_questions_come_before_never_reviewed_ones(mock_site_context):
+def test_due_reviewed_questions_come_before_never_reviewed_ones(
+    mock_site_context,
+) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     user = UserFactory()
@@ -385,7 +402,7 @@ def test_due_reviewed_questions_come_before_never_reviewed_ones(mock_site_contex
 @pytest.mark.django_db
 def test_never_reviewed_questions_follow_course_order_after_reviewed_ones(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     first, _ = place_topic(course, order=0)
     second, _ = place_topic(course, order=1)
@@ -403,7 +420,7 @@ def test_never_reviewed_questions_follow_course_order_after_reviewed_ones(
 
 
 @pytest.mark.django_db
-def test_question_not_yet_due_is_not_in_due_questions(mock_site_context):
+def test_question_not_yet_due_is_not_in_due_questions(mock_site_context) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     user = UserFactory()
@@ -418,7 +435,7 @@ def test_question_not_yet_due_is_not_in_due_questions(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_ready_count_stops_at_the_limit(mock_site_context):
+def test_ready_count_stops_at_the_limit(mock_site_context) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     for _ in range(5):
@@ -431,7 +448,9 @@ def test_ready_count_stops_at_the_limit(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_ready_count_runs_one_query(mock_site_context, django_assert_max_num_queries):
+def test_ready_count_runs_one_query(
+    mock_site_context, django_assert_max_num_queries
+) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     for _ in range(5):
@@ -447,7 +466,7 @@ def test_ready_count_runs_one_query(mock_site_context, django_assert_max_num_que
 
 
 @pytest.mark.django_db
-def test_part_section_opens_at_its_first_nested_placement(mock_site_context):
+def test_part_section_opens_at_its_first_nested_placement(mock_site_context) -> None:
     course = CourseFactory()
     part, topics = place_part_with_topics(course, 2)
 
@@ -458,7 +477,7 @@ def test_part_section_opens_at_its_first_nested_placement(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_topic_section_opens_at_its_own_placement(mock_site_context):
+def test_topic_section_opens_at_its_own_placement(mock_site_context) -> None:
     course = CourseFactory()
     topic, item = place_topic(course)
 
@@ -468,7 +487,7 @@ def test_topic_section_opens_at_its_own_placement(mock_site_context):
 @pytest.mark.django_db
 def test_question_sections_lists_only_placed_sections_in_course_order(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     first, _ = place_topic(course, order=0)
     second, _ = place_topic(course, order=1)
@@ -484,7 +503,9 @@ def test_question_sections_lists_only_placed_sections_in_course_order(
 
 
 @pytest.mark.django_db
-def test_bank_sections_lists_only_sections_with_bank_questions(mock_site_context):
+def test_bank_sections_lists_only_sections_with_bank_questions(
+    mock_site_context,
+) -> None:
     course = CourseFactory()
     with_questions, _ = place_topic(course, order=0)
     without_questions, _ = place_topic(course, order=1)
@@ -499,7 +520,7 @@ def test_bank_sections_lists_only_sections_with_bank_questions(mock_site_context
 
 
 @pytest.mark.django_db
-def test_bank_sections_are_in_course_order(mock_site_context):
+def test_bank_sections_are_in_course_order(mock_site_context) -> None:
     course = CourseFactory()
     second, _ = place_topic(course, order=1)
     first, _ = place_topic(course, order=0)
@@ -517,7 +538,7 @@ def test_bank_sections_are_in_course_order(mock_site_context):
 @pytest.mark.django_db
 def test_due_questions_for_a_section_hold_only_that_sections_questions(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     wanted, _ = place_topic(course, order=0)
     other, _ = place_topic(course, order=1)
@@ -536,7 +557,7 @@ def test_due_questions_for_a_section_hold_only_that_sections_questions(
 @pytest.mark.django_db
 def test_ready_count_for_a_section_counts_only_that_sections_questions(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     wanted, _ = place_topic(course, order=0)
     other, _ = place_topic(course, order=1)
@@ -553,7 +574,9 @@ def test_ready_count_for_a_section_counts_only_that_sections_questions(
     assert count == 1
 
 
-def _review_answers(user, course, question, *, wrong: int, right: int, ago_hours: int):
+def _review_answers(
+    user, course, question, *, wrong: int, right: int, ago_hours: int
+) -> None:
     """`wrong` wrong reviews, then `right` right ones, the newest `ago_hours` old."""
     now = timezone.now()
     for index in range(wrong + right):
@@ -566,18 +589,22 @@ def _review_answers(user, course, question, *, wrong: int, right: int, ago_hours
         )
 
 
-def _finished_topic_with_question():
-    course = CourseFactory()
+def _finished_topic_with_question() -> tuple[
+    Course, User, CourseProgress, Topic, FormQuestion
+]:
+    course: Course = CourseFactory()
     topic, _ = place_topic(course)
     question = question_testing_topic(topic)
-    user = UserFactory()
+    user: User = UserFactory()
     record = course_progress_record(course, user)
     finish_topic(record, topic)
     return course, user, record, topic, question
 
 
 @pytest.mark.django_db
-def test_section_below_the_minimum_sample_is_not_weak(mock_site_context, settings):
+def test_section_below_the_minimum_sample_is_not_weak(
+    mock_site_context, settings
+) -> None:
     settings.REVISION_WEAK_WINDOW = 10
     settings.REVISION_WEAK_MIN_REVIEWS = 5
     settings.REVISION_WEAK_MISS_RATE = 0.4
@@ -588,7 +615,7 @@ def test_section_below_the_minimum_sample_is_not_weak(mock_site_context, setting
 
 
 @pytest.mark.django_db
-def test_section_at_the_miss_rate_is_weak(mock_site_context, settings):
+def test_section_at_the_miss_rate_is_weak(mock_site_context, settings) -> None:
     settings.REVISION_WEAK_WINDOW = 10
     settings.REVISION_WEAK_MIN_REVIEWS = 5
     settings.REVISION_WEAK_MISS_RATE = 0.4
@@ -599,7 +626,7 @@ def test_section_at_the_miss_rate_is_weak(mock_site_context, settings):
 
 
 @pytest.mark.django_db
-def test_section_below_the_miss_rate_is_not_weak(mock_site_context, settings):
+def test_section_below_the_miss_rate_is_not_weak(mock_site_context, settings) -> None:
     settings.REVISION_WEAK_WINDOW = 10
     settings.REVISION_WEAK_MIN_REVIEWS = 5
     settings.REVISION_WEAK_MISS_RATE = 0.4
@@ -610,7 +637,9 @@ def test_section_below_the_miss_rate_is_not_weak(mock_site_context, settings):
 
 
 @pytest.mark.django_db
-def test_wrong_review_older_than_the_window_does_not_count(mock_site_context, settings):
+def test_wrong_review_older_than_the_window_does_not_count(
+    mock_site_context, settings
+) -> None:
     settings.REVISION_WEAK_WINDOW = 3
     settings.REVISION_WEAK_MIN_REVIEWS = 3
     settings.REVISION_WEAK_MISS_RATE = 0.4
@@ -621,7 +650,7 @@ def test_wrong_review_older_than_the_window_does_not_count(mock_site_context, se
 
 
 @pytest.mark.django_db
-def test_next_ready_at_is_the_earliest_due_after_now(mock_site_context):
+def test_next_ready_at_is_the_earliest_due_after_now(mock_site_context) -> None:
     _course, user, record, topic, question = _finished_topic_with_question()
     later = question_testing_topic(topic)
     now = timezone.now()
@@ -633,7 +662,7 @@ def test_next_ready_at_is_the_earliest_due_after_now(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_next_ready_at_ignores_a_schedule_already_due(mock_site_context):
+def test_next_ready_at_ignores_a_schedule_already_due(mock_site_context) -> None:
     _, user, record, _topic, question = _finished_topic_with_question()
     now = timezone.now()
     RevisionScheduleFactory(user=user, question=question, due=now - timedelta(days=1))
@@ -644,7 +673,7 @@ def test_next_ready_at_ignores_a_schedule_already_due(mock_site_context):
 @pytest.mark.django_db
 def test_course_has_revision_questions_before_any_section_is_finished(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     question_testing_topic(topic)
@@ -653,7 +682,9 @@ def test_course_has_revision_questions_before_any_section_is_finished(
 
 
 @pytest.mark.django_db
-def test_course_without_questions_naming_its_sections_has_none(mock_site_context):
+def test_course_without_questions_naming_its_sections_has_none(
+    mock_site_context,
+) -> None:
     course = CourseFactory()
     place_topic(course)
     question_testing_topic(TopicFactory())
@@ -662,7 +693,7 @@ def test_course_without_questions_naming_its_sections_has_none(mock_site_context
 
 
 @pytest.mark.django_db
-def test_last_reviewed_at_is_the_latest_review_in_the_course(mock_site_context):
+def test_last_reviewed_at_is_the_latest_review_in_the_course(mock_site_context) -> None:
     course, user, _record, _topic, question = _finished_topic_with_question()
     now = timezone.now()
     RevisionReviewFactory(
@@ -677,7 +708,7 @@ def test_last_reviewed_at_is_the_latest_review_in_the_course(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_last_reviewed_at_is_none_without_reviews(mock_site_context):
+def test_last_reviewed_at_is_none_without_reviews(mock_site_context) -> None:
     course, user, *_ = _finished_topic_with_question()
 
     assert last_reviewed_at(user, course) is None

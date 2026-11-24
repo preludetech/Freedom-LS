@@ -11,7 +11,7 @@ from freedom_ls.tests.factories import SiteFactory
 
 
 @pytest.mark.django_db
-def test_schedule_of_another_site_is_not_listed(mock_site_context):
+def test_schedule_of_another_site_is_not_listed(mock_site_context) -> None:
     mine = RevisionScheduleFactory()
     RevisionScheduleFactory(site=SiteFactory())
 
@@ -19,7 +19,7 @@ def test_schedule_of_another_site_is_not_listed(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_review_of_another_site_is_not_listed(mock_site_context):
+def test_review_of_another_site_is_not_listed(mock_site_context) -> None:
     mine = RevisionReviewFactory()
     RevisionReviewFactory(site=SiteFactory())
 
@@ -27,7 +27,9 @@ def test_review_of_another_site_is_not_listed(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_second_schedule_for_the_same_user_and_question_is_refused(mock_site_context):
+def test_second_schedule_for_the_same_user_and_question_is_refused(
+    mock_site_context,
+) -> None:
     existing = RevisionScheduleFactory()
 
     with pytest.raises(IntegrityError), transaction.atomic():

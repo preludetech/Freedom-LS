@@ -7,6 +7,7 @@ import re
 import shutil
 import tempfile
 import uuid
+from collections.abc import Iterator
 from datetime import date, time
 from decimal import Decimal
 from pathlib import Path
@@ -3927,7 +3928,7 @@ def test_the_question_slug_is_written_and_then_cleared(
 
 
 @pytest.mark.django_db
-def test_the_question_explanation_is_written(site, mock_site_context, tmp_path):
+def test_the_question_explanation_is_written(site, mock_site_context, tmp_path) -> None:
     _write_gated_form(tmp_path / "gated", explanation="Because of **reasons**.")
 
     save_content_to_db(tmp_path, site.name)
@@ -3937,7 +3938,7 @@ def test_the_question_explanation_is_written(site, mock_site_context, tmp_path):
 
 
 @pytest.mark.django_db
-def test_removing_the_explanation_clears_it(site, mock_site_context, tmp_path):
+def test_removing_the_explanation_clears_it(site, mock_site_context, tmp_path) -> None:
     _write_gated_form(tmp_path / "gated", explanation="Because.")
     save_content_to_db(tmp_path, site.name)
 
@@ -6225,10 +6226,12 @@ def _dropped_question_ids() -> set[uuid.UUID]:
 
 
 @pytest.fixture
-def dropped_signal_ids():
+def dropped_signal_ids() -> Iterator[list[list[uuid.UUID]]]:
     received: list[list[uuid.UUID]] = []
 
-    def collect(sender: object, question_ids: list[uuid.UUID], **kwargs: object):
+    def collect(
+        sender: object, question_ids: list[uuid.UUID], **kwargs: object
+    ) -> None:
         received.append(question_ids)
 
     form_questions_dropped.connect(collect)

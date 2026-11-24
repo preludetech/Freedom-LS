@@ -5304,12 +5304,12 @@ def test_outline_course_part_chevron_points_up_while_open(
 
 def _outline_with_bank(
     *, schedule_due_in: timedelta | None = None, finish: bool = True
-):
+) -> tuple[Course, lxml.html.HtmlElement]:
     """The outline panel of a topic page, for a learner whose course has one revision question."""
-    course = CourseFactory()
+    course: Course = CourseFactory()
     topic, _ = place_topic(course)
     question = question_testing_topic(topic)
-    user = UserFactory()
+    user: User = UserFactory()
     record = course_progress_record(course, user)
     if finish:
         finish_topic(record, topic)
@@ -5330,7 +5330,9 @@ def _outline_with_bank(
 
 
 @pytest.mark.django_db
-def test_outline_panel_shows_the_revision_entry_with_the_due_count(mock_site_context):
+def test_outline_panel_shows_the_revision_entry_with_the_due_count(
+    mock_site_context,
+) -> None:
     course, region = _outline_with_bank()
 
     entry = region.cssselect('[data-testid="revision-link"] a')[0]
@@ -5342,7 +5344,9 @@ def test_outline_panel_shows_the_revision_entry_with_the_due_count(mock_site_con
 
 
 @pytest.mark.django_db
-def test_outline_revision_entry_sits_under_the_table_of_contents(mock_site_context):
+def test_outline_revision_entry_sits_under_the_table_of_contents(
+    mock_site_context,
+) -> None:
     _, region = _outline_with_bank()
 
     order = [
@@ -5355,7 +5359,9 @@ def test_outline_revision_entry_sits_under_the_table_of_contents(mock_site_conte
 
 
 @pytest.mark.django_db
-def test_outline_revision_entry_uses_the_sidebar_eyebrow_style(mock_site_context):
+def test_outline_revision_entry_uses_the_sidebar_eyebrow_style(
+    mock_site_context,
+) -> None:
     # The sidebar's sections share one look: an eyebrow link like "Reference",
     # set apart by space alone, with no row style, divider or icon of its own.
     _, region = _outline_with_bank()
@@ -5373,7 +5379,9 @@ def test_outline_revision_entry_uses_the_sidebar_eyebrow_style(mock_site_context
 
 
 @pytest.mark.django_db
-def test_outline_revision_entry_reads_zero_due_when_nothing_is_due(mock_site_context):
+def test_outline_revision_entry_reads_zero_due_when_nothing_is_due(
+    mock_site_context,
+) -> None:
     _, region = _outline_with_bank(schedule_due_in=timedelta(days=5))
 
     entry = region.cssselect('[data-testid="revision-link"]')[0]
@@ -5382,7 +5390,9 @@ def test_outline_revision_entry_reads_zero_due_when_nothing_is_due(mock_site_con
 
 
 @pytest.mark.django_db
-def test_outline_has_no_revision_entry_before_a_section_is_finished(mock_site_context):
+def test_outline_has_no_revision_entry_before_a_section_is_finished(
+    mock_site_context,
+) -> None:
     _, region = _outline_with_bank(finish=False)
 
     assert region.cssselect('[data-testid="revision-link"]') == []

@@ -22,27 +22,27 @@ def dropped_question(mock_site_context) -> FormQuestion:
 
 
 @pytest.mark.django_db
-def test_dropping_a_question_deletes_its_schedules(dropped_question):
+def test_dropping_a_question_deletes_its_schedules(dropped_question) -> None:
     assert not RevisionSchedule._base_manager.filter(question=dropped_question).exists()
 
 
 @pytest.mark.django_db
-def test_dropping_a_question_deletes_its_reviews(dropped_question):
+def test_dropping_a_question_deletes_its_reviews(dropped_question) -> None:
     assert not RevisionReview._base_manager.filter(question=dropped_question).exists()
 
 
 @pytest.mark.django_db
-def test_dropping_a_question_keeps_the_question_row(dropped_question):
+def test_dropping_a_question_keeps_the_question_row(dropped_question) -> None:
     assert FormQuestion._base_manager.filter(pk=dropped_question.pk).exists()
 
 
 @pytest.mark.django_db
-def test_dropping_a_question_keeps_its_quiz_answers(dropped_question):
+def test_dropping_a_question_keeps_its_quiz_answers(dropped_question) -> None:
     assert QuestionAnswer._base_manager.filter(question=dropped_question).exists()
 
 
 @pytest.mark.django_db
-def test_dropping_a_question_keeps_other_questions_schedules(mock_site_context):
+def test_dropping_a_question_keeps_other_questions_schedules(mock_site_context) -> None:
     other = choice_question()
     RevisionScheduleFactory(question=other)
     dropped = choice_question()

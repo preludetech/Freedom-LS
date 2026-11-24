@@ -607,7 +607,7 @@ def current_entry(course_index: list[dict]) -> dict | None:
     return None
 
 
-def _item_rows(course_index: list[dict]) -> list[dict]:
+def item_rows(course_index: list[dict]) -> list[dict]:
     """The item rows in the order the learner reads the outline.
 
     Walks the top level and one level into a CoursePart's children, the only two places
@@ -621,7 +621,7 @@ def _item_rows(course_index: list[dict]) -> list[dict]:
 
 
 def _neighbour_entry(course_index: list[dict], step: int) -> dict | None:
-    rows = _item_rows(course_index)
+    rows = item_rows(course_index)
     for position, row in enumerate(rows):
         if row.get("is_current"):
             neighbour = position + step
@@ -1280,7 +1280,7 @@ def _missed_and_next(
     # completed=False.
     open_rows = [
         row
-        for row in _item_rows(course_index)
+        for row in item_rows(course_index)
         if row.get("due_at") is not None and row["status"] != COMPLETE
     ]
     missed = [

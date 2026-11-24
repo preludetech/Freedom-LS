@@ -698,7 +698,7 @@ def test_question_options_are_authored_order_when_no_path_is_in_the_context(
 @pytest.mark.django_db
 def test_question_options_prefer_revision_options_over_the_sitting_path(
     served_options,
-):
+) -> None:
     question, path = served_options
     authored = list(question.options.all())
 

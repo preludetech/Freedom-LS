@@ -17,11 +17,15 @@ from freedom_ls.form_engine.served_paper import new_seed, shuffle_with_locks
 from freedom_ls.revision import scheduler
 from freedom_ls.revision.config import config
 from freedom_ls.revision.models import RevisionReview, RevisionSchedule
-from freedom_ls.revision.queries import due_questions, practice_questions
+from freedom_ls.revision.queries import (
+    due_questions,
+    practice_questions,
+    schedule_card,
+)
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
-    from freedom_ls.content_engine.models import CoursePart, Topic
+    from freedom_ls.content_engine.models import Course, CoursePart, Topic
     from freedom_ls.learner_progress.models import CourseProgress
 
 
@@ -98,36 +102,38 @@ def record_answer(
     question: FormQuestion,
     selected_option_ids: set[UUID],
     now: datetime,
+    *,
+    session_started_at: datetime | None = None,
 ) -> RevisionReview:
+    """Mark the answer, write its review and move the question's schedule on.
+
+    With ``session_started_at``, an answer this session already wrote for the
+    question in this course is returned in place of a second one. The check
+    runs under the schedule's row lock, so two submits at once write one review.
+    """
+    new_columns = scheduler.columns_from_card(scheduler.new_card(now))
+    _, created = RevisionSchedule.objects.get_or_create(
+        user=user, question=question, defaults=dict(new_columns)
+    )
+    schedule = RevisionSchedule.objects.select_for_update().get(
+        user=user, question=question
+    )
+    if session_started_at is not None:
+        earlier: RevisionReview | None = (
+            _reviews_since(user, record.course, session_started_at)
+            .filter(question=question)
+            .order_by("-reviewed_at")
+            .first()
+        )
+        if earlier is not None:
+            return earlier
     options = list(question.options.all())
     was_correct = is_quiz_answer_correct(selected_option_ids, options)
-    schedule = (
-        RevisionSchedule.objects.select_for_update()
-        .filter(user=user, question=question)
-        .first()
-    )
-    if schedule is None:
-        schedule = RevisionSchedule(user=user, question=question)
-        before = scheduler.new_card(now)
-    else:
-        before = scheduler.card_from_columns(
-            state=schedule.state,
-            step=schedule.step,
-            stability=schedule.stability,
-            difficulty=schedule.difficulty,
-            due=schedule.due,
-            last_review=schedule.last_review,
-        )
+    before = scheduler.new_card(now) if created else schedule_card(schedule)
     after, rating = scheduler.review(
         before, scheduler.rating_for(was_correct, guessed=False), now
     )
-    columns = scheduler.columns_from_card(after)
-    schedule.state = columns["state"]
-    schedule.step = columns["step"]
-    schedule.stability = columns["stability"]
-    schedule.difficulty = columns["difficulty"]
-    schedule.due = columns["due"]
-    schedule.last_review = columns["last_review"]
+    _store_card(schedule, after)
     schedule.reps += 1
     if not was_correct and scheduler.is_review_state(before):
         schedule.lapses += 1
@@ -143,6 +149,17 @@ def record_answer(
         schedule_before=before,
     )
     return review
+
+
+def _store_card(schedule: RevisionSchedule, card: scheduler.CardDict) -> None:
+    """Copy the card onto the schedule's columns, without saving."""
+    columns = scheduler.columns_from_card(card)
+    schedule.state = columns["state"]
+    schedule.step = columns["step"]
+    schedule.stability = columns["stability"]
+    schedule.difficulty = columns["difficulty"]
+    schedule.due = columns["due"]
+    schedule.last_review = columns["last_review"]
 
 
 class GuessRefused(Exception):  # noqa: N818 - a refusal, named for what the caller sees
@@ -173,13 +190,7 @@ def mark_guessed(review: RevisionReview) -> RevisionReview:
         scheduler.rating_for(True, guessed),
         review.reviewed_at,
     )
-    columns = scheduler.columns_from_card(after)
-    schedule.state = columns["state"]
-    schedule.step = columns["step"]
-    schedule.stability = columns["stability"]
-    schedule.difficulty = columns["difficulty"]
-    schedule.due = columns["due"]
-    schedule.last_review = columns["last_review"]
+    _store_card(schedule, after)
     schedule.save()
     review.guessed = guessed
     review.rating = int(rating)
@@ -187,14 +198,24 @@ def mark_guessed(review: RevisionReview) -> RevisionReview:
     return review
 
 
-def session_reviews(
-    user: User, state: RevisionSessionState
+def _reviews_since(
+    user: User, course: Course, since: datetime
 ) -> QuerySet[RevisionReview]:
-    """The reviews written since this session started, for its questions."""
     return RevisionReview.objects.filter(
-        user=user,
-        question_id__in=state.question_ids,
-        reviewed_at__gte=state.started_at,
+        user=user, course=course, reviewed_at__gte=since
+    )
+
+
+def session_reviews(
+    user: User, state: RevisionSessionState, course: Course
+) -> QuerySet[RevisionReview]:
+    """The reviews written on this course's revision page since this session started, for its questions.
+
+    The schedule is shared across courses, but a session only counts the
+    answers given in its own course.
+    """
+    return _reviews_since(user, course, state.started_at).filter(
+        question_id__in=state.question_ids
     )
 
 
@@ -208,9 +229,11 @@ class SessionSummary:
     forgot: int
 
 
-def session_summary(user: User, state: RevisionSessionState) -> SessionSummary:
+def session_summary(
+    user: User, state: RevisionSessionState, course: Course
+) -> SessionSummary:
     """Knew is right, hard is right but guessed, forgot is wrong."""
-    counts = session_reviews(user, state).aggregate(
+    counts = session_reviews(user, state, course).aggregate(
         answered=Count("pk"),
         knew=Count("pk", filter=Q(was_correct=True, guessed=False)),
         hard=Count("pk", filter=Q(was_correct=True, guessed=True)),

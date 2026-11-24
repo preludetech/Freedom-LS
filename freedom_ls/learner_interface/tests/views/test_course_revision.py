@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import lxml.html
@@ -14,11 +15,14 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.deadlines.factories import (
     CourseDeadlineConfigFactory,
     CoursePauseFactory,
 )
+from freedom_ls.form_engine.models import FormQuestion, QuestionOption
 from freedom_ls.learner_interface.tests.helpers import topic_completion
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.revision.factories import (
@@ -34,6 +38,9 @@ from freedom_ls.revision.tests.helpers import (
     question_testing_topic,
 )
 from freedom_ls.tests.factories import SiteFactory
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 DASHBOARD_QUERIES = 60
 
@@ -57,7 +64,9 @@ def _client_for(user) -> Client:
 
 
 @pytest.mark.django_db
-def test_unregistered_learner_is_sent_to_the_course_detail_page(mock_site_context):
+def test_unregistered_learner_is_sent_to_the_course_detail_page(
+    mock_site_context,
+) -> None:
     course = CourseFactory()
     client = _client_for(UserFactory())
 
@@ -70,7 +79,7 @@ def test_unregistered_learner_is_sent_to_the_course_detail_page(mock_site_contex
 @pytest.mark.django_db
 def test_paused_course_sends_the_learner_to_the_course_detail_page(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     user = UserFactory()
     CoursePauseFactory(course_progress=course_progress_record(course, user))
@@ -85,7 +94,7 @@ def test_paused_course_sends_the_learner_to_the_course_detail_page(
 @time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 def test_ended_registration_sends_the_learner_to_the_course_detail_page(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory(time_limit_days=30)
     CourseDeadlineConfigFactory(course=course, end_course_access="on")
     user = UserFactory()
@@ -100,7 +109,7 @@ def test_ended_registration_sends_the_learner_to_the_course_detail_page(
 
 
 @pytest.mark.django_db
-def test_course_on_another_site_is_not_found(mock_site_context):
+def test_course_on_another_site_is_not_found(mock_site_context) -> None:
     course = CourseFactory(site=SiteFactory())
     client = _client_for(UserFactory())
 
@@ -115,7 +124,7 @@ def _route_url(route: str, course) -> str:
 
 def _store_session(
     client: Client, course, questions, *, index: int = 0, started_at=None
-):
+) -> None:
     state = RevisionSessionState(
         question_ids=tuple(q.pk for q in questions),
         seeds=tuple(range(1, len(questions) + 1)),
@@ -131,19 +140,23 @@ def _stored_index(client: Client, course) -> int:
     return int(client.session[f"revision_session:{course.id}"]["index"])
 
 
-def _banked_session(*, question_count: int = 1):
+def _banked_session(
+    *, question_count: int = 1
+) -> tuple[Course, User, list[FormQuestion], Client]:
     """A learner who finished a topic with questions, logged in with a session over them."""
-    course = CourseFactory()
+    course: Course = CourseFactory()
     topic, _ = place_topic(course)
     questions = [question_testing_topic(topic) for _ in range(question_count)]
-    user = UserFactory()
+    user: User = UserFactory()
     finish_topic(course_progress_record(course, user), topic)
     client = _client_for(user)
     _store_session(client, course, questions)
     return course, user, questions, client
 
 
-def _post_answer(client: Client, course, question, option_ids):
+def _post_answer(
+    client: Client, course: Course, question: FormQuestion, option_ids: list[str]
+) -> _MonkeyPatchedWSGIResponse:
     return client.post(
         _route_url("course_revision_answer", course),
         {f"question_{question.id}": option_ids},
@@ -154,7 +167,7 @@ def _post_answer(client: Client, course, question, option_ids):
 @pytest.mark.django_db
 def test_answer_posted_without_htmx_is_recorded_and_redirects_to_the_revision_page(
     mock_site_context,
-):
+) -> None:
     """A form submitted natively before htmx loaded used to be sent as a GET and lost the answer."""
     course, user, questions, client = _banked_session()
     question = questions[0]
@@ -168,11 +181,11 @@ def test_answer_posted_without_htmx_is_recorded_and_redirects_to_the_revision_pa
     assert RevisionReview.objects.filter(user=user, question=question).exists()
 
 
-def _right_option(question):
+def _right_option(question: FormQuestion) -> QuestionOption:
     return question.options.get(correct=True)
 
 
-def _wrong_option(question):
+def _wrong_option(question: FormQuestion) -> QuestionOption:
     return question.options.get(correct=False)
 
 
@@ -186,7 +199,9 @@ def _wrong_option(question):
         "course_revision_guessed",
     ],
 )
-def test_post_routes_turn_away_an_unregistered_learner(route, mock_site_context):
+def test_post_routes_turn_away_an_unregistered_learner(
+    route, mock_site_context
+) -> None:
     course = CourseFactory()
     client = _client_for(UserFactory())
 
@@ -205,7 +220,7 @@ def test_post_routes_turn_away_an_unregistered_learner(route, mock_site_context)
         "course_revision_guessed",
     ],
 )
-def test_post_routes_turn_away_a_paused_course(route, mock_site_context):
+def test_post_routes_turn_away_a_paused_course(route, mock_site_context) -> None:
     course = CourseFactory()
     user = UserFactory()
     CoursePauseFactory(course_progress=course_progress_record(course, user))
@@ -226,7 +241,7 @@ def test_post_routes_turn_away_a_paused_course(route, mock_site_context):
         "course_revision_guessed",
     ],
 )
-def test_post_routes_turn_away_an_ended_registration(route, mock_site_context):
+def test_post_routes_turn_away_an_ended_registration(route, mock_site_context) -> None:
     course = CourseFactory(time_limit_days=30)
     CourseDeadlineConfigFactory(course=course, end_course_access="on")
     user = UserFactory()
@@ -249,7 +264,9 @@ def test_post_routes_turn_away_an_ended_registration(route, mock_site_context):
         "course_revision_guessed",
     ],
 )
-def test_post_routes_do_not_find_a_course_on_another_site(route, mock_site_context):
+def test_post_routes_do_not_find_a_course_on_another_site(
+    route, mock_site_context
+) -> None:
     course = CourseFactory(site=SiteFactory())
 
     response = _client_for(UserFactory()).post(_route_url(route, course))
@@ -258,7 +275,7 @@ def test_post_routes_do_not_find_a_course_on_another_site(route, mock_site_conte
 
 
 @pytest.mark.django_db
-def test_empty_submit_returns_422_and_writes_nothing(mock_site_context):
+def test_empty_submit_returns_422_and_writes_nothing(mock_site_context) -> None:
     course, _, (question,), client = _banked_session()
 
     response = _post_answer(client, course, question, [])
@@ -267,7 +284,9 @@ def test_empty_submit_returns_422_and_writes_nothing(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_second_submit_for_an_answered_question_writes_nothing(mock_site_context):
+def test_second_submit_for_an_answered_question_writes_nothing(
+    mock_site_context,
+) -> None:
     course, user, (question,), client = _banked_session()
     RevisionReviewFactory(
         user=user,
@@ -283,7 +302,7 @@ def test_second_submit_for_an_answered_question_writes_nothing(mock_site_context
 
 
 @pytest.mark.django_db
-def test_answer_ignores_an_option_of_another_question(mock_site_context):
+def test_answer_ignores_an_option_of_another_question(mock_site_context) -> None:
     course, _, (question,), client = _banked_session()
     stranger = choice_question()
 
@@ -293,7 +312,7 @@ def test_answer_ignores_an_option_of_another_question(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_right_answer_is_marked_correct_and_saved(mock_site_context):
+def test_right_answer_is_marked_correct_and_saved(mock_site_context) -> None:
     course, _, (question,), client = _banked_session()
 
     response = _post_answer(client, course, question, [str(_right_option(question).id)])
@@ -303,7 +322,7 @@ def test_right_answer_is_marked_correct_and_saved(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_unanswered_current_question_renders_the_question(mock_site_context):
+def test_unanswered_current_question_renders_the_question(mock_site_context) -> None:
     course, _, (question,), client = _banked_session()
 
     response = client.get(_revision_url(course))
@@ -312,7 +331,7 @@ def test_unanswered_current_question_renders_the_question(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_current_question_with_a_review_renders_its_feedback(mock_site_context):
+def test_current_question_with_a_review_renders_its_feedback(mock_site_context) -> None:
     course, user, (question,), client = _banked_session()
     RevisionReviewFactory(
         user=user,
@@ -327,7 +346,7 @@ def test_current_question_with_a_review_renders_its_feedback(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_question_that_left_the_bank_is_skipped_for_the_next(mock_site_context):
+def test_question_that_left_the_bank_is_skipped_for_the_next(mock_site_context) -> None:
     course, _, (first, second), client = _banked_session(question_count=2)
     first.options.all().delete()
 
@@ -337,7 +356,9 @@ def test_question_that_left_the_bank_is_skipped_for_the_next(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_next_with_the_current_question_unanswered_leaves_the_index(mock_site_context):
+def test_next_with_the_current_question_unanswered_leaves_the_index(
+    mock_site_context,
+) -> None:
     course, _, _, client = _banked_session(question_count=2)
 
     client.post(_route_url("course_revision_next", course), HTTP_HX_REQUEST="true")
@@ -346,7 +367,7 @@ def test_next_with_the_current_question_unanswered_leaves_the_index(mock_site_co
 
 
 @pytest.mark.django_db
-def test_next_after_an_answer_moves_to_the_next_question(mock_site_context):
+def test_next_after_an_answer_moves_to_the_next_question(mock_site_context) -> None:
     course, user, (first, _), client = _banked_session(question_count=2)
     RevisionReviewFactory(
         user=user,
@@ -360,12 +381,14 @@ def test_next_after_an_answer_moves_to_the_next_question(mock_site_context):
     assert _stored_index(client, course) == 1
 
 
-def _course_with_everything_scheduled_later(*, due_in: timedelta):
+def _course_with_everything_scheduled_later(
+    *, due_in: timedelta
+) -> tuple[Course, User, FormQuestion]:
     """A learner who finished a section whose only question is scheduled `due_in` from now."""
-    course = CourseFactory()
+    course: Course = CourseFactory()
     topic, _ = place_topic(course)
     question = question_testing_topic(topic)
-    user = UserFactory()
+    user: User = UserFactory()
     finish_topic(course_progress_record(course, user), topic)
     RevisionScheduleFactory(
         user=user, question=question, due=datetime.now(UTC) + due_in
@@ -376,7 +399,7 @@ def _course_with_everything_scheduled_later(*, due_in: timedelta):
 @pytest.mark.django_db
 def test_empty_bank_says_questions_appear_after_a_section_and_links_to_the_course(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     question_testing_topic(topic)
@@ -393,7 +416,7 @@ def test_empty_bank_says_questions_appear_after_a_section_and_links_to_the_cours
 
 
 @pytest.mark.django_db
-def test_start_with_nothing_ready_stores_no_session(mock_site_context):
+def test_start_with_nothing_ready_stores_no_session(mock_site_context) -> None:
     course = CourseFactory()
     user = UserFactory()
     course_progress_record(course, user)
@@ -405,7 +428,7 @@ def test_start_with_nothing_ready_stores_no_session(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_start_with_ready_questions_stores_a_session(mock_site_context):
+def test_start_with_ready_questions_stores_a_session(mock_site_context) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     question_testing_topic(topic)
@@ -427,7 +450,9 @@ def _option_texts_in_order(html: str, options) -> list[str]:
 
 
 @pytest.mark.django_db
-def test_card_renders_options_in_the_order_the_stored_seed_gives(mock_site_context):
+def test_card_renders_options_in_the_order_the_stored_seed_gives(
+    mock_site_context,
+) -> None:
     course, _, (question,), client = _banked_session()
     expected = [o.text for o in shuffled_options(question, 1)]
 
@@ -439,7 +464,7 @@ def test_card_renders_options_in_the_order_the_stored_seed_gives(mock_site_conte
 @pytest.mark.django_db
 def test_feedback_renders_options_in_the_order_the_stored_seed_gives(
     mock_site_context,
-):
+) -> None:
     course, user, (question,), client = _banked_session()
     RevisionReviewFactory(
         user=user,
@@ -455,7 +480,7 @@ def test_feedback_renders_options_in_the_order_the_stored_seed_gives(
 
 
 @pytest.mark.django_db
-def test_start_stores_a_seed_from_new_seed(mock_site_context):
+def test_start_stores_a_seed_from_new_seed(mock_site_context) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     question_testing_topic(topic)
@@ -469,9 +494,9 @@ def test_start_stores_a_seed_from_new_seed(mock_site_context):
     assert client.session[f"revision_session:{course.id}"]["seeds"] == [4242]
 
 
-def _course_with_due_backlog(user, size: int):
+def _course_with_due_backlog(user: User, size: int) -> Course:
     """A course whose learner has `size` reviewed questions due."""
-    course = CourseFactory()
+    course: Course = CourseFactory()
     topic, _ = place_topic(course)
     finish_topic(course_progress_record(course, user), topic)
     now = datetime.now(UTC)
@@ -487,7 +512,7 @@ def _course_with_due_backlog(user, size: int):
 @pytest.mark.django_db
 def test_session_over_a_long_backlog_holds_the_configured_size(
     mock_site_context, settings
-):
+) -> None:
     settings.REVISION_SESSION_SIZE = 15
     user = UserFactory()
     course = _course_with_due_backlog(user, 100)
@@ -512,13 +537,15 @@ def _feedback_html(*, explanation: str, answer_correctly: bool) -> str:
 @pytest.mark.django_db
 def test_feedback_shows_no_why_block_for_a_question_without_an_explanation(
     mock_site_context,
-):
+) -> None:
     html = _feedback_html(explanation="", answer_correctly=True)
 
     assert 'data-testid="revision-explanation"' not in html
 
 
-def _answered_html(*, answer_correctly: bool):
+def _answered_html(
+    *, answer_correctly: bool
+) -> tuple[Course, FormQuestion, QuestionOption, str]:
     course, _, (question,), client = _banked_session()
     option = _right_option(question) if answer_correctly else _wrong_option(question)
     _post_answer(client, course, question, [str(option.id)])
@@ -527,7 +554,9 @@ def _answered_html(*, answer_correctly: bool):
 
 
 @pytest.mark.django_db
-def test_wrong_answer_marks_the_chosen_option_and_the_correct_one(mock_site_context):
+def test_wrong_answer_marks_the_chosen_option_and_the_correct_one(
+    mock_site_context,
+) -> None:
     _, _, _, html = _answered_html(answer_correctly=False)
 
     assert "Your answer" in html
@@ -535,14 +564,16 @@ def test_wrong_answer_marks_the_chosen_option_and_the_correct_one(mock_site_cont
 
 
 @pytest.mark.django_db
-def test_right_answer_shows_no_wrong_choice_mark(mock_site_context):
+def test_right_answer_shows_no_wrong_choice_mark(mock_site_context) -> None:
     _, _, _, html = _answered_html(answer_correctly=True)
 
     assert "Your answer" not in html
 
 
 @pytest.mark.django_db
-def test_section_control_is_absent_when_the_placement_is_blocked(mock_site_context):
+def test_section_control_is_absent_when_the_placement_is_blocked(
+    mock_site_context,
+) -> None:
     course, _, (question,), client = _banked_session()
     option = _wrong_option(question)
 
@@ -556,7 +587,7 @@ def test_section_control_is_absent_when_the_placement_is_blocked(mock_site_conte
 
 
 @pytest.mark.django_db
-def test_feedback_root_is_announced_and_takes_focus(mock_site_context):
+def test_feedback_root_is_announced_and_takes_focus(mock_site_context) -> None:
     _, _, _, html = _answered_html(answer_correctly=False)
 
     assert 'id="revision-feedback"' in html
@@ -565,20 +596,22 @@ def test_feedback_root_is_announced_and_takes_focus(mock_site_context):
     assert 'x-data="revisionFeedback"' in html
 
 
-def _post_guessed(client: Client, course):
+def _post_guessed(client: Client, course: Course) -> _MonkeyPatchedWSGIResponse:
     return client.post(
         _route_url("course_revision_guessed", course), HTTP_HX_REQUEST="true"
     )
 
 
-def _right_answer_then_guessed():
+def _right_answer_then_guessed() -> tuple[Course, FormQuestion, Client]:
     course, _, (question,), client = _banked_session()
     _post_answer(client, course, question, [str(_right_option(question).id)])
     return course, question, client
 
 
 @pytest.mark.django_db
-def test_guessed_post_after_a_right_answer_shows_the_toggle_pressed(mock_site_context):
+def test_guessed_post_after_a_right_answer_shows_the_toggle_pressed(
+    mock_site_context,
+) -> None:
     course, _, client = _right_answer_then_guessed()
 
     response = _post_guessed(client, course)
@@ -593,7 +626,7 @@ def test_guessed_post_after_a_right_answer_shows_the_toggle_pressed(mock_site_co
 @pytest.mark.django_db
 def test_guessed_toggle_looks_different_when_pressed_than_when_released(
     mock_site_context,
-):
+) -> None:
     """A pressed toggle used to render exactly like a released one.
 
     Pressed is a filled button with a check icon, so it does not rely on colour alone.
@@ -615,7 +648,9 @@ def test_guessed_toggle_looks_different_when_pressed_than_when_released(
 
 
 @pytest.mark.django_db
-def test_guessed_post_on_a_guessed_review_shows_the_toggle_released(mock_site_context):
+def test_guessed_post_on_a_guessed_review_shows_the_toggle_released(
+    mock_site_context,
+) -> None:
     course, _, client = _right_answer_then_guessed()
     _post_guessed(client, course)
 
@@ -628,7 +663,9 @@ def test_guessed_post_on_a_guessed_review_shows_the_toggle_released(mock_site_co
 
 
 @pytest.mark.django_db
-def test_guessed_post_with_the_question_unanswered_returns_422(mock_site_context):
+def test_guessed_post_with_the_question_unanswered_returns_422(
+    mock_site_context,
+) -> None:
     course, _, _, client = _banked_session()
 
     response = _post_guessed(client, course)
@@ -637,7 +674,7 @@ def test_guessed_post_with_the_question_unanswered_returns_422(mock_site_context
 
 
 @pytest.mark.django_db
-def test_guessed_post_after_the_session_moved_on_returns_422(mock_site_context):
+def test_guessed_post_after_the_session_moved_on_returns_422(mock_site_context) -> None:
     course, user, questions, client = _banked_session(question_count=2)
     RevisionReviewFactory(
         user=user,
@@ -653,20 +690,22 @@ def test_guessed_post_after_the_session_moved_on_returns_422(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_guessed_toggle_is_absent_after_a_wrong_answer(mock_site_context):
+def test_guessed_toggle_is_absent_after_a_wrong_answer(mock_site_context) -> None:
     _, _, _, html = _answered_html(answer_correctly=False)
 
     assert 'data-testid="revision-guessed"' not in html
 
 
 @pytest.mark.django_db
-def test_guessed_toggle_is_offered_after_a_right_answer(mock_site_context):
+def test_guessed_toggle_is_offered_after_a_right_answer(mock_site_context) -> None:
     _, _, _, html = _answered_html(answer_correctly=True)
 
     assert "We'll ask you this one again sooner." in html
 
 
-def _ended_session(*, answer_correctly: bool):
+def _ended_session(
+    *, answer_correctly: bool
+) -> tuple[Course, User, FormQuestion, Client]:
     """A session whose one question was answered and whose index is past the end."""
     course, user, (question,), client = _banked_session()
     option = _right_option(question) if answer_correctly else _wrong_option(question)
@@ -676,7 +715,9 @@ def _ended_session(*, answer_correctly: bool):
 
 
 @pytest.mark.django_db
-def test_dashboard_counts_the_due_questions_of_the_learners_bank(mock_site_context):
+def test_dashboard_counts_the_due_questions_of_the_learners_bank(
+    mock_site_context,
+) -> None:
     course = CourseFactory()
     finished = TopicFactory()
     unfinished = TopicFactory()
@@ -699,7 +740,7 @@ def test_dashboard_counts_the_due_questions_of_the_learners_bank(mock_site_conte
 
 
 @pytest.mark.django_db
-def test_dashboard_says_one_question_due_in_the_singular(mock_site_context):
+def test_dashboard_says_one_question_due_in_the_singular(mock_site_context) -> None:
     course, user, _, _ = _banked_session()
 
     content = _client_for(user).get(_revision_url(course)).content.decode()
@@ -713,7 +754,7 @@ def test_dashboard_says_one_question_due_in_the_singular(mock_site_context):
 )
 def test_dashboard_caps_a_long_backlog_at_forty_plus(
     backlog, expected, mock_site_context
-):
+) -> None:
     user = UserFactory()
     course = _course_with_due_backlog(user, backlog)
 
@@ -723,7 +764,7 @@ def test_dashboard_caps_a_long_backlog_at_forty_plus(
 
 
 @pytest.mark.django_db
-def test_dashboard_with_nothing_due_still_offers_to_start(mock_site_context):
+def test_dashboard_with_nothing_due_still_offers_to_start(mock_site_context) -> None:
     course, user, _ = _course_with_everything_scheduled_later(due_in=timedelta(days=3))
 
     content = _client_for(user).get(_revision_url(course)).content.decode()
@@ -733,7 +774,9 @@ def test_dashboard_with_nothing_due_still_offers_to_start(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_start_with_nothing_due_stores_a_session_of_bank_questions(mock_site_context):
+def test_start_with_nothing_due_stores_a_session_of_bank_questions(
+    mock_site_context,
+) -> None:
     course, user, question = _course_with_everything_scheduled_later(
         due_in=timedelta(days=3)
     )
@@ -746,7 +789,7 @@ def test_start_with_nothing_due_stores_a_session_of_bank_questions(mock_site_con
 
 
 @pytest.mark.django_db
-def test_revision_page_renders_inside_the_course_player(mock_site_context):
+def test_revision_page_renders_inside_the_course_player(mock_site_context) -> None:
     course, user, _, _ = _banked_session()
     topic_url = reverse(
         "learner_interface:view_course_item",
@@ -760,7 +803,9 @@ def test_revision_page_renders_inside_the_course_player(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_revision_page_marks_the_outline_entry_as_the_current_page(mock_site_context):
+def test_revision_page_marks_the_outline_entry_as_the_current_page(
+    mock_site_context,
+) -> None:
     course, user, _, _ = _banked_session()
 
     content = _client_for(user).get(_revision_url(course)).content.decode()
@@ -774,7 +819,7 @@ def test_revision_page_marks_the_outline_entry_as_the_current_page(mock_site_con
 @pytest.mark.django_db
 def test_revision_page_highlights_the_outline_entry_like_the_reference_link(
     mock_site_context,
-):
+) -> None:
     course, user, _, _ = _banked_session()
 
     content = _client_for(user).get(_revision_url(course)).content.decode()
@@ -788,7 +833,9 @@ def test_revision_page_highlights_the_outline_entry_like_the_reference_link(
 
 
 @pytest.mark.django_db
-def test_revision_page_has_no_section_list_or_needs_revision_badge(mock_site_context):
+def test_revision_page_has_no_section_list_or_needs_revision_badge(
+    mock_site_context,
+) -> None:
     course, user, _, _ = _banked_session()
 
     content = _client_for(user).get(_revision_url(course)).content.decode()
@@ -799,7 +846,7 @@ def test_revision_page_has_no_section_list_or_needs_revision_badge(mock_site_con
 
 
 @pytest.mark.django_db
-def test_check_answer_button_is_full_width(mock_site_context):
+def test_check_answer_button_is_full_width(mock_site_context) -> None:
     course, _, _, client = _banked_session()
 
     content = client.get(_revision_url(course)).content.decode()
@@ -815,7 +862,7 @@ def test_check_answer_button_is_full_width(mock_site_context):
 )
 def test_feedback_puts_the_explanation_in_a_callout_of_the_results_tone(
     answer_correctly, tone, mock_site_context
-):
+) -> None:
     html = _feedback_html(
         explanation="Because **it is**.", answer_correctly=answer_correctly
     )
@@ -831,21 +878,21 @@ def test_feedback_puts_the_explanation_in_a_callout_of_the_results_tone(
 
 
 @pytest.mark.django_db
-def test_feedback_has_no_why_heading(mock_site_context):
+def test_feedback_has_no_why_heading(mock_site_context) -> None:
     html = _feedback_html(explanation="Because.", answer_correctly=False)
 
     assert re.search(r"<h\d[^>]*>\s*Why\s*</h\d>", html) is None
 
 
 @pytest.mark.django_db
-def test_wrong_answer_callout_names_the_correct_answer(mock_site_context):
+def test_wrong_answer_callout_names_the_correct_answer(mock_site_context) -> None:
     _, question, _, html = _answered_html(answer_correctly=False)
 
     assert f"Not quite. The answer is {_right_option(question).text}." in html
 
 
 @pytest.mark.django_db
-def test_right_answer_callout_says_correct(mock_site_context):
+def test_right_answer_callout_says_correct(mock_site_context) -> None:
     _, _, _, html = _answered_html(answer_correctly=True)
 
     assert re.search(r"<strong[^>]*>\s*Correct\.\s*</strong>", html) is not None
@@ -860,7 +907,7 @@ def _option_row(html: str, option) -> str:
 
 
 @pytest.mark.django_db
-def test_correct_option_row_has_a_success_border_and_tint(mock_site_context):
+def test_correct_option_row_has_a_success_border_and_tint(mock_site_context) -> None:
     _, question, _, html = _answered_html(answer_correctly=False)
 
     row = _option_row(html, _right_option(question))
@@ -870,7 +917,9 @@ def test_correct_option_row_has_a_success_border_and_tint(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_wrongly_chosen_option_row_has_an_error_border_and_tint(mock_site_context):
+def test_wrongly_chosen_option_row_has_an_error_border_and_tint(
+    mock_site_context,
+) -> None:
     _, _, chosen, html = _answered_html(answer_correctly=False)
 
     row = _option_row(html, chosen)
@@ -880,7 +929,7 @@ def test_wrongly_chosen_option_row_has_an_error_border_and_tint(mock_site_contex
 
 
 @pytest.mark.django_db
-def test_section_control_is_a_revisit_link_in_the_callout(mock_site_context):
+def test_section_control_is_a_revisit_link_in_the_callout(mock_site_context) -> None:
     course, _, _, html = _answered_html(answer_correctly=False)
     href = reverse(
         "learner_interface:view_course_item",
@@ -917,7 +966,7 @@ def _count(html: str, testid: str) -> str:
 
 
 @pytest.mark.django_db
-def test_done_card_counts_knew_hard_and_forgot(mock_site_context):
+def test_done_card_counts_knew_hard_and_forgot(mock_site_context) -> None:
     html, _, _ = _done_html(["knew", "knew", "hard", "forgot"])
 
     assert "Revision done" in html
@@ -930,7 +979,9 @@ def test_done_card_counts_knew_hard_and_forgot(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_done_card_counts_are_plain_figures_without_border_or_fill(mock_site_context):
+def test_done_card_counts_are_plain_figures_without_border_or_fill(
+    mock_site_context,
+) -> None:
     """Each count on the done card used to sit in its own bordered, filled tile."""
     html, _, _ = _done_html(["knew", "hard", "forgot"])
 
@@ -943,7 +994,7 @@ def test_done_card_counts_are_plain_figures_without_border_or_fill(mock_site_con
 
 
 @pytest.mark.django_db
-def test_done_card_has_one_button_back_to_the_course(mock_site_context):
+def test_done_card_has_one_button_back_to_the_course(mock_site_context) -> None:
     html, _, course = _done_html(["forgot"])
     home = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
 
@@ -953,7 +1004,7 @@ def test_done_card_has_one_button_back_to_the_course(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_done_card_shows_no_missed_list_and_no_next_revision(mock_site_context):
+def test_done_card_shows_no_missed_list_and_no_next_revision(mock_site_context) -> None:
     html, _, _ = _done_html(["forgot"])
 
     assert "Revisit: " not in html
@@ -962,7 +1013,9 @@ def test_done_card_shows_no_missed_list_and_no_next_revision(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_revision_page_after_the_done_card_is_the_dashboard_again(mock_site_context):
+def test_revision_page_after_the_done_card_is_the_dashboard_again(
+    mock_site_context,
+) -> None:
     _, client, course = _done_html(["knew"])
 
     content = client.get(_revision_url(course)).content.decode()
@@ -972,7 +1025,7 @@ def test_revision_page_after_the_done_card_is_the_dashboard_again(mock_site_cont
 
 
 @pytest.mark.django_db
-def test_state_past_its_last_question_renders_the_done_card(mock_site_context):
+def test_state_past_its_last_question_renders_the_done_card(mock_site_context) -> None:
     course, user, (question,), client = _banked_session()
     RevisionReviewFactory(
         user=user,
@@ -991,10 +1044,102 @@ def test_state_past_its_last_question_renders_the_done_card(mock_site_context):
 @pytest.mark.django_db
 def test_dashboard_queries_stay_within_a_fixed_bound(
     mock_site_context, django_assert_max_num_queries
-):
+) -> None:
     user = UserFactory()
     course = _course_with_due_backlog(user, 20)
     client = _client_for(user)
 
     with django_assert_max_num_queries(DASHBOARD_QUERIES):
         client.get(_revision_url(course))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "route",
+    ["course_revision_answer", "course_revision_next", "course_revision_guessed"],
+)
+def test_htmx_post_with_no_session_is_sent_to_the_revision_page_by_hx_redirect(
+    route, mock_site_context
+) -> None:
+    course, _, _, client = _banked_session()
+    session = client.session
+    del session[f"revision_session:{course.id}"]
+    session.save()
+
+    response = client.post(_route_url(route, course), HTTP_HX_REQUEST="true")
+
+    assert (response.status_code, response["HX-Redirect"]) == (
+        204,
+        _revision_url(course),
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "route",
+    ["course_revision_answer", "course_revision_next", "course_revision_guessed"],
+)
+def test_htmx_post_from_an_unregistered_learner_is_sent_away_by_hx_redirect(
+    route, mock_site_context
+) -> None:
+    course = CourseFactory()
+    client = _client_for(UserFactory())
+
+    response = client.post(_route_url(route, course), HTTP_HX_REQUEST="true")
+
+    assert (response.status_code, response["HX-Redirect"]) == (
+        204,
+        _detail_url(course),
+    )
+
+
+@pytest.mark.django_db
+def test_an_answer_given_in_another_course_does_not_count_as_answered_here(
+    mock_site_context,
+) -> None:
+    course, user, (question,), client = _banked_session()
+    RevisionReviewFactory(
+        user=user,
+        question=question,
+        course=CourseFactory(),
+        reviewed_at=datetime(2026, 6, 1, tzinfo=UTC),
+    )
+
+    content = client.get(_revision_url(course)).content.decode()
+
+    assert 'data-testid="revision-feedback"' not in content
+
+
+@pytest.mark.django_db
+def test_revision_page_outline_links_reference_topics_and_carries_the_deadline(
+    mock_site_context,
+) -> None:
+    course, user, _, _ = _banked_session()
+
+    response = _client_for(user).get(_revision_url(course))
+
+    assert response.context["reference_linked"] is True
+    assert "next_deadline_card" in response.context
+
+
+@pytest.mark.django_db
+def test_counter_leaves_out_a_question_that_left_the_bank(mock_site_context) -> None:
+    course, _, questions, client = _banked_session(question_count=3)
+    questions[1].options.all().delete()
+    _store_session(client, course, questions, index=2)
+
+    content = client.get(_revision_url(course)).content.decode()
+
+    assert "2 of 2" in content
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("route", ["course_reference", "course_finish"])
+def test_reference_and_finish_pages_keep_the_outline_revision_entry(
+    route, mock_site_context
+) -> None:
+    course, user, _, _ = _banked_session()
+
+    response = _client_for(user).get(_route_url(route, course))
+
+    assert response.context["revision_due_text"] == "1 due"

@@ -31,7 +31,7 @@ def _bank_questions(site) -> list[FormQuestion]:
 @pytest.mark.django_db
 def test_the_bank_form_is_listed_by_no_course(
     site, loaded_demo_content, mock_site_context
-):
+) -> None:
     bank = Form.objects.get(title=BANK_TITLE, site=site)
 
     placements = ContentCollectionItem.objects.filter(child_id=bank.pk)
@@ -42,7 +42,7 @@ def test_the_bank_form_is_listed_by_no_course(
 @pytest.mark.django_db
 def test_the_bank_form_has_four_choice_questions_each_with_an_explanation(
     site, loaded_demo_content, mock_site_context
-):
+) -> None:
     questions = _bank_questions(site)
 
     assert len(questions) == 4
@@ -53,7 +53,7 @@ def test_the_bank_form_has_four_choice_questions_each_with_an_explanation(
 @pytest.mark.django_db
 def test_bank_questions_without_their_own_list_test_the_course_part(
     site, loaded_demo_content, mock_site_context
-):
+) -> None:
     questions = [q for q in _bank_questions(site) if q.question != TOPIC_QUESTION]
 
     assert len(questions) == 3
@@ -67,7 +67,7 @@ def test_bank_questions_without_their_own_list_test_the_course_part(
 @pytest.mark.django_db
 def test_the_overriding_bank_question_tests_only_the_topic(
     site, loaded_demo_content, mock_site_context
-):
+) -> None:
     question = FormQuestion.objects.get(
         question=TOPIC_QUESTION, form_page__form__title=BANK_TITLE
     )
@@ -79,7 +79,7 @@ def test_the_overriding_bank_question_tests_only_the_topic(
 @pytest.mark.django_db
 def test_the_all_of_the_above_option_is_stored_locked(
     site, loaded_demo_content, mock_site_context
-):
+) -> None:
     locked = QuestionOption.objects.filter(
         question__form_page__form__title=BANK_TITLE, locked=True
     ).get()
@@ -91,7 +91,7 @@ def test_the_all_of_the_above_option_is_stored_locked(
 @pytest.mark.django_db
 def test_knowledge_check_questions_store_their_explanations(
     site, loaded_demo_content, mock_site_context
-):
+) -> None:
     explained = FormQuestion.objects.filter(
         form_page__form__title="Knowledge Check", form_page__form__site=site
     ).exclude(explanation="")
@@ -99,5 +99,5 @@ def test_knowledge_check_questions_store_their_explanations(
     assert explained.count() >= 3
 
 
-def test_the_demo_content_tree_passes_validation():
+def test_the_demo_content_tree_passes_validation() -> None:
     validate("demo_content")

@@ -174,13 +174,13 @@ def _question_with(**extra: object) -> FormQuestion:
     )
 
 
-def test_question_accepts_an_explanation():
+def test_question_accepts_an_explanation() -> None:
     question = _question_with(explanation="North is **correct**.")
 
     assert question.explanation == "North is **correct**."
 
 
-def test_question_accepts_no_explanation():
+def test_question_accepts_no_explanation() -> None:
     question = _question_with()
 
     assert question.explanation is None

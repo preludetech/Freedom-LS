@@ -41,7 +41,11 @@ class CardColumns(TypedDict):
 
 
 def _scheduler() -> Scheduler:
-    return Scheduler(desired_retention=config.REVISION_DESIRED_RETENTION)
+    # No fuzzing: "I guessed" replays a review, and a replay has to land on the
+    # same due date the first rating gave, so a second tap restores it exactly.
+    return Scheduler(
+        desired_retention=config.REVISION_DESIRED_RETENTION, enable_fuzzing=False
+    )
 
 
 def _to_card(card: CardDict) -> Card:

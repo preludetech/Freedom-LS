@@ -2147,7 +2147,7 @@ def test_detail_does_not_link_reference_topics_for_an_anonymous_visitor_a_backen
 @pytest.mark.django_db
 def test_detail_page_shows_nothing_about_revision_to_a_learner_with_due_questions(
     mock_site_context,
-):
+) -> None:
     course = CourseFactory()
     topic, _ = place_topic(course)
     question_testing_topic(topic)

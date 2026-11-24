@@ -13,7 +13,7 @@ from freedom_ls.revision.models import RevisionReview, RevisionSchedule
     ("admin_class", "model"),
     [(RevisionScheduleAdmin, RevisionSchedule), (RevisionReviewAdmin, RevisionReview)],
 )
-def test_no_one_can_add_change_or_delete(admin_class, model, mock_site_context):
+def test_no_one_can_add_change_or_delete(admin_class, model, mock_site_context) -> None:
     model_admin = admin_class(model, admin.site)
     request = RequestFactory().get("/")
     request.user = UserFactory(superuser=True)

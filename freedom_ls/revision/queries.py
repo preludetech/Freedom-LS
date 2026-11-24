@@ -166,6 +166,28 @@ def bank_questions(record: CourseProgress) -> QuerySet[FormQuestion]:
     )
 
 
+def schedule_card(schedule: RevisionSchedule) -> scheduler.CardDict:
+    """The FSRS card a schedule's columns hold."""
+    return scheduler.card_from_columns(
+        state=schedule.state,
+        step=schedule.step,
+        stability=schedule.stability,
+        difficulty=schedule.difficulty,
+        due=schedule.due,
+        last_review=schedule.last_review,
+    )
+
+
+def _placed_section_children(course: Course) -> dict[UUID, Topic | CoursePart]:
+    """Every topic and part placed in the course, by id, first placement kept."""
+    placed: dict[UUID, Topic | CoursePart] = {}
+    for item in course.collection_items_flat():
+        child = item.child
+        if isinstance(child, Topic | CoursePart):
+            placed.setdefault(child.pk, child)
+    return placed
+
+
 def bank_sections(record: CourseProgress) -> list[Topic | CoursePart]:
     """The placed sections that at least one bank question names, in course order."""
     banked = bank_questions(record)
@@ -178,11 +200,7 @@ def bank_sections(record: CourseProgress) -> list[Topic | CoursePart]:
             "course_part_id", flat=True
         )
     )
-    placed: dict[UUID, Topic | CoursePart] = {}
-    for item in record.course.collection_items_flat():
-        child = item.child
-        if isinstance(child, Topic | CoursePart):
-            placed.setdefault(child.pk, child)
+    placed = _placed_section_children(record.course)
     return [
         placed[section_id]
         for section_id in _placed_sections(record).order
@@ -290,17 +308,7 @@ def due_questions(
 
     def retrievability(question: FormQuestion) -> float:
         schedule = schedules[question.pk]
-        return scheduler.retrievability(
-            scheduler.card_from_columns(
-                state=schedule.state,
-                step=schedule.step,
-                stability=schedule.stability,
-                difficulty=schedule.difficulty,
-                due=schedule.due,
-                last_review=schedule.last_review,
-            ),
-            now,
-        )
+        return scheduler.retrievability(schedule_card(schedule), now)
 
     reviewed = [question for question in questions if question.pk in schedules]
     never_reviewed = [
@@ -346,11 +354,7 @@ def question_sections(
     named = {row.topic_id for row in question.formquestiontopic_set.all()} | {
         row.course_part_id for row in question.formquestioncoursepart_set.all()
     }
-    placed: dict[UUID, Topic | CoursePart] = {}
-    for item in record.course.collection_items_flat():
-        child = item.child
-        if isinstance(child, Topic | CoursePart):
-            placed.setdefault(child.pk, child)
+    placed = _placed_section_children(record.course)
     return [
         placed[section_id]
         for section_id in _placed_sections(record).order

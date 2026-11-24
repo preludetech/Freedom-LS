@@ -165,6 +165,7 @@ from .utils import (
     get_is_registered,
     get_item_part,
     get_resume_index,
+    item_rows,
     next_deadline_card,
     next_entry,
     outstanding_items,
@@ -2407,6 +2408,10 @@ def _reference_sidebar_context(
         **_outline_header_context(course_progress, course_index, OutlineMode.FULL),
         "on_reference_page": True,
         "reference_linked": True,
+        # The reference gate has already passed, so only the bank decides.
+        "revision_due_text": _revision_due_badge(
+            cast("User", request.user), course_progress, timezone.now()
+        ),
         **_time_zone_context(request),
     }
 
@@ -2500,6 +2505,28 @@ def _revision_record(
     return course, record
 
 
+def _revision_redirect(request: HttpRequest, url: str) -> HttpResponse:
+    """Send a revision POST to ``url``: a 204 with HX-Redirect under htmx, a redirect otherwise.
+
+    htmx follows a plain redirect inside its own request and swaps the whole
+    page it lands on into ``#revision-card``, so it gets HX-Redirect instead.
+    """
+    if request.headers.get("HX-Request") == "true":
+        response = HttpResponse(status=204)
+        response["HX-Redirect"] = url
+        return response
+    return redirect(url)
+
+
+def _revision_page_redirect(request: HttpRequest, course: Course) -> HttpResponse:
+    return _revision_redirect(
+        request,
+        reverse(
+            "learner_interface:course_revision", kwargs={"course_slug": course.slug}
+        ),
+    )
+
+
 def _revision_state(
     request: HttpRequest, course: Course
 ) -> RevisionSessionState | None:
@@ -2535,7 +2562,9 @@ def _current_revision_question(
         question = (
             bank_questions(record)
             .filter(pk=question_id)
-            .prefetch_related("options")
+            .prefetch_related(
+                "options", "formquestiontopic_set", "formquestioncoursepart_set"
+            )
             .first()
         )
         if question is not None:
@@ -2559,13 +2588,7 @@ def _openable_positions(
     never offered for a page the player would refuse.
     """
     # Index 0 marks no row as current.
-    rows = _player_course_index(user, course, 0, record).rows
-    outline: list[dict] = []
-    for row in rows:
-        if "children" in row:
-            outline.extend(row["children"])
-        else:
-            outline.append(row)
+    outline = item_rows(_player_course_index(user, course, 0, record).rows)
     return {
         item.pk: position
         for position, (item, row) in enumerate(
@@ -2594,11 +2617,14 @@ def _section_links(
 
 
 def _revision_review_of(
-    user: User, state: RevisionSessionState, question: FormQuestion
+    user: User, course: Course, state: RevisionSessionState, question: FormQuestion
 ) -> RevisionReview | None:
-    """The review of this question written during this session, if any."""
+    """The latest review of this question written during this session, if any."""
     review: RevisionReview | None = (
-        session_reviews(user, state).filter(question=question).first()
+        session_reviews(user, state, course)
+        .filter(question=question)
+        .order_by("-reviewed_at")
+        .first()
     )
     return review
 
@@ -2618,9 +2644,8 @@ def _render_revision_card(
     revision page, which renders the session's current state in full.
     """
     if request.headers.get("HX-Request") != "true":
-        response = redirect(
-            "learner_interface:course_revision", course_slug=course.slug
-        )
+        response = _revision_page_redirect(request, course)
+        # See Other: the browser follows the native POST with a GET.
         response.status_code = 303
         return response
     template, context = _revision_card_context(request, course, record, state)
@@ -2633,7 +2658,7 @@ def _revision_end_context(
 ) -> dict[str, object]:
     return {
         "course": course,
-        "summary": session_summary(cast("User", request.user), state),
+        "summary": session_summary(cast("User", request.user), state, course),
     }
 
 
@@ -2654,7 +2679,7 @@ def _revision_card_context(
         return "learner_interface/partials/revision_end.html", _revision_end_context(
             request, course, state
         )
-    review = _revision_review_of(cast("User", request.user), state, question)
+    review = _revision_review_of(cast("User", request.user), course, state, question)
     section_links = (
         _section_links(
             record,
@@ -2665,6 +2690,18 @@ def _revision_card_context(
         else []
     )
     options = shuffled_options(question, state.seeds[state.index])
+    # Counted over the questions still in the bank, so a question that left it
+    # mid-session leaves no gap in "N of M".
+    in_bank = set(
+        bank_questions(record)
+        .filter(pk__in=state.question_ids)
+        .values_list("pk", flat=True)
+    )
+    position = sum(
+        1
+        for question_id in state.question_ids[: state.index + 1]
+        if question_id in in_bank
+    )
     return "learner_interface/partials/revision_card.html", {
         "course": course,
         "question": question,
@@ -2672,9 +2709,9 @@ def _revision_card_context(
         "revision_options": options,
         "correct_options": [option for option in options if option.correct],
         "review": review,
-        "position": state.index + 1,
-        "total": len(state.question_ids),
-        "question_positions": {question.id: state.index + 1},
+        "position": position,
+        "total": len(in_bank),
+        "question_positions": {question.id: position},
         "rejected_answers": {},
         "existing_answers": {},
     }
@@ -2705,10 +2742,10 @@ def _revision_due_text(
 
 
 def _revision_due_badge(
-    user: User, record: CourseProgress, now: datetime
+    user: User, record: CourseProgress | None, now: datetime
 ) -> str | None:
-    """ "N due" for a learner with a bank, None for one without."""
-    if not bank_questions(record).exists():
+    """ "N due" for a learner with a bank, None for one without or with no record."""
+    if record is None or not bank_questions(record).exists():
         return None
     return f"{_due_number(_due_count(user, record, now))} due"
 
@@ -2735,6 +2772,8 @@ def _render_revision_page(
 ) -> HttpResponse:
     """The revision page in the course player: the outline beside one revision card."""
     user = cast("User", request.user)
+    # Index 0 marks no row as current: the Revision entry is the current place.
+    course_index = _player_course_index(user, course, 0, record)
     return render(
         request,
         "learner_interface/course_revision.html",
@@ -2742,9 +2781,10 @@ def _render_revision_page(
             **context,
             "card_template": card_template,
             "course_progress": record,
-            "course_organisation": record.learner.organisation,
-            # Index 0 marks no row as current: the Revision entry is the current place.
-            "course_index": _player_course_index(user, course, 0, record).rows,
+            "course_index": course_index.rows,
+            **_outline_header_context(record, course_index, OutlineMode.FULL),
+            # The access gate has already passed, so the reference pages are open.
+            "reference_linked": True,
             "item_title": "Revision",
             "revision_is_current": True,
             # The access gate has already passed, so only the bank decides.
@@ -2800,19 +2840,23 @@ def partial_course_revision_answer(
     """Mark the posted answer to the session's current question and show its feedback."""
     gate = _revision_record(request, course_slug)
     if isinstance(gate, HttpResponseRedirect):
-        return gate
+        # Not a plain redirect: htmx would draw the page it lands on inside the card.
+        return _revision_redirect(request, gate.url)
     course, record = gate
     state = _revision_state(request, course)
     if state is None:
-        return redirect("learner_interface:course_revision", course_slug=course.slug)
+        return _revision_page_redirect(request, course)
     question, state = _current_revision_question(record, state)
     if question is None:
         _store_revision_state(request, course, state)
-        return redirect("learner_interface:course_revision", course_slug=course.slug)
+        return _revision_page_redirect(request, course)
     # Skipped questions moved the index; keep the state the learner now sits on.
     _store_revision_state(request, course, state)
 
-    if _revision_review_of(cast("User", request.user), state, question) is not None:
+    if (
+        _revision_review_of(cast("User", request.user), course, state, question)
+        is not None
+    ):
         return _render_revision_card(request, course, record, state)
 
     own_option_ids = {option.id for option in question.options.all()}
@@ -2829,7 +2873,12 @@ def partial_course_revision_answer(
             request, course, record, state, error="Choose an answer.", status=422
         )
     record_answer(
-        cast("User", request.user), record, question, selected, timezone.now()
+        cast("User", request.user),
+        record,
+        question,
+        selected,
+        timezone.now(),
+        session_started_at=state.started_at,
     )
     return _render_revision_card(request, course, record, state)
 
@@ -2842,19 +2891,20 @@ def partial_course_revision_next(
     """Move to the next question once the current one has been answered."""
     gate = _revision_record(request, course_slug)
     if isinstance(gate, HttpResponseRedirect):
-        return gate
+        # Not a plain redirect: htmx would draw the page it lands on inside the card.
+        return _revision_redirect(request, gate.url)
     course, record = gate
     state = _revision_state(request, course)
     if state is None:
-        return redirect("learner_interface:course_revision", course_slug=course.slug)
+        return _revision_page_redirect(request, course)
     question, state = _current_revision_question(record, state)
     if question is not None and _revision_review_of(
-        cast("User", request.user), state, question
+        cast("User", request.user), course, state, question
     ):
         state = state.advanced()
     _store_revision_state(request, course, state)
     if request.headers.get("HX-Request") != "true":
-        return redirect("learner_interface:course_revision", course_slug=course.slug)
+        return _revision_page_redirect(request, course)
     return _render_revision_card(request, course, record, state)
 
 
@@ -2925,6 +2975,9 @@ def course_finish(request, course_slug):
         ).rows,
         # The finish page is open only to a learner with content access.
         "reference_linked": True,
+        "revision_due_text": _revision_due_badge(
+            request.user, course_progress, timezone.now()
+        ),
         **_time_zone_context(request),
     }
 
@@ -3059,18 +3112,19 @@ def partial_course_revision_guessed(
     """Flip "I guessed" on the current question's right answer."""
     gate = _revision_record(request, course_slug)
     if isinstance(gate, HttpResponseRedirect):
-        return gate
+        # Not a plain redirect: htmx would draw the page it lands on inside the card.
+        return _revision_redirect(request, gate.url)
     course, record = gate
     state = _revision_state(request, course)
     if state is None:
-        return redirect("learner_interface:course_revision", course_slug=course.slug)
+        return _revision_page_redirect(request, course)
     question, state = _current_revision_question(record, state)
     if question is None:
         _store_revision_state(request, course, state)
-        return redirect("learner_interface:course_revision", course_slug=course.slug)
+        return _revision_page_redirect(request, course)
     _store_revision_state(request, course, state)
 
-    review = _revision_review_of(cast("User", request.user), state, question)
+    review = _revision_review_of(cast("User", request.user), course, state, question)
     if review is None:
         return _render_revision_card(request, course, record, state, status=422)
     try:
