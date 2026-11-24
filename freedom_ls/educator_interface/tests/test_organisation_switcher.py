@@ -16,7 +16,10 @@ from django.contrib.messages import get_messages
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
+from freedom_ls.learner_progress.factories import CourseFormAttemptFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
@@ -323,3 +326,33 @@ class TestSwitcherRendering:
         assert tile.text_content().strip() == "SO"
         assert not switcher.cssselect("button")
         assert not switcher.cssselect("svg")
+
+
+@pytest.mark.django_db
+class TestSwitchFromAnAttemptReview:
+    """A sitting belongs to one organisation's learner and its section has no
+    list, so a switch lands on the other organisation's first visible section."""
+
+    def test_lands_on_the_new_organisations_first_visible_section(
+        self, logged_in_client
+    ):
+        organisation_a, organisation_b, _cohort_a, educator = (
+            _two_organisation_educator()
+        )
+        attempt = CourseFormAttemptFactory(
+            form=FormFactory(strategy=FormStrategy.QUIZ),
+            course_progress__learner=LearnerFactory(organisation=organisation_a),
+        )
+        client = logged_in_client(educator)
+
+        response = _switch(
+            client,
+            _interface_url(
+                organisation_b.slug, f"quiz-attempts/{attempt.form_progress.pk}"
+            ),
+        )
+
+        assert response.status_code == 200
+        assert response["HX-Push-Url"] == _interface_url(
+            organisation_b.slug, "dashboard"
+        )

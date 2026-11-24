@@ -305,3 +305,14 @@ def test_the_educator_shell_loads_the_profile_picture_fallback_script(
     )
     assert len(scripts) == 1
     assert scripts[0].get("defer") is None
+
+
+@pytest.mark.django_db
+def test_sidebar_has_no_quiz_attempts_entry(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+
+    labels = [link.text_content().strip() for link in nav.cssselect("a")]
+
+    assert "Quiz attempts" not in labels

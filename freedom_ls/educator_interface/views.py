@@ -25,6 +25,9 @@ from freedom_ls.educator_interface.panels.common.request import (
 from freedom_ls.educator_interface.panels.course.config import CourseConfig
 from freedom_ls.educator_interface.panels.dashboard.config import DashboardConfig
 from freedom_ls.educator_interface.panels.learner.config import LearnerConfig
+from freedom_ls.educator_interface.panels.learner.quiz_attempt import (
+    QuizAttemptConfig,
+)
 from freedom_ls.educator_interface.panels.staff.config import StaffConfig
 from freedom_ls.learner_management.queries import (
     organisations_accessible_to,
@@ -52,7 +55,13 @@ from freedom_ls.panel_framework.views import (
 interface_config = [
     NavGroup(
         "Teaching",
-        [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig],
+        [
+            DashboardConfig,
+            CohortConfig,
+            LearnerConfig,
+            QuizAttemptConfig,
+            CourseConfig,
+        ],
     ),
     NavGroup("Administration", [StaffConfig, AuditLogConfig]),
 ]
@@ -208,9 +217,7 @@ def interface(
         # The switcher links to the section the visitor is on, which their
         # roles in this organisation may not show. They land on one it does.
         asked = sections_by_url_name(interface_config).get(path_string.split("/", 1)[0])
-        if asked is not None and not (
-            asked.is_visible(scoped_request) and asked.is_available(scoped_request)
-        ):
+        if asked is not None and not asked.is_in_menu(scoped_request):
             landing = first_visible_section(interface_config, scoped_request)
             if landing is None:
                 raise Http404

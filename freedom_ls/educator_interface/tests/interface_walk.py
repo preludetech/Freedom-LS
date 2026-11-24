@@ -12,6 +12,7 @@ from typing import NamedTuple, cast
 from django.db.models import Model
 from django.http import HttpRequest
 from django.test import RequestFactory
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -19,8 +20,14 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.panels.common.bulk_actions import EducatorBulkAction
 from freedom_ls.educator_interface.views import interface_config
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_progress.factories import (
+    CourseFormAttemptFactory,
+    CourseProgressFactory,
+)
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
@@ -61,7 +68,13 @@ class WalkedBulkAction(NamedTuple):
     ctx: PanelContext
 
 
-type Walked = WalkedPanel | WalkedAction | WalkedBulkAction
+class WalkedQuickView(NamedTuple):
+    """A path this walk reached that opens one instance's quick-view drawer."""
+
+    path: str
+
+
+type Walked = WalkedPanel | WalkedAction | WalkedBulkAction | WalkedQuickView
 
 
 def _seed_instance(
@@ -81,6 +94,14 @@ def _seed_instance(
         return cast(Model, LearnerFactory(organisation=organisation))
     if model is Course:
         return cast(Model, CourseFactory())
+    if model is FormProgress:
+        learner = LearnerFactory(organisation=organisation)
+        attempt = CourseFormAttemptFactory(
+            form=FormFactory(strategy=FormStrategy.QUIZ),
+            course_progress=CourseProgressFactory(learner=learner),
+            form_progress__completed_time=timezone.now(),
+        )
+        return cast(Model, attempt.form_progress)
     raise NotImplementedError(
         f"interface_walk has no instance seeder for {model}; "
         "add one alongside the new config."
@@ -144,27 +165,29 @@ def walk_interface(organisation: Organisation) -> list[Walked]:
             continue
 
         if issubclass(section, ListViewConfig):
-            if section.list_view is None:
-                raise ValueError(f"{section.__name__} must define list_view")
-            table = cast(
-                ListViewPanel, _bind(ListViewPanel, request, None, section, url_name)
-            )
-            table.data_table = section.list_view
-            walked.append(WalkedPanel(url_name, table))
-            walked.extend(
-                WalkedAction(
-                    f"{url_name}/__actions/{action.action_name}", action, table.ctx
+            # A section with no list has no list path, list actions or bulk
+            # actions, only its instance pages.
+            if section.list_view is not None:
+                table = cast(
+                    ListViewPanel,
+                    _bind(ListViewPanel, request, None, section, url_name),
                 )
-                for action in section.get_actions(request)
-            )
-            walked.extend(
-                WalkedBulkAction(
-                    f"{url_name}/__actions/{action.action_name}",
-                    cast(EducatorBulkAction, action),
-                    table.ctx,
+                table.data_table = section.list_view
+                walked.append(WalkedPanel(url_name, table))
+                walked.extend(
+                    WalkedAction(
+                        f"{url_name}/__actions/{action.action_name}", action, table.ctx
+                    )
+                    for action in section.get_actions(request)
                 )
-                for action in section.get_bulk_actions(request)
-            )
+                walked.extend(
+                    WalkedBulkAction(
+                        f"{url_name}/__actions/{action.action_name}",
+                        cast(EducatorBulkAction, action),
+                        table.ctx,
+                    )
+                    for action in section.get_bulk_actions(request)
+                )
             if section.instance_view is None:
                 continue
             instance = _seed_instance(
@@ -186,6 +209,8 @@ def walk_interface(organisation: Organisation) -> list[Walked]:
             for action in instance_view.get_actions()
         )
         walked.extend(_walk_panel(instance_panel, detail))
+        if issubclass(section, ListViewConfig) and section.quick_view is not None:
+            walked.append(WalkedQuickView(f"{detail}/__quick-view"))
 
     return walked
 
