@@ -26,8 +26,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
-- [ ] (cmd) Run `/sdd:document`: if the button-label fix ships the brand fonts or their `@font-face` metric overrides, update `docs/how tos/theme-fls.md` to say so (spec "Documentation and downstream")
+- [x] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [x] (cmd) Run `/sdd:document`: if the button-label fix ships the brand fonts or their `@font-face` metric overrides, update `docs/how tos/theme-fls.md` to say so (spec "Documentation and downstream")
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
