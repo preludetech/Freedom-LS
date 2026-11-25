@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import uuid
+from collections.abc import Callable
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -16,6 +17,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import override_settings
 
+from freedom_ls.content_base.models import BaseContent
 from freedom_ls.content_engine.factories import (
     ArticleFactory,
     CourseCategoryFactory,
@@ -33,6 +35,7 @@ from freedom_ls.content_engine.models import (
     Course,
     CoursePart,
     DifficultyLevel,
+    File,
     PriceKind,
     Topic,
 )
@@ -1319,7 +1322,7 @@ def _course_with_part_between_topics() -> _Outline:
 
 
 @pytest.mark.django_db
-def test_children_flat_skips_a_retired_topic(mock_site_context):
+def test_children_flat_skips_a_retired_topic(mock_site_context: object) -> None:
     course, part, before, inside, after, quiz = _course_with_part_between_topics()
     retire(inside)
 
@@ -1328,8 +1331,8 @@ def test_children_flat_skips_a_retired_topic(mock_site_context):
 
 @pytest.mark.django_db
 def test_children_flat_skips_a_retired_part_and_the_children_under_it(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     course, part, before, _, after, _ = _course_with_part_between_topics()
     retire(part)
 
@@ -1338,8 +1341,8 @@ def test_children_flat_skips_a_retired_part_and_the_children_under_it(
 
 @pytest.mark.django_db
 def test_viewable_items_skips_a_retired_child_and_the_children_of_a_retired_part(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     course, part, before, _, after, _ = _course_with_part_between_topics()
     retire(part)
 
@@ -1347,7 +1350,7 @@ def test_viewable_items_skips_a_retired_child_and_the_children_of_a_retired_part
 
 
 @pytest.mark.django_db
-def test_lesson_count_does_not_count_a_retired_topic(mock_site_context):
+def test_lesson_count_does_not_count_a_retired_topic(mock_site_context: object) -> None:
     course, _, _, inside, _, _ = _course_with_part_between_topics()
     retire(inside)
 
@@ -1356,8 +1359,8 @@ def test_lesson_count_does_not_count_a_retired_topic(mock_site_context):
 
 @pytest.mark.django_db
 def test_includes_assessments_is_false_once_the_only_form_is_retired(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     course, _, _, _, _, quiz = _course_with_part_between_topics()
     retire(quiz)
 
@@ -1365,7 +1368,9 @@ def test_includes_assessments_is_false_once_the_only_form_is_retired(
 
 
 @pytest.mark.django_db
-def test_collection_items_still_returns_a_retired_child(mock_site_context):
+def test_collection_items_still_returns_a_retired_child(
+    mock_site_context: object,
+) -> None:
     course, part, before, inside, after, quiz = _course_with_part_between_topics()
     retire(before)
     retire(inside)
@@ -1375,7 +1380,9 @@ def test_collection_items_still_returns_a_retired_child(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_include_retired_returns_every_child_in_order(mock_site_context):
+def test_include_retired_returns_every_child_in_order(
+    mock_site_context: object,
+) -> None:
     course, part, before, inside, after, quiz = _course_with_part_between_topics()
     retire(before)
     retire(part)
@@ -1396,7 +1403,9 @@ def test_include_retired_returns_every_child_in_order(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_children_flat_keeps_a_collection_item_whose_child_is_gone(mock_site_context):
+def test_children_flat_keeps_a_collection_item_whose_child_is_gone(
+    mock_site_context: object,
+) -> None:
     course: Course = CourseFactory()
     topic = TopicFactory()
     course.items.create(child=topic, order=0)
@@ -1415,7 +1424,7 @@ RETIRABLE_FACTORIES = [
 
 
 @pytest.mark.django_db
-def test_is_retired_follows_retired_at(mock_site_context):
+def test_is_retired_follows_retired_at(mock_site_context: object) -> None:
     topic: Topic = TopicFactory()
 
     assert (topic.is_retired, retire(topic).is_retired) == (False, True)
@@ -1424,8 +1433,8 @@ def test_is_retired_follows_retired_at(mock_site_context):
 @pytest.mark.django_db
 @pytest.mark.parametrize("factory", RETIRABLE_FACTORIES)
 def test_not_retired_returns_the_live_rows_and_leaves_out_a_retired_one(
-    mock_site_context, factory
-):
+    mock_site_context: object, factory: Callable[[], BaseContent | File]
+) -> None:
     live = factory()
     retired = retire(factory())
     model = type(live)
@@ -1435,7 +1444,7 @@ def test_not_retired_returns_the_live_rows_and_leaves_out_a_retired_one(
 
 
 @pytest.mark.django_db
-def test_label_for_marks_a_retired_course_when_asked(mock_site_context):
+def test_label_for_marks_a_retired_course_when_asked(mock_site_context: object) -> None:
     course = retire(cast(Course, CourseFactory(title="Safety")))
 
     assert course.label_for(OrganisationFactory(), mark_retired=True) == (
@@ -1444,21 +1453,27 @@ def test_label_for_marks_a_retired_course_when_asked(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_label_for_leaves_a_retired_course_unmarked_by_default(mock_site_context):
+def test_label_for_leaves_a_retired_course_unmarked_by_default(
+    mock_site_context: object,
+) -> None:
     course = retire(cast(Course, CourseFactory(title="Safety")))
 
     assert course.label_for(OrganisationFactory()) == "Safety"
 
 
 @pytest.mark.django_db
-def test_label_for_leaves_a_live_course_unmarked_when_asked(mock_site_context):
+def test_label_for_leaves_a_live_course_unmarked_when_asked(
+    mock_site_context: object,
+) -> None:
     course = CourseFactory(title="Safety")
 
     assert course.label_for(OrganisationFactory(), mark_retired=True) == "Safety"
 
 
 @pytest.mark.django_db
-def test_label_for_puts_the_retired_mark_after_the_owners(mock_site_context):
+def test_label_for_puts_the_retired_mark_after_the_owners(
+    mock_site_context: object,
+) -> None:
     course = cast(Course, CourseFactory(title="Safety"))
     course.organisations.add(OrganisationFactory(name="Northwind Logistics"))
     retire(course)

@@ -722,7 +722,7 @@ def test_a_learners_history_tab_shows_the_actors_picture(
 @pytest.mark.django_db
 def test_the_registrations_card_marks_a_retired_course_with_a_retired_badge(
     staff_client: Client,
-):
+) -> None:
     learner = LearnerFactory(organisation=OrganisationFactory())
     LearnerCourseRegistrationFactory(
         learner=learner, course=retire(cast(Course, CourseFactory(title="Algebra")))
@@ -738,7 +738,7 @@ def test_the_registrations_card_marks_a_retired_course_with_a_retired_badge(
 @pytest.mark.django_db
 def test_the_registrations_card_marks_a_live_course_with_no_retired_badge(
     staff_client: Client,
-):
+) -> None:
     learner = LearnerFactory(organisation=OrganisationFactory())
     LearnerCourseRegistrationFactory(
         learner=learner, course=CourseFactory(title="Algebra")

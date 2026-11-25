@@ -589,8 +589,8 @@ class TestRetiredCourseIsClosed:
     """A retired course is closed to a registered learner, with or without the override."""
 
     def test_get_access_is_fully_closed_for_a_registered_learner(
-        self, mock_site_context, backend_path, override_visible
-    ):
+        self, mock_site_context: object, backend_path: str, override_visible: bool
+    ) -> None:
         course = retire(cast("Course", CourseFactory()))
         user = UserFactory()
         LearnerCourseRegistrationFactory(
@@ -605,8 +605,8 @@ class TestRetiredCourseIsClosed:
         assert decision.cta_url is None
 
     def test_filter_visible_drops_a_retired_course_a_learner_is_registered_for(
-        self, mock_site_context, backend_path, override_visible
-    ):
+        self, mock_site_context: object, backend_path: str, override_visible: bool
+    ) -> None:
         live = CourseFactory()
         retired = retire(cast("Course", CourseFactory()))
         user = UserFactory()

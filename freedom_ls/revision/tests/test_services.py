@@ -491,7 +491,7 @@ def test_second_tap_restores_the_exact_due_of_a_long_review_interval(banked) -> 
 
 
 @pytest.mark.django_db
-def test_shuffled_options_leave_out_a_retired_option(mock_site_context) -> None:
+def test_shuffled_options_leave_out_a_retired_option(mock_site_context: Site) -> None:
     question = _ten_options()
     gone = retire(question.options.get(text="Option 3"))
 
@@ -501,7 +501,9 @@ def test_shuffled_options_leave_out_a_retired_option(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_answer_is_marked_against_live_options_only(banked) -> None:
+def test_answer_is_marked_against_live_options_only(
+    banked: tuple[User, CourseProgress, FormQuestion],
+) -> None:
     """A retired correct option the learner was never shown does not make a right answer wrong."""
     user, record, question = banked
     chosen = _correct_ids(question)

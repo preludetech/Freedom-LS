@@ -592,7 +592,7 @@ class TestRegisterCohortForCourseOrganisationCheck:
 
         assert not cohort.course_registrations.exists()
 
-    def test_a_retired_course_is_refused(self, mock_site_context):
+    def test_a_retired_course_is_refused(self, mock_site_context: object) -> None:
         cohort = CohortFactory()
         course = retire(cast(Course, CourseFactory()))
 
@@ -602,8 +602,8 @@ class TestRegisterCohortForCourseOrganisationCheck:
         assert not cohort.course_registrations.exists()
 
     def test_a_retired_course_is_refused_before_a_registration_is_reactivated(
-        self, mock_site_context
-    ):
+        self, mock_site_context: object
+    ) -> None:
         registration = CohortCourseRegistrationFactory(is_active=False)
         retire(cast(Course, registration.course))
 
@@ -614,8 +614,8 @@ class TestRegisterCohortForCourseOrganisationCheck:
         assert registration.is_active is False
 
     def test_retiring_a_course_leaves_every_registration_active(
-        self, mock_site_context
-    ):
+        self, mock_site_context: object
+    ) -> None:
         cohort_registration = CohortCourseRegistrationFactory(is_active=True)
         learner_registration = LearnerCourseRegistrationFactory(
             course=cohort_registration.course, is_active=True

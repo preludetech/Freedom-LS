@@ -545,7 +545,9 @@ class TestSelfRegisterAudit:
         assert not Learner.objects.filter(user=user).exists()
         assert AuditLogEntry.unscoped.count() == 0
 
-    def test_a_retired_course_is_refused_and_changes_nothing(self, mock_site_context):
+    def test_a_retired_course_is_refused_and_changes_nothing(
+        self, mock_site_context: object
+    ) -> None:
         organisation = OrganisationFactory()
         course = retire(cast(Course, CourseFactory()))
         user = UserFactory()
@@ -1259,7 +1261,7 @@ class TestRegisterForCourseOrganisationCheck:
 
         assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
 
-    def test_a_retired_course_is_refused(self, mock_site_context):
+    def test_a_retired_course_is_refused(self, mock_site_context: object) -> None:
         learner = LearnerFactory()
         course = retire(cast(Course, CourseFactory()))
 
@@ -1269,8 +1271,8 @@ class TestRegisterForCourseOrganisationCheck:
         assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
 
     def test_a_retired_course_is_refused_before_a_registration_is_reactivated(
-        self, mock_site_context
-    ):
+        self, mock_site_context: object
+    ) -> None:
         registration = LearnerCourseRegistrationFactory(is_active=False)
         retire(cast(Course, registration.course))
 

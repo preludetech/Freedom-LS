@@ -617,8 +617,8 @@ def test_stored_score_outdated_is_false_for_a_non_quiz_form(
 
 @pytest.mark.django_db
 def test_count_form_questions_skips_a_retired_question_and_a_retired_page(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     form = FormFactory()
     page = FormPageFactory(form=form, order=0)
     FormQuestionFactory(form_page=page, order=0)
@@ -631,8 +631,8 @@ def test_count_form_questions_skips_a_retired_question_and_a_retired_page(
 
 @pytest.mark.django_db
 def test_count_form_questions_issues_one_query(
-    mock_site_context, django_assert_num_queries
-):
+    mock_site_context: object, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
     form = FormFactory()
     FormQuestionFactory(form_page=FormPageFactory(form=form))
 
@@ -642,8 +642,8 @@ def test_count_form_questions_issues_one_query(
 
 @pytest.mark.django_db
 def test_count_sitting_questions_skips_retired_rows_on_plain_and_drawing_pages(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     form = FormFactory(strategy=FormStrategy.QUIZ)
     plain_page = FormPageFactory(form=form, order=0)
     FormQuestionFactory(form_page=plain_page, order=0)
@@ -660,8 +660,8 @@ def test_count_sitting_questions_skips_retired_rows_on_plain_and_drawing_pages(
 
 @pytest.mark.django_db
 def test_a_retired_question_is_flagged_and_its_answer_is_still_returned(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     form = FormFactory()
     page = FormPageFactory(form=form)
     live = FormQuestionFactory(form_page=page, order=0)
@@ -679,8 +679,8 @@ def test_a_retired_question_is_flagged_and_its_answer_is_still_returned(
 
 @pytest.mark.django_db
 def test_a_chosen_retired_option_is_flagged_and_the_unchosen_one_is_not(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     form = FormFactory()
     question = FormQuestionFactory(form_page=FormPageFactory(form=form))
     kept = QuestionOptionFactory(question=question)
@@ -697,7 +697,7 @@ def test_a_chosen_retired_option_is_flagged_and_the_unchosen_one_is_not(
 
 
 @pytest.mark.django_db
-def test_an_off_page_retired_question_is_flagged(mock_site_context):
+def test_an_off_page_retired_question_is_flagged(mock_site_context: object) -> None:
     form = FormFactory()
     FormQuestionFactory(form_page=FormPageFactory(form=form))
     moved = retired(FormQuestionFactory(form_page=FormPageFactory(form=FormFactory())))

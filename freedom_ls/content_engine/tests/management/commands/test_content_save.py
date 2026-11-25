@@ -27,6 +27,7 @@ from django.db import IntegrityError, connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 
+from freedom_ls.content_base.models import BaseContent
 from freedom_ls.content_engine.factories import (
     CourseCategoryFactory,
     CourseFactory,
@@ -6379,7 +6380,10 @@ quiz_pass_percentage: 70
 
 @pytest.mark.django_db
 def test_a_removed_forms_question_is_retired_without_being_marked_dropped(
-    site: Site, mock_site_context: Site, tmp_path: Path, dropped_signal_ids
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    dropped_signal_ids: list[list[uuid.UUID]],
 ) -> None:
     """One run drops a question from a form that stays and removes another form whole.
 
@@ -6556,8 +6560,13 @@ REMOVAL_CASES = [
 @pytest.mark.django_db
 @pytest.mark.parametrize(("model", "lookup", "remove"), REMOVAL_CASES)
 def test_save_run_retires_a_row_missing_from_the_source_at_the_run_time(
-    site, mock_site_context, tmp_path, model, lookup, remove
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    model: type[BaseContent] | type[QuestionOption] | type[File],
+    lookup: dict[str, object],
+    remove: Callable[[Path], None],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     remove(tmp_path)
@@ -6574,8 +6583,13 @@ def test_save_run_retires_a_row_missing_from_the_source_at_the_run_time(
 @pytest.mark.django_db
 @pytest.mark.parametrize(("model", "lookup", "remove"), REMOVAL_CASES)
 def test_save_run_makes_a_retired_row_live_when_it_returns_to_the_source(
-    site, mock_site_context, tmp_path, model, lookup, remove
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    model: type[BaseContent] | type[QuestionOption] | type[File],
+    lookup: dict[str, object],
+    remove: Callable[[Path], None],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     remove(tmp_path)
@@ -6592,8 +6606,8 @@ def test_save_run_makes_a_retired_row_live_when_it_returns_to_the_source(
 
 @pytest.mark.django_db
 def test_save_run_keeps_a_row_live_when_any_one_source_path_names_it(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     first, second = tmp_path / "first", tmp_path / "second"
     first.mkdir()
     second.mkdir()
@@ -6608,8 +6622,8 @@ def test_save_run_keeps_a_row_live_when_any_one_source_path_names_it(
 
 @pytest.mark.django_db
 def test_save_run_leaves_retired_at_alone_when_an_identical_run_repeats(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     _remove_path("loose_topic.md")(tmp_path)
@@ -6624,8 +6638,8 @@ def test_save_run_leaves_retired_at_alone_when_an_identical_run_repeats(
 
 @pytest.mark.django_db
 def test_save_run_without_retire_missing_retires_nothing(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name)
     _remove_path("loose_topic.md")(tmp_path)
@@ -6637,8 +6651,8 @@ def test_save_run_without_retire_missing_retires_nothing(
 
 @pytest.mark.django_db
 def test_save_run_that_fails_after_the_sweep_leaves_every_retired_at_as_it_was(
-    site, mock_site_context, tmp_path, monkeypatch
-):
+    site: Site, mock_site_context: Site, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     _remove_path("loose_topic.md")(tmp_path)
@@ -6661,8 +6675,8 @@ def test_save_run_that_fails_after_the_sweep_leaves_every_retired_at_as_it_was(
 
 @pytest.mark.django_db
 def test_save_run_applies_a_returning_rows_content_change_in_the_run_that_un_retires_it(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     _remove_path("loose_topic.md")(tmp_path)
@@ -6683,8 +6697,8 @@ def _save_one_of_each_then_drop_the_solo_course(site: Site, root: Path) -> None:
 
 @pytest.mark.django_db
 def test_run_missing_a_live_course_is_refused_naming_its_title_and_uuid(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
 
     with pytest.raises(CommandError, match="--allow-course-retire") as exc_info:
@@ -6696,8 +6710,8 @@ def test_run_missing_a_live_course_is_refused_naming_its_title_and_uuid(
 
 @pytest.mark.django_db
 def test_run_missing_a_live_course_is_refused_before_any_write(
-    site, mock_site_context, tmp_path, monkeypatch
-):
+    site: Site, mock_site_context: Site, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
     (tmp_path / "new_topic.md").write_text(
         "---\ncontent_type: TOPIC\ntitle: New topic\n---\n\nText\n"
@@ -6722,8 +6736,8 @@ def test_run_missing_a_live_course_is_refused_before_any_write(
 
 @pytest.mark.django_db
 def test_run_missing_a_live_course_retires_it_when_course_retire_is_allowed(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
 
     save_content_to_db(
@@ -6735,8 +6749,8 @@ def test_run_missing_a_live_course_retires_it_when_course_retire_is_allowed(
 
 @pytest.mark.django_db
 def test_run_missing_only_an_already_retired_course_is_not_refused(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
     save_content_to_db(
         tmp_path, site.name, retire_missing=True, allow_course_retire=True
@@ -6749,8 +6763,8 @@ def test_run_missing_only_an_already_retired_course_is_not_refused(
 
 @pytest.mark.django_db
 def test_run_without_retire_missing_does_not_refuse_a_missing_course(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
 
     save_content_to_db(tmp_path, site.name)
@@ -6760,8 +6774,8 @@ def test_run_without_retire_missing_does_not_refuse_a_missing_course(
 
 @pytest.mark.django_db
 def test_run_that_sweeps_a_course_the_guard_missed_is_refused_and_rolled_back(
-    site, mock_site_context, tmp_path, monkeypatch
-):
+    site: Site, mock_site_context: Site, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
     monkeypatch.setattr(
         "freedom_ls.content_engine.management.commands.content_save._refuse_course_retire",
@@ -6780,8 +6794,11 @@ def _count_line(output: str) -> str:
 
 @pytest.mark.django_db
 def test_run_reports_each_retired_and_un_retired_model_with_its_count(
-    site, mock_site_context, tmp_path, capsys
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     _remove_path("loose_topic.md")(tmp_path)
@@ -6801,8 +6818,11 @@ def test_run_reports_each_retired_and_un_retired_model_with_its_count(
 
 @pytest.mark.django_db
 def test_run_names_models_in_retirable_order_when_several_are_retired(
-    site, mock_site_context, tmp_path, capsys
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     capsys.readouterr()
@@ -6818,8 +6838,11 @@ def test_run_names_models_in_retirable_order_when_several_are_retired(
 
 @pytest.mark.django_db
 def test_identical_second_run_reports_nothing_retired_or_un_retired(
-    site, mock_site_context, tmp_path, capsys
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     capsys.readouterr()
@@ -6831,8 +6854,11 @@ def test_identical_second_run_reports_nothing_retired_or_un_retired(
 
 @pytest.mark.django_db
 def test_run_that_rolls_back_prints_no_retire_count_line(
-    site, mock_site_context, tmp_path, capsys
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     _save_one_of_each_then_drop_the_solo_course(site, tmp_path)
     capsys.readouterr()
 
@@ -6844,8 +6870,11 @@ def test_run_that_rolls_back_prints_no_retire_count_line(
 
 @pytest.mark.django_db
 def test_run_without_retire_missing_prints_no_retire_count_line(
-    site, mock_site_context, tmp_path, capsys
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
 
     save_content_to_db(tmp_path, site.name)
@@ -6878,7 +6907,9 @@ def _save_launch_article(site: Site, tmp_path: Path) -> None:
 
 
 @pytest.mark.django_db
-def test_article_slug_refusal_names_a_retired_owner(site, mock_site_context, tmp_path):
+def test_article_slug_refusal_names_a_retired_owner(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _save_launch_article(site, tmp_path)
     retire(Article._base_manager.get(site=site))
     _write_imposter_article(tmp_path)
@@ -6891,8 +6922,8 @@ def test_article_slug_refusal_names_a_retired_owner(site, mock_site_context, tmp
 
 @pytest.mark.django_db
 def test_article_slug_refusal_for_a_live_owner_omits_retired(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _save_launch_article(site, tmp_path)
     _write_imposter_article(tmp_path)
 
@@ -6903,7 +6934,9 @@ def test_article_slug_refusal_for_a_live_owner_omits_retired(
 
 
 @pytest.mark.django_db
-def test_category_slug_refusal_names_a_retired_owner(site, mock_site_context, tmp_path):
+def test_category_slug_refusal_names_a_retired_owner(
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     owner = CourseCategoryFactory(slug="start-here", title="Start here")
     retire(CourseCategory._base_manager.get(pk=owner.pk))
     _write_category_reusing_start_here_slug(tmp_path)
@@ -6916,8 +6949,8 @@ def test_category_slug_refusal_names_a_retired_owner(site, mock_site_context, tm
 
 @pytest.mark.django_db
 def test_category_slug_refusal_for_a_live_owner_omits_retired(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     CourseCategoryFactory(slug="start-here", title="Start here")
     _write_category_reusing_start_here_slug(tmp_path)
 
@@ -6949,8 +6982,12 @@ def retirement_signal_courses() -> Iterator[list[uuid.UUID]]:
     ],
 )
 def test_run_sends_the_retirement_signal_once_for_the_course_of_a_retired_row(
-    site, mock_site_context, tmp_path, retirement_signal_courses, remove
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    retirement_signal_courses: list[uuid.UUID],
+    remove: Callable[[Path], None],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     retirement_signal_courses.clear()
@@ -6963,8 +7000,11 @@ def test_run_sends_the_retirement_signal_once_for_the_course_of_a_retired_row(
 
 @pytest.mark.django_db
 def test_run_sends_the_retirement_signal_for_the_course_of_a_topic_inside_a_retired_part(
-    site, mock_site_context, tmp_path, retirement_signal_courses
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    retirement_signal_courses: list[uuid.UUID],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     retirement_signal_courses.clear()
@@ -6977,8 +7017,11 @@ def test_run_sends_the_retirement_signal_for_the_course_of_a_topic_inside_a_reti
 
 @pytest.mark.django_db
 def test_run_sends_the_retirement_signal_for_the_course_of_an_un_retired_topic(
-    site, mock_site_context, tmp_path, retirement_signal_courses
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    retirement_signal_courses: list[uuid.UUID],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     _remove_path("main", "01. Part", "01. inside.md")(tmp_path)
@@ -6995,8 +7038,11 @@ def test_run_sends_the_retirement_signal_for_the_course_of_an_un_retired_topic(
 
 @pytest.mark.django_db
 def test_run_sends_no_retirement_signal_when_a_topic_outside_every_course_retires(
-    site, mock_site_context, tmp_path, retirement_signal_courses
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    retirement_signal_courses: list[uuid.UUID],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
     _remove_path("loose_topic.md")(tmp_path)
@@ -7008,8 +7054,11 @@ def test_run_sends_no_retirement_signal_when_a_topic_outside_every_course_retire
 
 @pytest.mark.django_db
 def test_run_sends_no_retirement_signal_when_nothing_changes(
-    site, mock_site_context, tmp_path, retirement_signal_courses
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    retirement_signal_courses: list[uuid.UUID],
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     save_content_to_db(tmp_path, site.name, retire_missing=True)
 
@@ -7034,8 +7083,11 @@ def _committed_repo_with_course_and_topic(directory: Path) -> Path:
 
 @pytest.mark.django_db
 def test_command_retires_a_deleted_committed_file_and_prints_the_count_line(
-    site, mock_site_context, tmp_path: Path, capsys
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     repo = _committed_repo_with_course_and_topic(tmp_path / "repo")
     _save_from_repos(site, repo)
     (repo / "loose_topic.md").unlink()
@@ -7049,8 +7101,11 @@ def test_command_retires_a_deleted_committed_file_and_prints_the_count_line(
 
 @pytest.mark.django_db
 def test_command_run_missing_a_course_is_refused_without_a_count_line(
-    site, mock_site_context, tmp_path: Path, capsys
-):
+    site: Site,
+    mock_site_context: Site,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     repo = _committed_repo_with_course_and_topic(tmp_path / "repo")
     _save_from_repos(site, repo)
     shutil.rmtree(repo / "solo")
@@ -7066,8 +7121,8 @@ def test_command_run_missing_a_course_is_refused_without_a_count_line(
 
 @pytest.mark.django_db
 def test_command_run_missing_a_course_with_the_flag_retires_the_course(
-    site, mock_site_context, tmp_path: Path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     repo = _committed_repo_with_course_and_topic(tmp_path / "repo")
     _save_from_repos(site, repo)
     shutil.rmtree(repo / "solo")
@@ -7083,8 +7138,8 @@ def test_command_run_missing_a_course_with_the_flag_retires_the_course(
 
 @pytest.mark.django_db
 def test_save_run_keeps_both_options_of_a_question_live_when_they_share_a_value(
-    site, mock_site_context, tmp_path
-):
+    site: Site, mock_site_context: Site, tmp_path: Path
+) -> None:
     _write_source_with_one_of_each(tmp_path)
     page = tmp_path / "form" / "1. page.yaml"
     page.write_text(page.read_text().replace("value: 2", "value: 1"))

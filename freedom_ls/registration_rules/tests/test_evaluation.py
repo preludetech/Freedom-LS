@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 import time_machine
+from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 
 from django.db import connection
 from django.db.models.signals import post_save
@@ -105,8 +106,9 @@ def test_registers_a_matching_learner(rule_run_for_one_learner):
 
 @pytest.mark.django_db
 def test_registers_nobody_for_a_retired_course(
-    mock_site_context, django_capture_on_commit_callbacks
-):
+    mock_site_context: object,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
     rule = _enabled_rule()
     retire(rule.course)
     learner = LearnerFactory(organisation=rule.organisation)

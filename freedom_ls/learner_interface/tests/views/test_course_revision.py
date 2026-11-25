@@ -1148,7 +1148,7 @@ def test_reference_and_finish_pages_keep_the_outline_revision_entry(
 
 @pytest.mark.django_db
 def test_question_retired_during_a_session_is_skipped_for_the_next(
-    mock_site_context,
+    mock_site_context: object,
 ) -> None:
     course, _, (first, second), client = _banked_session(question_count=2)
     retire(first)
@@ -1163,7 +1163,7 @@ def test_question_retired_during_a_session_is_skipped_for_the_next(
 
 
 @pytest.mark.django_db
-def test_card_leaves_out_a_retired_option(mock_site_context) -> None:
+def test_card_leaves_out_a_retired_option(mock_site_context: object) -> None:
     course, _, (question,), client = _banked_session()
     gone = retire(_wrong_option(question))
 
@@ -1174,7 +1174,7 @@ def test_card_leaves_out_a_retired_option(mock_site_context) -> None:
 
 @pytest.mark.django_db
 def test_answer_naming_a_retired_option_returns_422_and_writes_nothing(
-    mock_site_context,
+    mock_site_context: object,
 ) -> None:
     course, _, (question,), client = _banked_session()
     gone = retire(_wrong_option(question))

@@ -103,7 +103,7 @@ def test_get_all_courses_returns_empty_when_none_exist(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_get_all_courses_omits_a_retired_course(mock_site_context):
+def test_get_all_courses_omits_a_retired_course(mock_site_context: Site) -> None:
     live = CourseFactory()
     retire(cast("Course", CourseFactory()))
 
@@ -111,7 +111,9 @@ def test_get_all_courses_omits_a_retired_course(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_get_course_registrations_omits_a_retired_course(mock_site_context):
+def test_get_course_registrations_omits_a_retired_course(
+    mock_site_context: Site,
+) -> None:
     user = UserFactory()
     live = CourseFactory()
     retired = retire(cast("Course", CourseFactory()))
@@ -1200,10 +1202,14 @@ def test_course_reference_topics_query_count_does_not_grow_with_content(
 
 
 @pytest.fixture
-def part_and_topic_course(mock_site_context):
-    course = CourseFactory()
-    part = CoursePartFactory()
-    first, second, loose = TopicFactory(), TopicFactory(), TopicFactory()
+def part_and_topic_course(
+    mock_site_context: Site,
+) -> tuple[Course, CoursePart, Topic, Topic, Topic]:
+    course: Course = CourseFactory()
+    part: CoursePart = CoursePartFactory()
+    first: Topic = TopicFactory()
+    second: Topic = TopicFactory()
+    loose: Topic = TopicFactory()
     course.items.create(child=part, order=0)
     course.items.create(child=loose, order=1)
     part.items.create(child=first, order=0)
@@ -1212,7 +1218,9 @@ def part_and_topic_course(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_get_course_index_omits_a_retired_child_of_a_part(part_and_topic_course):
+def test_get_course_index_omits_a_retired_child_of_a_part(
+    part_and_topic_course: tuple[Course, CoursePart, Topic, Topic, Topic],
+) -> None:
     course, _, first, second, _ = part_and_topic_course
     retire(first)
 
@@ -1223,8 +1231,8 @@ def test_get_course_index_omits_a_retired_child_of_a_part(part_and_topic_course)
 
 @pytest.mark.django_db
 def test_get_course_index_omits_a_retired_part_and_numbers_the_rest_from_one(
-    part_and_topic_course,
-):
+    part_and_topic_course: tuple[Course, CoursePart, Topic, Topic, Topic],
+) -> None:
     course, part, _, _, loose = part_and_topic_course
     user = UserFactory()
     record = course_progress_record(course, user)
@@ -1240,8 +1248,8 @@ def test_get_course_index_omits_a_retired_part_and_numbers_the_rest_from_one(
 
 @pytest.mark.django_db
 def test_get_content_status_reads_a_part_as_complete_when_its_live_children_are(
-    part_and_topic_course,
-):
+    part_and_topic_course: tuple[Course, CoursePart, Topic, Topic, Topic],
+) -> None:
     course, part, first, second, _ = part_and_topic_course
     user = UserFactory()
     retire(first)
@@ -1255,7 +1263,9 @@ def test_get_content_status_reads_a_part_as_complete_when_its_live_children_are(
 
 
 @pytest.mark.django_db
-def test_get_item_part_is_none_for_a_topic_in_a_retired_part(part_and_topic_course):
+def test_get_item_part_is_none_for_a_topic_in_a_retired_part(
+    part_and_topic_course: tuple[Course, CoursePart, Topic, Topic, Topic],
+) -> None:
     course, part, first, _, _ = part_and_topic_course
     retire(part)
 
@@ -1263,7 +1273,9 @@ def test_get_item_part_is_none_for_a_topic_in_a_retired_part(part_and_topic_cour
 
 
 @pytest.mark.django_db
-def test_get_resume_index_counts_only_live_items(part_and_topic_course):
+def test_get_resume_index_counts_only_live_items(
+    part_and_topic_course: tuple[Course, CoursePart, Topic, Topic, Topic],
+) -> None:
     course, _, first, second, _ = part_and_topic_course
     user = UserFactory()
     record = course_progress_record(course, user)
@@ -1276,8 +1288,8 @@ def test_get_resume_index_counts_only_live_items(part_and_topic_course):
 
 @pytest.mark.django_db
 def test_outstanding_items_is_empty_once_every_live_child_is_done(
-    part_and_topic_course,
-):
+    part_and_topic_course: tuple[Course, CoursePart, Topic, Topic, Topic],
+) -> None:
     course, _, first, second, loose = part_and_topic_course
     user = UserFactory()
     retire(first)
@@ -1289,7 +1301,7 @@ def test_outstanding_items_is_empty_once_every_live_child_is_done(
 
 
 @pytest.mark.django_db
-def test_course_reference_topics_drops_a_retired_topic(mock_site_context):
+def test_course_reference_topics_drops_a_retired_topic(mock_site_context: Site) -> None:
     course = CourseFactory()
     live: Topic = TopicFactory()
     gone: Topic = TopicFactory()
@@ -1302,7 +1314,7 @@ def test_course_reference_topics_drops_a_retired_topic(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_reference_topics_drops_a_retired_part(mock_site_context):
+def test_course_reference_topics_drops_a_retired_part(mock_site_context: Site) -> None:
     course = CourseFactory()
     part = _reference_part(course, TopicFactory())
     retire(part)

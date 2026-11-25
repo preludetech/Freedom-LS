@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 import pytest
@@ -783,7 +784,9 @@ RETIREMENTS = [
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("retire_it", RETIREMENTS)
-def test_retired_question_is_not_banked(mock_site_context, retire_it) -> None:
+def test_retired_question_is_not_banked(
+    mock_site_context: None, retire_it: Callable[[FormQuestion], None]
+) -> None:
     _, record, question = _finished_topic_question()
 
     retire_it(question)
@@ -793,7 +796,9 @@ def test_retired_question_is_not_banked(mock_site_context, retire_it) -> None:
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("retire_it", RETIREMENTS)
-def test_retired_question_is_not_counted_as_ready(mock_site_context, retire_it) -> None:
+def test_retired_question_is_not_counted_as_ready(
+    mock_site_context: None, retire_it: Callable[[FormQuestion], None]
+) -> None:
     user, record, question = _finished_topic_question()
 
     retire_it(question)
@@ -804,7 +809,7 @@ def test_retired_question_is_not_counted_as_ready(mock_site_context, retire_it) 
 @pytest.mark.django_db
 @pytest.mark.parametrize("retire_it", RETIREMENTS)
 def test_course_whose_only_question_is_retired_has_no_revision_questions(
-    mock_site_context, retire_it
+    mock_site_context: None, retire_it: Callable[[FormQuestion], None]
 ) -> None:
     _, record, question = _finished_topic_question()
 
@@ -815,7 +820,7 @@ def test_course_whose_only_question_is_retired_has_no_revision_questions(
 
 @pytest.mark.django_db
 def test_question_made_live_again_is_banked_with_its_schedule_kept(
-    mock_site_context,
+    mock_site_context: None,
 ) -> None:
     user, record, question = _finished_topic_question()
     schedule = RevisionScheduleFactory(user=user, question=question)

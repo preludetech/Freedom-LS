@@ -25,7 +25,9 @@ from freedom_ls.tests.retire import retire
 pytestmark = pytest.mark.django_db
 
 
-def test_live_pages_leaves_out_a_retired_page_and_keeps_the_order(mock_site_context):
+def test_live_pages_leaves_out_a_retired_page_and_keeps_the_order(
+    mock_site_context: object,
+) -> None:
     form = FormFactory()
     first = FormPageFactory(form=form, order=0)
     retire(cast("FormPage", FormPageFactory(form=form, order=1)))
@@ -35,8 +37,8 @@ def test_live_pages_leaves_out_a_retired_page_and_keeps_the_order(mock_site_cont
 
 
 def test_live_children_leaves_out_retired_content_and_questions_in_page_order(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     page = FormPageFactory()
     content = FormContentFactory(form_page=page, order=0)
     retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=1)))
@@ -46,7 +48,7 @@ def test_live_children_leaves_out_retired_content_and_questions_in_page_order(
     assert live_children(page) == [content, question]
 
 
-def test_live_options_leaves_out_a_retired_option(mock_site_context):
+def test_live_options_leaves_out_a_retired_option(mock_site_context: object) -> None:
     question = FormQuestionFactory()
     kept = QuestionOptionFactory(question=question, order=0)
     retire(cast("QuestionOption", QuestionOptionFactory(question=question, order=1)))

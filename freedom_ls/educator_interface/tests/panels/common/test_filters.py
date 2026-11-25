@@ -6,6 +6,8 @@ from typing import cast
 
 import pytest
 
+from django.test import RequestFactory
+
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.educator_interface.panels.common.filters import VisibleCourseFilter
@@ -108,8 +110,8 @@ def test_course_filter_names_the_owner_of_a_course_another_organisation_owns(
 
 @pytest.mark.django_db
 def test_visible_course_filter_marks_a_retired_course_in_its_choice_label(
-    site_aware_request,
-):
+    site_aware_request: RequestFactory,
+) -> None:
     organisation = OrganisationFactory()
     course = retire(cast(Course, CourseFactory(title="Old Course")))
     request = _educator_request(site_aware_request, organisation)

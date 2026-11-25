@@ -340,7 +340,7 @@ class TestMoveProgressPreview:
 
 
 @pytest.fixture
-def two_topic_course(mock_site_context) -> tuple[Course, Topic, Topic]:
+def two_topic_course(mock_site_context: object) -> tuple[Course, Topic, Topic]:
     course: Course = CourseFactory()
     first: Topic = TopicFactory()
     second: Topic = TopicFactory()
@@ -351,8 +351,8 @@ def two_topic_course(mock_site_context) -> tuple[Course, Topic, Topic]:
 
 @pytest.mark.django_db
 def test_calculate_course_progress_percentage_leaves_a_retired_child_out_of_the_denominator(
-    two_topic_course,
-):
+    two_topic_course: tuple[Course, Topic, Topic],
+) -> None:
     course, first, second = two_topic_course
     done = {ContentCollectionItem.objects.get(child_id=first.pk).pk}
     retire(second)
@@ -365,7 +365,9 @@ def test_calculate_course_progress_percentage_leaves_a_retired_child_out_of_the_
 
 
 @pytest.mark.django_db
-def test_completable_items_omits_a_retired_child(two_topic_course):
+def test_completable_items_omits_a_retired_child(
+    two_topic_course: tuple[Course, Topic, Topic],
+) -> None:
     course, first, second = two_topic_course
     retire(first)
 
@@ -376,8 +378,8 @@ def test_completable_items_omits_a_retired_child(two_topic_course):
 
 @pytest.mark.django_db
 def test_retiring_a_child_leaves_a_completed_course_progress_completed(
-    two_topic_course,
-):
+    two_topic_course: tuple[Course, Topic, Topic],
+) -> None:
     course, first, _ = two_topic_course
     completed_at = timezone.now()
     record = CourseProgressFactory(course=course, completed_time=completed_at)

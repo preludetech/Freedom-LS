@@ -651,7 +651,9 @@ def test_changed_prefix_moves_index_sitemap_and_robots_together(
 
 
 @pytest.mark.django_db
-def test_index_omits_a_retired_published_article(client, mock_site_context):
+def test_index_omits_a_retired_published_article(
+    client: Client, mock_site_context: object
+) -> None:
     # Arrange
     ArticleFactory(title="Still here")
     gone: Article = ArticleFactory(title="Gone from source")
@@ -667,7 +669,9 @@ def test_index_omits_a_retired_published_article(client, mock_site_context):
 
 
 @pytest.mark.django_db
-def test_detail_of_a_retired_published_article_is_not_found(client, mock_site_context):
+def test_detail_of_a_retired_published_article_is_not_found(
+    client: Client, mock_site_context: object
+) -> None:
     # Arrange
     article: Article = ArticleFactory()
     retire(article)

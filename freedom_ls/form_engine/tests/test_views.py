@@ -7,7 +7,7 @@ import pytest
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.template.loader import render_to_string
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -1007,8 +1007,10 @@ def test_attaching_to_a_file_question_the_draw_left_out_is_not_found(
 
 @pytest.mark.django_db
 def test_a_retired_question_on_a_pinned_paper_still_accepts_a_file(
-    mock_site_context, client, sitting
-):
+    mock_site_context: object,
+    client: Client,
+    sitting: tuple[FormProgress, FormQuestion],
+) -> None:
     form_progress, question = sitting
     form_progress.served_paper = served_paper_of([(question.form_page, [question])], {})
     form_progress.save()

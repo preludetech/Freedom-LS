@@ -757,7 +757,7 @@ def test_an_extension_reads_as_the_learner_the_course_the_days_and_the_target(
 
 @pytest.mark.django_db
 def test_learner_clean_accepts_a_stored_override_on_a_retired_item(
-    mock_site_context,
+    mock_site_context: object,
 ) -> None:
     record, item = _record_item()
     retire(Topic.objects.get(pk=item.child_id))
@@ -772,7 +772,7 @@ def test_learner_clean_accepts_a_stored_override_on_a_retired_item(
 
 @pytest.mark.django_db
 def test_extension_clean_accepts_a_stored_extension_on_a_retired_item(
-    mock_site_context,
+    mock_site_context: object,
 ) -> None:
     record, item = _record_item()
     retire(Topic.objects.get(pk=item.child_id))

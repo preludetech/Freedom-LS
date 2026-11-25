@@ -1742,7 +1742,7 @@ def test_reregister_post_on_a_course_that_gained_another_organisation_answers_42
 @pytest.mark.django_db
 def test_reregister_post_on_a_retired_course_answers_422_with_the_retired_message(
     staff_client: Client,
-):
+) -> None:
     organisation = OrganisationFactory()
     learner = cast(Learner, LearnerFactory(organisation=organisation))
     registration = LearnerCourseRegistrationFactory(learner=learner, is_active=False)

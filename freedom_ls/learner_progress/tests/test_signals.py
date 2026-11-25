@@ -1366,8 +1366,8 @@ def _course_with_two_topics_one_completed() -> tuple[
 
 @pytest.mark.django_db
 def test_retiring_a_topic_recalculates_the_course_percentage_of_each_record(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     course, record, _, retiring = _course_with_two_topics_one_completed()
     retire(retiring)
 
@@ -1379,8 +1379,8 @@ def test_retiring_a_topic_recalculates_the_course_percentage_of_each_record(
 
 @pytest.mark.django_db
 def test_a_course_left_with_nothing_to_complete_keeps_its_stored_percentage_and_completed_time(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     course, record, kept, retiring = _course_with_two_topics_one_completed()
     finished_at = timezone.now()
     CourseProgress._base_manager.filter(pk=record.pk).update(

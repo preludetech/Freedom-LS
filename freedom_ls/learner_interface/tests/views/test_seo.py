@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -14,7 +15,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import ArticleFactory, CourseFactory
-from freedom_ls.content_engine.models import Article, CourseVisibility
+from freedom_ls.content_engine.models import Article, Course, CourseVisibility
 from freedom_ls.tests.retire import retire
 
 # Tests for basic SEO / discoverability.
@@ -428,7 +429,9 @@ def test_sitemap_contains_course_detail_url(mock_site_context, course_with_topic
 
 
 @pytest.mark.django_db
-def test_sitemap_excludes_a_retired_course(mock_site_context, course_with_topic):
+def test_sitemap_excludes_a_retired_course(
+    mock_site_context: object, course_with_topic: Callable[..., Course]
+) -> None:
     course_with_topic(slug="live-course")
     retire(course_with_topic(slug="retired-course"))
 
@@ -439,7 +442,7 @@ def test_sitemap_excludes_a_retired_course(mock_site_context, course_with_topic)
 
 
 @pytest.mark.django_db
-def test_sitemap_excludes_a_retired_article(mock_site_context):
+def test_sitemap_excludes_a_retired_article(mock_site_context: object) -> None:
     ArticleFactory(slug="live-article")
     retired_article: Article = ArticleFactory(slug="retired-article")
     retire(retired_article)

@@ -980,8 +980,8 @@ def test_score_category_value_sum_on_a_form_without_conditions_counts_every_ques
 
 @pytest.mark.django_db
 def test_evaluate_quiz_answers_scores_each_pair_on_the_options_it_was_offered(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     question = FormQuestionFactory(type="checkboxes")
     kept = QuestionOptionFactory(question=question, correct=True)
     retired = QuestionOptionFactory(question=question, correct=True)

@@ -134,8 +134,8 @@ class TestExpressInterestOnHiddenCourse:
         assert CourseInterest.objects.filter(user=user, course=course).count() == 0
 
     def test_post_retired_course_returns_404_and_records_no_interest(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: object
+    ) -> None:
         user = UserFactory()
         course = retire(
             cast("Course", CourseFactory(visibility=CourseVisibility.COMING_SOON))

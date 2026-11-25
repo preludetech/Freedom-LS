@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 import time_machine
+from pytest_django import DjangoAssertNumQueries
 
 from django.conf import settings
 from django.db import connection
@@ -18,7 +19,12 @@ from freedom_ls.content_engine.factories import (
     CoursePartFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import ContentCollectionItem, Course
+from freedom_ls.content_engine.models import (
+    ContentCollectionItem,
+    Course,
+    CoursePart,
+    Topic,
+)
 from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.deadlines.consequences import close_instant, is_closed
 from freedom_ls.deadlines.factories import (
@@ -1361,7 +1367,7 @@ def test_extensions_cost_the_same_on_a_small_and_a_large_course(
 
 @pytest.mark.django_db
 def test_the_content_defaults_read_five_queries_and_skip_the_time_limit(
-    mock_site_context, django_assert_num_queries
+    mock_site_context: object, django_assert_num_queries: DjangoAssertNumQueries
 ) -> None:
     """The rows beneath the course, the part rows, the placement values and one retired-child
     check for each of the part and topic child types: the course's time limit is no content
@@ -1386,10 +1392,11 @@ def test_the_content_defaults_read_five_queries_and_skip_the_time_limit(
 
 
 @pytest.fixture
-def part_course(mock_site_context):
-    course = CourseFactory()
-    part = CoursePartFactory()
-    inside, outside = TopicFactory(), TopicFactory()
+def part_course(mock_site_context: object) -> tuple[Course, CoursePart, Topic, Topic]:
+    course: Course = CourseFactory()
+    part: CoursePart = CoursePartFactory()
+    inside: Topic = TopicFactory()
+    outside: Topic = TopicFactory()
     course.items.create(child=part, order=0)
     course.items.create(child=outside, order=1)
     part.items.create(child=inside, order=0)
@@ -1397,7 +1404,9 @@ def part_course(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_course_deadlines_omit_a_collection_item_whose_child_is_retired(part_course):
+def test_course_deadlines_omit_a_collection_item_whose_child_is_retired(
+    part_course: tuple[Course, CoursePart, Topic, Topic],
+) -> None:
     course, _, inside, outside = part_course
     outside_item = ContentCollectionItem.objects.get(child_id=outside.pk)
     inside_item = ContentCollectionItem.objects.get(child_id=inside.pk)
@@ -1410,7 +1419,9 @@ def test_course_deadlines_omit_a_collection_item_whose_child_is_retired(part_cou
 
 
 @pytest.mark.django_db
-def test_course_deadlines_omit_every_item_inside_a_retired_part(part_course):
+def test_course_deadlines_omit_every_item_inside_a_retired_part(
+    part_course: tuple[Course, CoursePart, Topic, Topic],
+) -> None:
     course, part, _, outside = part_course
     outside_item = ContentCollectionItem.objects.get(child_id=outside.pk)
     retire(part)
@@ -1421,7 +1432,9 @@ def test_course_deadlines_omit_every_item_inside_a_retired_part(part_course):
 
 
 @pytest.mark.django_db
-def test_course_deadlines_keep_a_retired_collection_item_when_asked(part_course):
+def test_course_deadlines_keep_a_retired_collection_item_when_asked(
+    part_course: tuple[Course, CoursePart, Topic, Topic],
+) -> None:
     course, _, _, outside = part_course
     outside_item = ContentCollectionItem.objects.get(child_id=outside.pk)
     retire(outside)

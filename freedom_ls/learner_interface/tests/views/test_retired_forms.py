@@ -68,8 +68,9 @@ def _fill_page(client: Client, course: Course) -> bytes:
 
 @pytest.mark.django_db
 def test_survey_fill_page_does_not_render_a_retired_question_or_option(
-    survey_with_retirements, client
-):
+    survey_with_retirements: tuple[Course, list[FormQuestion], QuestionOption],
+    client: Client,
+) -> None:
     course, questions, retired_option = survey_with_retirements
 
     content = _fill_page(client, course)
@@ -86,8 +87,9 @@ def test_survey_fill_page_does_not_render_a_retired_question_or_option(
 
 @pytest.mark.django_db
 def test_survey_fill_page_numbers_the_live_questions_without_a_gap(
-    survey_with_retirements, client
-):
+    survey_with_retirements: tuple[Course, list[FormQuestion], QuestionOption],
+    client: Client,
+) -> None:
     course, _questions, _option = survey_with_retirements
 
     content = _fill_page(client, course)
@@ -104,8 +106,8 @@ def test_survey_fill_page_numbers_the_live_questions_without_a_gap(
 
 @pytest.mark.django_db
 def test_quiz_fill_page_of_a_pinned_sitting_serves_a_retired_question_without_a_badge(
-    mock_site_context, client
-):
+    mock_site_context: object, client: Client
+) -> None:
     form: Form = FormFactory(strategy=FormStrategy.QUIZ)
     page = FormPageFactory(form=form, order=0)
     question = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)

@@ -10,6 +10,7 @@ import pytest_django.fixtures
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
+from django.core.paginator import Page
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
@@ -297,7 +298,7 @@ def test_courses_list_names_the_owner_under_a_shared_course_only(
     assert notes == {"Shared by Northwind Logistics"}
 
 
-def _badge_labels(page, course: Course) -> list[str]:
+def _badge_labels(page: Page, course: Course) -> list[str]:
     column = next(c for c in CourseDataTable.get_columns() if c.header == "Status")
     badge = column.badge(_find_row(page, course))
     return [badge.label] if badge else []

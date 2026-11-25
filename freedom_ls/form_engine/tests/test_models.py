@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import cast
 
@@ -14,6 +15,7 @@ from django.db.models import ProtectedError, RestrictedError
 from django.test import override_settings
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_base.models import BaseContent
 from freedom_ls.form_engine.conditions import answers_by_question, current_path
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
@@ -1095,8 +1097,8 @@ def test_deleting_the_user_deletes_the_declaration(mock_site_context: object) ->
     "factory", [FormFactory, FormPageFactory, FormContentFactory, FormQuestionFactory]
 )
 def test_not_retired_returns_the_live_form_rows_and_leaves_out_a_retired_one(
-    mock_site_context, factory
-):
+    mock_site_context: object, factory: Callable[[], BaseContent]
+) -> None:
     live = factory()
     retired = retire(factory())
     model = type(live)
@@ -1106,7 +1108,9 @@ def test_not_retired_returns_the_live_form_rows_and_leaves_out_a_retired_one(
 
 
 @pytest.mark.django_db
-def test_not_retired_leaves_out_a_retired_question_option(mock_site_context):
+def test_not_retired_leaves_out_a_retired_question_option(
+    mock_site_context: object,
+) -> None:
     question = FormQuestionFactory()
     live = QuestionOptionFactory(question=question)
     to_retire: QuestionOption = QuestionOptionFactory(question=question)
@@ -1117,7 +1121,9 @@ def test_not_retired_leaves_out_a_retired_question_option(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_is_retired_on_a_question_option_follows_retired_at(mock_site_context):
+def test_is_retired_on_a_question_option_follows_retired_at(
+    mock_site_context: object,
+) -> None:
     option: QuestionOption = QuestionOptionFactory()
 
     assert (option.is_retired, retire(option).is_retired) == (False, True)

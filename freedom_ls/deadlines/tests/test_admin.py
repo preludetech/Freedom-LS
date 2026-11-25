@@ -107,7 +107,7 @@ def test_effective_deadlines_lists_items_sources_and_the_time_limit_end(
 
 @pytest.mark.django_db
 def test_effective_deadlines_still_lists_a_deadline_on_a_retired_collection_item(
-    staff_client, mock_site_context
+    staff_client: Client, mock_site_context: object
 ) -> None:
     record, item = _record_with_item()
     LearnerDeadlineOverrideFactory(

@@ -7,6 +7,7 @@ course must not resume one record's attempt under the other.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -29,10 +30,13 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
 )
 from freedom_ls.form_engine.models import (
+    Form,
     FormDeclaration,
     FormProgress,
+    FormQuestion,
     FormStrategy,
     QuestionAnswer,
+    QuestionOption,
 )
 from freedom_ls.form_engine.served_paper import ensure_served_paper, served_child_ids
 from freedom_ls.learner_management.factories import (
@@ -57,6 +61,7 @@ from freedom_ls.learner_progress.models import (
     CourseProgress,
     TopicProgress,
 )
+from freedom_ls.learner_progress.tests.quiz_fixtures import ScoredQuiz, SitQuiz
 from freedom_ls.tests.retire import retire
 
 
@@ -508,7 +513,9 @@ class TestSittingsAtPlacement:
 
 
 @pytest.fixture
-def scored_placement(course_with_scored_quiz):
+def scored_placement(
+    course_with_scored_quiz: Callable[..., ScoredQuiz],
+) -> tuple[CourseProgress, ContentCollectionItem, Form, FormQuestion, QuestionOption]:
     """A scored quiz in a course, with a learner's course progress record."""
     course, form, question, right, _wrong = course_with_scored_quiz()
     record: CourseProgress = CourseProgressFactory(course=course)
@@ -518,7 +525,9 @@ def scored_placement(course_with_scored_quiz):
     return record, collection_item, form, question, right
 
 
-def _started_with_a_paper(record, collection_item) -> FormProgress:
+def _started_with_a_paper(
+    record: CourseProgress, collection_item: ContentCollectionItem
+) -> FormProgress:
     attempt = get_or_create_incomplete(record, collection_item)
     ensure_served_paper(attempt)
     return attempt
@@ -526,8 +535,10 @@ def _started_with_a_paper(record, collection_item) -> FormProgress:
 
 @pytest.mark.django_db
 def test_a_sitting_started_before_a_question_retires_still_serves_and_scores_it(
-    scored_placement,
-):
+    scored_placement: tuple[
+        CourseProgress, ContentCollectionItem, Form, FormQuestion, QuestionOption
+    ],
+) -> None:
     record, collection_item, _form, question, right = scored_placement
     attempt = _started_with_a_paper(record, collection_item)
     retire(question)
@@ -545,8 +556,10 @@ def test_a_sitting_started_before_a_question_retires_still_serves_and_scores_it(
 
 @pytest.mark.django_db
 def test_a_sitting_started_after_a_question_retires_is_not_served_it(
-    scored_placement,
-):
+    scored_placement: tuple[
+        CourseProgress, ContentCollectionItem, Form, FormQuestion, QuestionOption
+    ],
+) -> None:
     record, collection_item, _form, question, _right = scored_placement
     retire(question)
 
@@ -577,8 +590,11 @@ def _retire_all(*rows: Model) -> None:
 
 @pytest.mark.django_db
 def test_retiring_a_topic_form_question_and_option_leaves_progress_rows_unchanged(
-    scored_placement, sit_quiz
-):
+    scored_placement: tuple[
+        CourseProgress, ContentCollectionItem, Form, FormQuestion, QuestionOption
+    ],
+    sit_quiz: SitQuiz,
+) -> None:
     record, _collection_item, form, question, right = scored_placement
     sit_quiz(record, form, question, right)
     topic = TopicFactory()

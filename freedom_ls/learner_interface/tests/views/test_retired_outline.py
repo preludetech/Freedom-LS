@@ -24,7 +24,7 @@ from freedom_ls.tests.retire import retire
 
 
 @pytest.fixture
-def three_topic_course(mock_site_context) -> tuple[Course, list[Topic]]:
+def three_topic_course(mock_site_context: object) -> tuple[Course, list[Topic]]:
     course: Course = CourseFactory(slug="outline-course")
     topics: list[Topic] = [
         TopicFactory(title=title) for title in ("First", "Second", "Third")
@@ -57,8 +57,8 @@ def _item_url(index: int) -> str:
 
 @pytest.mark.django_db
 def test_view_course_item_serves_the_next_topic_at_a_retired_topics_old_index(
-    three_topic_course, learner_client
-):
+    three_topic_course: tuple[Course, list[Topic]], learner_client: Client
+) -> None:
     _, (first, second, _) = three_topic_course
     retire(first)
 
@@ -70,8 +70,8 @@ def test_view_course_item_serves_the_next_topic_at_a_retired_topics_old_index(
 
 @pytest.mark.django_db
 def test_view_course_item_returns_404_past_the_end_of_the_shortened_outline(
-    three_topic_course, learner_client
-):
+    three_topic_course: tuple[Course, list[Topic]], learner_client: Client
+) -> None:
     _, (first, _, _) = three_topic_course
     retire(first)
 
@@ -80,8 +80,8 @@ def test_view_course_item_returns_404_past_the_end_of_the_shortened_outline(
 
 @pytest.mark.django_db
 def test_retiring_a_topic_leaves_the_learners_progress_rows_unchanged(
-    three_topic_course, learner_client
-):
+    three_topic_course: tuple[Course, list[Topic]], learner_client: Client
+) -> None:
     course, (first, _, _) = three_topic_course
     course_progress = CourseProgressFactory(course=course)
     topic_progress = TopicProgressFactory(course_progress=course_progress, topic=first)
@@ -101,8 +101,8 @@ def test_retiring_a_topic_leaves_the_learners_progress_rows_unchanged(
 
 @pytest.mark.django_db
 def test_view_course_item_serves_a_topic_again_once_its_retired_at_is_cleared(
-    three_topic_course, learner_client
-):
+    three_topic_course: tuple[Course, list[Topic]], learner_client: Client
+) -> None:
     _, (first, _, _) = three_topic_course
     retire(first)
     Topic.objects.filter(pk=first.pk).update(retired_at=None)
@@ -114,8 +114,10 @@ def test_view_course_item_serves_a_topic_again_once_its_retired_at_is_cleared(
 
 @pytest.mark.django_db
 def test_view_course_item_previous_url_steps_back_over_the_shortened_outline(
-    three_topic_course, learner, learner_client
-):
+    three_topic_course: tuple[Course, list[Topic]],
+    learner: User,
+    learner_client: Client,
+) -> None:
     course, (first, second, _) = three_topic_course
     retire(first)
     topic_completion(course, learner, second, complete_time=timezone.now())
@@ -127,8 +129,10 @@ def test_view_course_item_previous_url_steps_back_over_the_shortened_outline(
 
 @pytest.mark.django_db
 def test_view_course_item_is_last_after_the_final_live_topic(
-    three_topic_course, learner, learner_client
-):
+    three_topic_course: tuple[Course, list[Topic]],
+    learner: User,
+    learner_client: Client,
+) -> None:
     course, (first, _, third) = three_topic_course
     retire(third)
     topic_completion(course, learner, first, complete_time=timezone.now())
@@ -140,8 +144,8 @@ def test_view_course_item_is_last_after_the_final_live_topic(
 
 @pytest.mark.django_db
 def test_view_course_item_sidebar_numbers_the_child_after_a_retired_topic_from_one(
-    three_topic_course, learner_client
-):
+    three_topic_course: tuple[Course, list[Topic]], learner_client: Client
+) -> None:
     _, (first, second, _) = three_topic_course
     retire(first)
 
@@ -155,7 +159,7 @@ def test_view_course_item_sidebar_numbers_the_child_after_a_retired_topic_from_o
 
 
 @pytest.fixture
-def part_course(mock_site_context) -> tuple[Course, CoursePart, list[Topic]]:
+def part_course(mock_site_context: object) -> tuple[Course, CoursePart, list[Topic]]:
     course: Course = CourseFactory(slug="outline-course")
     part: CoursePart = CoursePartFactory()
     course.items.create(child=part, order=0)
@@ -167,8 +171,8 @@ def part_course(mock_site_context) -> tuple[Course, CoursePart, list[Topic]]:
 
 @pytest.mark.django_db
 def test_view_course_item_breadcrumb_part_index_points_at_the_first_live_child(
-    part_course,
-):
+    part_course: tuple[Course, CoursePart, list[Topic]],
+) -> None:
     course, part, (first, second) = part_course
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, course=course)
@@ -185,8 +189,8 @@ def test_view_course_item_breadcrumb_part_index_points_at_the_first_live_child(
 
 @pytest.mark.django_db
 def test_view_course_item_sidebar_omits_a_retired_part_and_its_children(
-    part_course, mock_site_context
-):
+    part_course: tuple[Course, CoursePart, list[Topic]], mock_site_context: object
+) -> None:
     course, part, _ = part_course
     last = TopicFactory(title="After the part")
     course.items.create(child=last, order=1)
@@ -203,7 +207,9 @@ def test_view_course_item_sidebar_omits_a_retired_part_and_its_children(
 
 
 @pytest.fixture
-def reference_course(mock_site_context) -> tuple[Course, CoursePart, list[Topic]]:
+def reference_course(
+    mock_site_context: object,
+) -> tuple[Course, CoursePart, list[Topic]]:
     course: Course = CourseFactory(slug="outline-course")
     part: CoursePart = CoursePartFactory(slug="glossary")
     CourseReferencePartFactory(course=course, course_part=part, order=0)
@@ -225,7 +231,9 @@ def _reference_topic_url(part_slug: str, topic_slug: str) -> str:
 
 
 @pytest.fixture
-def reference_client(reference_course) -> Client:
+def reference_client(
+    reference_course: tuple[Course, CoursePart, list[Topic]],
+) -> Client:
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, course=reference_course[0])
     client = Client()
@@ -235,8 +243,8 @@ def reference_client(reference_course) -> Client:
 
 @pytest.mark.django_db
 def test_course_reference_topic_returns_404_for_a_retired_topic(
-    reference_course, reference_client
-):
+    reference_course: tuple[Course, CoursePart, list[Topic]], reference_client: Client
+) -> None:
     _, _, (alpha, _) = reference_course
     retire(alpha)
 
@@ -247,8 +255,8 @@ def test_course_reference_topic_returns_404_for_a_retired_topic(
 
 @pytest.mark.django_db
 def test_course_reference_topic_next_link_skips_a_retired_topic(
-    reference_course, reference_client
-):
+    reference_course: tuple[Course, CoursePart, list[Topic]], reference_client: Client
+) -> None:
     _, _, (_, beta) = reference_course
     retire(beta)
 
@@ -260,8 +268,8 @@ def test_course_reference_topic_next_link_skips_a_retired_topic(
 
 @pytest.mark.django_db
 def test_course_reference_topic_returns_404_for_a_retired_part(
-    reference_course, reference_client
-):
+    reference_course: tuple[Course, CoursePart, list[Topic]], reference_client: Client
+) -> None:
     _, part, _ = reference_course
     retire(part)
 
@@ -271,7 +279,9 @@ def test_course_reference_topic_returns_404_for_a_retired_part(
 
 
 @pytest.mark.django_db
-def test_course_reference_lists_no_retired_part(reference_course, reference_client):
+def test_course_reference_lists_no_retired_part(
+    reference_course: tuple[Course, CoursePart, list[Topic]], reference_client: Client
+) -> None:
     course, part, _ = reference_course
     retire(part)
 

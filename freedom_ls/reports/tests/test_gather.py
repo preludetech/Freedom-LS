@@ -3143,7 +3143,7 @@ def _course_with_a_topic_and_quiz_each_to_retire() -> tuple[
 @pytest.mark.django_db
 class TestRetiredContentInTheReport:
     def test_a_retired_quiz_stays_as_a_column_flagged_retired(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         course, _topic, _gone_topic, _live_quiz, gone_quiz = (
             _course_with_a_topic_and_quiz_each_to_retire()
@@ -3159,7 +3159,7 @@ class TestRetiredContentInTheReport:
         ]
 
     def test_a_retired_quiz_column_still_shows_the_recorded_result(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         course, _live_topic, _gone_topic, _live_quiz, gone_quiz = (
             _course_with_a_topic_and_quiz_each_to_retire()
@@ -3180,7 +3180,7 @@ class TestRetiredContentInTheReport:
         assert (result.latest_score, result.latest_max_score) == (1, 2)
 
     def test_a_retired_topic_and_quiz_are_out_of_the_completion_denominator(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         course, live_topic, gone_topic, _live_quiz, gone_quiz = (
             _course_with_a_topic_and_quiz_each_to_retire()
@@ -3207,7 +3207,7 @@ class TestRetiredContentInTheReport:
         assert [item.title for item in detail.completed_items] == ["Live Topic"]
 
     def test_content_under_a_retired_part_is_flagged_retired_and_out_of_the_completion_denominator(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         course: Course = CourseFactory()
         live_topic: Topic = TopicFactory(title="Live Topic")
@@ -3231,7 +3231,7 @@ class TestRetiredContentInTheReport:
         ]
 
     def test_an_item_under_a_retired_part_in_one_course_still_counts_where_it_is_live(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         shared_topic: Topic = TopicFactory(title="Shared Topic")
         shared_quiz: Form = FormFactory(title="Shared Quiz", strategy=FormStrategy.QUIZ)
@@ -3258,7 +3258,7 @@ class TestRetiredContentInTheReport:
         assert [q.retired for q in sections["A"].quizzes] == [True]
 
     def test_a_wrong_answer_to_a_retired_question_is_listed_and_flagged(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         cohort, record, quiz, questions = _cohort_with_two_question_quiz()
         (gone, _), (kept, _) = questions
@@ -3284,7 +3284,7 @@ class TestRetiredContentInTheReport:
         ]
 
     def test_a_retired_question_is_flagged_in_the_cohort_confusions(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         cohort, record, quiz, questions = _cohort_with_two_question_quiz()
         (gone, _), _ = questions
@@ -3307,7 +3307,7 @@ class TestRetiredContentInTheReport:
             "Question 2?": False,
         }
 
-    def test_a_chosen_retired_option_is_flagged(self, mock_site_context) -> None:
+    def test_a_chosen_retired_option_is_flagged(self, mock_site_context: Site) -> None:
         cohort, record, quiz, questions = _cohort_with_two_question_quiz()
         (question, _), _ = questions
         old = QuestionOptionFactory(
@@ -3335,7 +3335,7 @@ class TestRetiredContentInTheReport:
         ]
 
     def test_a_chosen_retired_option_is_flagged_in_the_cohort_confusions(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         """The confusions table used to list a retired option like a live one."""
         cohort, record, quiz, questions = _cohort_with_two_question_quiz()
@@ -3366,7 +3366,7 @@ class TestRetiredContentInTheReport:
         ]
 
     def test_a_live_option_sharing_a_retired_options_text_is_not_flagged(
-        self, mock_site_context
+        self, mock_site_context: Site
     ) -> None:
         cohort, record, quiz, questions = _cohort_with_two_question_quiz()
         (question, _), _ = questions

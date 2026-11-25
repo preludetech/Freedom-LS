@@ -390,8 +390,8 @@ class TestBuildCourseCatalogue:
         assert catalogue.ordered_quiz_form_ids == [first.id, second.id]
 
     def test_a_retired_topic_and_form_stay_in_the_catalogue_and_are_recorded_as_retired(
-        self, mock_site_context
-    ):
+        self, mock_site_context: object
+    ) -> None:
         cohort = CohortFactory()
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, course=course)
@@ -410,8 +410,8 @@ class TestBuildCourseCatalogue:
         assert catalogue.quiz_form_ids == {gone_form.id}
 
     def test_content_under_a_retired_part_is_recorded_as_retired_and_live_content_is_not(
-        self, mock_site_context
-    ):
+        self, mock_site_context: object
+    ) -> None:
         cohort = CohortFactory()
         course = CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, course=course)
@@ -432,8 +432,8 @@ class TestBuildCourseCatalogue:
         assert catalogue.retired_item_ids == {topic_in_part.id, form_in_part.id}
 
     def test_an_item_retired_in_one_course_and_live_in_another_is_retired_only_there(
-        self, mock_site_context
-    ):
+        self, mock_site_context: object
+    ) -> None:
         cohort = CohortFactory()
         gone_in, live_in = CourseFactory(), CourseFactory()
         CohortCourseRegistrationFactory(cohort=cohort, course=gone_in)
@@ -1513,8 +1513,11 @@ class TestASittingIsScoredOnTheOptionsItWasOffered:
         return list(sat.correctness.values())
 
     def test_a_sitting_whose_paper_lacks_a_retired_correct_option_is_scored_correct(
-        self, question_with_a_retired_correct_option
-    ):
+        self,
+        question_with_a_retired_correct_option: tuple[
+            Form, FormPage, FormQuestion, QuestionOption, CourseProgress
+        ],
+    ) -> None:
         quiz, page, question, kept, record = question_with_a_retired_correct_option
         sitting = form_progress(
             record,
@@ -1549,8 +1552,11 @@ class TestASittingIsScoredOnTheOptionsItWasOffered:
         assert self._verdicts(quiz, record) == [False]
 
     def test_a_sitting_with_no_paper_is_scored_on_every_option_retired_ones_included(
-        self, question_with_a_retired_correct_option
-    ):
+        self,
+        question_with_a_retired_correct_option: tuple[
+            Form, FormPage, FormQuestion, QuestionOption, CourseProgress
+        ],
+    ) -> None:
         quiz, _page, question, kept, record = question_with_a_retired_correct_option
         sitting = form_progress(record, quiz, completed_time=timezone.now())
         QuestionAnswerFactory(
@@ -1560,8 +1566,11 @@ class TestASittingIsScoredOnTheOptionsItWasOffered:
         assert self._verdicts(quiz, record) == [False]
 
     def test_a_sitting_with_no_paper_keeps_its_right_answer_to_a_retired_question(
-        self, question_with_a_retired_correct_option
-    ):
+        self,
+        question_with_a_retired_correct_option: tuple[
+            Form, FormPage, FormQuestion, QuestionOption, CourseProgress
+        ],
+    ) -> None:
         quiz, page, _question, _kept, record = question_with_a_retired_correct_option
         gone: FormQuestion = FormQuestionFactory(
             form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=1

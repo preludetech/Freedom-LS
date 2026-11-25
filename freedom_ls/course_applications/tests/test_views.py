@@ -473,8 +473,8 @@ class TestApplyViewVisibilityGate:
 
     @pytest.mark.parametrize("method", ["get", "post"])
     def test_retired_course_returns_404_and_creates_nothing(
-        self, client, mock_site_context, method
-    ):
+        self, client: Client, mock_site_context: Site, method: str
+    ) -> None:
         user = UserFactory()
         course = retire(cast("Course", CourseFactory()))
         client.force_login(user)
@@ -902,8 +902,8 @@ class TestApplyStartsTheForm:
         )
 
     def test_a_retired_application_form_is_treated_as_no_form(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course, form = gated_course_with_form()
         retire(cast("Form", form))
 
@@ -913,8 +913,8 @@ class TestApplyStartsTheForm:
         assert app.state == CourseApplication.State.SUBMITTED
 
     def test_retiring_the_form_leaves_an_in_progress_sitting_unchanged(
-        self, client, mock_site_context
-    ):
+        self, client: Client, mock_site_context: Site
+    ) -> None:
         course, form = gated_course_with_form()
         app = _applied(client, course)
         before = FormProgress.objects.filter(pk=app.form_progress_id).values().get()

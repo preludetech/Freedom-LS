@@ -1577,7 +1577,9 @@ class TestInactiveCohortAccess:
 
 @pytest.mark.django_db
 class TestRegisterableCoursesOmitRetired:
-    def test_registerable_courses_omits_a_retired_course(self, mock_site_context):
+    def test_registerable_courses_omits_a_retired_course(
+        self, mock_site_context: Site
+    ) -> None:
         organisation = OrganisationFactory()
         live = CourseFactory()
         retire(cast(Course, CourseFactory()))
@@ -1585,22 +1587,24 @@ class TestRegisterableCoursesOmitRetired:
         assert list(registerable_courses(organisation)) == [live]
 
     def test_registerable_courses_for_a_cohort_omits_a_retired_course(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         cohort = _make_cohort(organisation=OrganisationFactory())
         retire(cast(Course, CourseFactory()))
 
         assert list(registerable_courses_for(cohort)) == []
 
     def test_registerable_courses_for_a_learner_omits_a_retired_course(
-        self, mock_site_context
-    ):
+        self, mock_site_context: Site
+    ) -> None:
         learner = LearnerFactory()
         retire(cast(Course, CourseFactory()))
 
         assert list(registerable_courses_for_learner(learner)) == []
 
-    def test_a_retired_course_a_cohort_holds_stays_visible(self, mock_site_context):
+    def test_a_retired_course_a_cohort_holds_stays_visible(
+        self, mock_site_context: Site
+    ) -> None:
         organisation = OrganisationFactory()
         educator = UserFactory()
         assign_object_role(educator, organisation, "organisation_admin")
