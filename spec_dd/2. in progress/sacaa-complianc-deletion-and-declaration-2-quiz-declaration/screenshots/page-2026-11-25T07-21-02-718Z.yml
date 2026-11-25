@@ -1,0 +1,91 @@
+- generic [ref=f39e47]:
+  - banner [ref=f39e48]:
+    - link [ref=f39e49] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f39e50]
+    - navigation [ref=f39e51]:
+      - generic [ref=f39e52]:
+        - generic [ref=f39e53]:
+          - button "Notifications, 3 new" [ref=f39e54]
+          - status:
+            - generic [ref=f39e58]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f39e59]: "3"
+        - button "Open user menu for QA qa-decl-a" [ref=f39e61] [cursor=pointer]:
+          - generic [ref=f39e62]:
+            - generic [ref=f39e63]: Open user menu for QA qa-decl-a
+            - generic [aria-hidden] [ref=f39e64]: QQ
+  - generic:
+    - status
+    - alert
+  - main [ref=f39e65]:
+    - generic [ref=f39e67]:
+      - dialog "Course outline" [ref=f39e68]:
+        - generic [ref=f39e71]:
+          - generic [ref=f39e72]:
+            - paragraph [ref=f39e73]: Course outline
+            - paragraph [ref=f39e74]: Functionality Demo - quiz declaration
+            - generic [ref=f39e76]:
+              - progressbar "Progress for Functionality Demo - quiz declaration" [ref=f39e77]: 33%
+              - generic [ref=f39e78]: 33% complete
+          - navigation "Course outline" [ref=f39e79]:
+            - list [ref=f39e80]:
+              - listitem [ref=f39e81]:
+                - generic [ref=f39e82]:
+                  - generic [ref=f39e83]: "1."
+                  - generic [ref=f39e84]: Completed
+                  - link "The Sun and the Moon" [active] [ref=f39e89] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-quiz-declaration/1/
+              - listitem [ref=f39e90]:
+                - generic [ref=f39e91]:
+                  - generic [ref=f39e92]: "2."
+                  - generic [ref=f39e93]: Not started
+                  - generic [ref=f39e97]: Quiz with its own declaration
+              - listitem [ref=f39e98]:
+                - generic [ref=f39e99]:
+                  - generic [ref=f39e100]: "3."
+                  - generic [ref=f39e101]: Locked
+                  - generic [ref=f39e105]: Quiz with the default declaration
+      - generic [ref=f39e1]:
+        - generic [ref=f39e3]:
+          - generic [ref=f39e4]:
+            - button "Open course outline" [expanded] [ref=f39e5] [cursor=pointer]
+            - navigation "Breadcrumb" [ref=f39e9]:
+              - list [ref=f39e10]:
+                - listitem [ref=f39e11]:
+                  - link "Functionality Demo - quiz declaration" [ref=f39e12] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-quiz-declaration/detail/
+                - listitem [ref=f39e13]:
+                  - generic [aria-hidden] [ref=f39e14]: ">"
+                  - generic "Quiz with its own declaration" [ref=f39e15]
+          - generic [ref=f39e17]:
+            - progressbar "Progress for Functionality Demo - quiz declaration" [ref=f39e18]: 33%
+            - generic [ref=f39e19]: 33%
+        - generic [ref=f39e21]:
+          - link "Quiz with its own declaration" [ref=f39e23] [cursor=pointer]:
+            - /url: /courses/functionality-demo-quiz-declaration/2/
+          - heading "Quiz with its own declaration" [level=1] [ref=f39e27]
+          - paragraph [ref=f39e28]: Before you start, read this declaration and sign it.
+          - generic [ref=f39e29]:
+            - generic [ref=f39e30]:
+              - paragraph [ref=f39e31]: I declare that I am the person named below and that the answers I give are my own work.
+              - paragraph [ref=f39e32]: I understand that sharing the questions or answers with others is a breach of the assessment rules.
+            - generic [ref=f39e33]:
+              - generic [ref=f39e34]:
+                - checkbox "I make this declaration." [invalid] [ref=f39e35] [cursor=pointer]
+                - generic [ref=f39e36]: I make this declaration.
+              - paragraph [ref=f39e37]: Tick the box to make the declaration.
+            - generic [ref=f39e38]:
+              - generic [ref=f39e39]: Full name
+              - textbox "Full name" [invalid] [ref=f39e40]
+              - paragraph [ref=f39e41]: Type your full name to sign.
+            - button "Sign and start" [ref=f39e43] [cursor=pointer]
+  - contentinfo [ref=f39e106]:
+    - generic [ref=f39e107]:
+      - paragraph [ref=f39e108]: © 2026 FirstClass
+      - navigation "Legal" [ref=f39e109]:
+        - link "Terms and Conditions" [ref=f39e110] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f39e111] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f39e112] [cursor=pointer]: sacaa-complianc-deletion-and-declaration-2-quiz-declaration
+  - generic "Show toolbar" [ref=f39e114]: DJDT

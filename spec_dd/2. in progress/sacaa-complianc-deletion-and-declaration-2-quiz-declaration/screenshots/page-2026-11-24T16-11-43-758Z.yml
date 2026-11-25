@@ -1,0 +1,142 @@
+- generic [active] [ref=f2e1]:
+  - banner [ref=f2e2]:
+    - link [ref=f2e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f2e4]
+      - heading "FirstClass" [level=1] [ref=f2e5]
+    - navigation [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]:
+          - button "Notifications, 1 new" [ref=f2e9]
+          - status:
+            - generic [ref=f2e13]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f2e14]: "1"
+        - button "Open user menu for QA qa-decl-b" [ref=f2e16] [cursor=pointer]:
+          - generic [ref=f2e17]:
+            - generic [ref=f2e18]: Open user menu for QA qa-decl-b
+            - generic [aria-hidden] [ref=f2e19]: QQ
+  - generic:
+    - status
+    - alert
+  - main [ref=f2e20]:
+    - generic [ref=f2e22]:
+      - dialog "Course outline" [ref=f2e23]:
+        - generic [ref=f2e26]:
+          - generic [ref=f2e27]:
+            - paragraph [ref=f2e28]: Course outline
+            - paragraph [ref=f2e29]: Functionality Demo - quiz declaration
+            - generic [ref=f2e31]:
+              - progressbar "Progress for Functionality Demo - quiz declaration" [ref=f2e32]: 33%
+              - generic [ref=f2e33]: 33% complete
+          - navigation "Course outline" [ref=f2e34]:
+            - list [ref=f2e35]:
+              - listitem [ref=f2e36]:
+                - generic [ref=f2e37]:
+                  - generic [ref=f2e38]: "1."
+                  - generic [ref=f2e39]: Completed
+                  - link "The Sun and the Moon" [ref=f2e44] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-quiz-declaration/1/
+              - listitem [ref=f2e45]:
+                - generic [ref=f2e46]:
+                  - generic [ref=f2e47]: "2."
+                  - generic [ref=f2e48]: In progress
+                  - generic [ref=f2e52]: Quiz with its own declaration
+              - listitem [ref=f2e53]:
+                - generic [ref=f2e54]:
+                  - generic [ref=f2e55]: "3."
+                  - generic [ref=f2e56]: Locked
+                  - generic [ref=f2e60]: Quiz with the default declaration
+      - generic [ref=f2e61]:
+        - navigation "Breadcrumb" [ref=f2e66]:
+          - list [ref=f2e67]:
+            - listitem [ref=f2e68]:
+              - link "Functionality Demo - quiz declaration" [ref=f2e69] [cursor=pointer]:
+                - /url: /courses/functionality-demo-quiz-declaration/detail/
+            - listitem [ref=f2e70]:
+              - generic [aria-hidden] [ref=f2e71]: ">"
+              - generic "Quiz with its own declaration" [ref=f2e72]
+        - generic [ref=f2e74]:
+          - heading "Quiz with its own declaration" [level=1] [ref=f2e79]
+          - paragraph [ref=f2e81]: This quiz shows its own declaration text before the first question.
+          - generic [ref=f2e82]:
+            - generic [ref=f2e83]: 2 questions
+            - generic [ref=f2e86]: 1 page
+          - generic [ref=f2e89]:
+            - link "Previous" [ref=f2e91] [cursor=pointer]:
+              - /url: /courses/functionality-demo-quiz-declaration/1/
+            - link "Continue Form" [ref=f2e95] [cursor=pointer]:
+              - /url: /courses/functionality-demo-quiz-declaration/2/fill_form/1
+  - contentinfo [ref=f2e99]:
+    - generic [ref=f2e100]:
+      - paragraph [ref=f2e101]: © 2026 FirstClass
+      - navigation "Legal" [ref=f2e102]:
+        - link "Terms and Conditions" [ref=f2e103] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f2e104] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f2e105] [cursor=pointer]: sacaa-complianc-deletion-and-declaration-2-quiz-declaration
+  - list [ref=f2e107]:
+    - listitem [ref=f2e108]:
+      - link "Hide »" [ref=f2e109] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e110]:
+      - link "Toggle Theme" [ref=f2e111] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e114]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e115] [cursor=pointer]
+      - link "History /courses/functionality-demo-quiz-declaration/2/" [ref=f2e116] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e117]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e118] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f2e119] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e120]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e121] [cursor=pointer]
+      - 'link "Time CPU: 190.93ms (252.32ms)" [ref=f2e122] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f2e123]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e124] [cursor=pointer]
+      - link "Settings" [ref=f2e125] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e126]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e127] [cursor=pointer]
+      - link "Headers" [ref=f2e128] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e129]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e130] [cursor=pointer]
+      - link "Request view_course_item" [ref=f2e131] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e132]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e133] [cursor=pointer]
+      - link "SQL 68 queries in 65.59ms" [ref=f2e134] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e135]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e136] [cursor=pointer]
+      - link "Static files 13 files used" [ref=f2e137] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e138]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e139] [cursor=pointer]
+      - link "Templates learner_interface/course_form.html" [ref=f2e140] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e141]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e142] [cursor=pointer]
+      - link "Alerts" [ref=f2e143] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e144]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e145] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f2e146] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e147]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e148] [cursor=pointer]
+      - link "Signals 132 receivers of 15 signals" [ref=f2e149] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e150]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f2e151] [cursor=pointer]
+      - link "Community" [ref=f2e152] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f2e153]:
+      - checkbox "Enable for next and successive requests" [ref=f2e154] [cursor=pointer]
+      - generic [ref=f2e155]: Intercept redirects
+    - listitem [ref=f2e156]:
+      - checkbox "Enable for next and successive requests" [ref=f2e157] [cursor=pointer]
+      - generic [ref=f2e158]: Profiling

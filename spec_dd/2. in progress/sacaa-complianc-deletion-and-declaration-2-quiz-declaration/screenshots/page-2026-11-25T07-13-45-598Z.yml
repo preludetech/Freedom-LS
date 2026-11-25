@@ -259,7 +259,7 @@
         - /url: "#"
     - listitem [ref=f1e375]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f1e376] [cursor=pointer]
-      - 'link "Time CPU: 193.53ms (208.81ms)" [ref=f1e377] [cursor=pointer]':
+      - 'link "Time CPU: 175.51ms (193.49ms)" [ref=f1e377] [cursor=pointer]':
         - /url: "#"
     - listitem [ref=f1e378]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f1e379] [cursor=pointer]
@@ -275,7 +275,7 @@
         - /url: "#"
     - listitem [ref=f1e387]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f1e388] [cursor=pointer]
-      - link "SQL 18 queries in 15.22ms" [ref=f1e389] [cursor=pointer]:
+      - link "SQL 18 queries in 16.84ms" [ref=f1e389] [cursor=pointer]:
         - /url: "#"
     - listitem [ref=f1e390]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f1e391] [cursor=pointer]
@@ -295,7 +295,7 @@
         - /url: "#"
     - listitem [ref=f1e402]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f1e403] [cursor=pointer]
-      - link "Signals 130 receivers of 15 signals" [ref=f1e404] [cursor=pointer]:
+      - link "Signals 132 receivers of 15 signals" [ref=f1e404] [cursor=pointer]:
         - /url: "#"
     - listitem [ref=f1e405]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f1e406] [cursor=pointer]
