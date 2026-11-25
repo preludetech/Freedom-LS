@@ -54,7 +54,11 @@ from freedom_ls.learner_management.admin_forms import (
 )
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
-from freedom_ls.site_aware_models.admin import ReadOnlyInline, SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin import (
+    ReadOnlyAdminMixin,
+    ReadOnlyInline,
+    SiteAwareModelAdmin,
+)
 from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 from freedom_ls.site_aware_models.time_zones import site_time_zone, site_zone_text
