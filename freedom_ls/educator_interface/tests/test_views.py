@@ -791,6 +791,7 @@ class TestSwitcherRendering:
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("_site_context")
 class TestSwitchFromAnAttemptReview:
     """A sitting belongs to one organisation's learner and its section has no
     list, so a switch lands on the other organisation's first visible section."""
