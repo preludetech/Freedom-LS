@@ -1,0 +1,260 @@
+- generic [active] [ref=f122e1]:
+  - banner [ref=f122e2]:
+    - link [ref=f122e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f122e4]
+      - heading "FirstClass" [level=1] [ref=f122e5]
+    - navigation [ref=f122e6]:
+      - generic [ref=f122e7]:
+        - generic [ref=f122e8]:
+          - button "Notifications, 1 new" [ref=f122e9]
+          - status:
+            - generic [ref=f122e13]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f122e14]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f122e16] [cursor=pointer]:
+          - generic [ref=f122e17]:
+            - generic [ref=f122e18]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f122e19]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f122e20]:
+    - generic [ref=f122e22]:
+      - dialog "Navigation" [ref=f122e23]:
+        - generic [ref=f122e25]:
+          - generic [ref=f122e26]:
+            - paragraph [ref=f122e27]: Organisation
+            - button "Switch organisation" [ref=f122e29] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f122e30]: QO
+              - generic "QA Deadlines Org" [ref=f122e31]
+          - navigation "Sections" [ref=f122e34]:
+            - heading "Teaching" [level=2] [ref=f122e35]
+            - list [ref=f122e36]:
+              - listitem [ref=f122e37]:
+                - link "Dashboard" [ref=f122e38] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/dashboard
+              - listitem [ref=f122e43]:
+                - link "Cohorts" [ref=f122e44] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/cohorts
+              - listitem [ref=f122e49]:
+                - link "Learners" [ref=f122e50] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/learners
+              - listitem [ref=f122e55]:
+                - link "Courses" [ref=f122e56] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/courses
+            - heading "Administration" [level=2] [ref=f122e61]
+            - list [ref=f122e62]:
+              - listitem [ref=f122e63]:
+                - link "Staff" [ref=f122e64] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/staff
+              - listitem [ref=f122e69]:
+                - link "Audit log" [ref=f122e70] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-deadlines-org/audit-log
+          - generic [ref=f122e75]:
+            - generic [ref=f122e77]:
+              - generic [aria-hidden] [ref=f122e78]: DE
+              - generic [ref=f122e79]: demodev@email.com
+            - link "Account settings" [ref=f122e81] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f122e87]:
+        - generic [ref=f122e89]:
+          - heading "Learners" [level=1] [ref=f122e93]
+          - generic [ref=f122e94]:
+            - button "Add learner" [ref=f122e95] [cursor=pointer]
+            - link "Import learners" [ref=f122e96] [cursor=pointer]:
+              - /url: /educator/organisations/qa-deadlines-org/learners/import/
+        - generic [ref=f122e101]:
+          - generic [ref=f122e102]:
+            - generic [ref=f122e104]:
+              - generic [ref=f122e105]: Search
+              - searchbox "Search" [ref=f122e107]
+            - generic [ref=f122e108]:
+              - group [ref=f122e109]:
+                - 'generic "Status: Active, Pending" [ref=f122e110]'
+              - group [ref=f122e114]:
+                - generic "Add filter" [ref=f122e115]
+              - link "Export CSV" [ref=f122e119] [cursor=pointer]:
+                - /url: /educator/organisations/qa-deadlines-org/learners?learners-export=csv
+          - status [ref=f122e123]
+          - region "Learners" [ref=f122e126]:
+            - table [ref=f122e127]:
+              - caption [ref=f122e128]: Learners
+              - rowgroup [ref=f122e129]:
+                - row [ref=f122e130]:
+                  - columnheader [ref=f122e131]:
+                    - checkbox "Select all on this page" [ref=f122e132] [cursor=pointer]
+                  - columnheader [ref=f122e133]:
+                    - link "Learner" [ref=f122e134] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-deadlines-org/learners?learners-sort=-user__first_name
+                  - columnheader "Status" [ref=f122e138]
+                  - columnheader "Cohorts" [ref=f122e139]
+                  - columnheader "Courses" [ref=f122e140]
+                  - columnheader [ref=f122e141]:
+                    - link "Last active" [ref=f122e142] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-deadlines-org/learners?learners-sort=last_active
+              - rowgroup [ref=f122e146]:
+                - row [ref=f122e147]:
+                  - cell [ref=f122e148]:
+                    - checkbox "Select qa_deadline_cohort@email.com" [ref=f122e149] [cursor=pointer]
+                  - cell [ref=f122e150]:
+                    - generic [ref=f122e151]:
+                      - link "qa_deadline_cohort@email.com" [ref=f122e153] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-deadlines-org/learners/176c901f-4cc7-49ce-b0ab-be917192ecfc
+                        - generic [ref=f122e154]:
+                          - generic [aria-hidden] [ref=f122e155]: Q
+                          - generic [ref=f122e156]: qa_deadline_cohort@email.com
+                      - 'link "Quick view: qa_deadline_cohort@email.com" [ref=f122e158] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-deadlines-org/learners/176c901f-4cc7-49ce-b0ab-be917192ecfc
+                  - cell "Active" [ref=f122e163]
+                  - cell [ref=f122e165]:
+                    - link "QA Deadlines Cohort" [ref=f122e166] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-deadlines-org/cohorts/573d380f-9895-4e0c-8a59-2c508e1b4e63
+                  - cell [ref=f122e167]:
+                    - list [ref=f122e168]:
+                      - listitem [ref=f122e169]: Functionality Demo - Course Parts 0%
+                  - cell "Never" [ref=f122e170]
+                - row [ref=f122e171]:
+                  - cell [ref=f122e172]:
+                    - checkbox "Select qa_deadline_solo@email.com" [ref=f122e173] [cursor=pointer]
+                  - cell [ref=f122e174]:
+                    - generic [ref=f122e175]:
+                      - link "qa_deadline_solo@email.com" [ref=f122e177] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-deadlines-org/learners/193a2a79-9771-4fb2-9b70-3296333631d3
+                        - generic [ref=f122e178]:
+                          - generic [aria-hidden] [ref=f122e179]: Q
+                          - generic [ref=f122e180]: qa_deadline_solo@email.com
+                      - 'link "Quick view: qa_deadline_solo@email.com" [ref=f122e182] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-deadlines-org/learners/193a2a79-9771-4fb2-9b70-3296333631d3
+                  - cell "Active" [ref=f122e187]
+                  - cell [ref=f122e189]:
+                    - img "None" [ref=f122e190]: —
+                  - cell [ref=f122e191]:
+                    - list [ref=f122e192]:
+                      - listitem [ref=f122e193]: Functionality Demo - Course Parts 0%
+                      - listitem [ref=f122e194]: Functionality Demo - show end with Topic 0%
+                  - cell "Never" [ref=f122e195]
+                - row [ref=f122e196]:
+                  - cell [ref=f122e197]:
+                    - checkbox "Select qa_deadline_fresh@email.com" [ref=f122e198] [cursor=pointer]
+                  - cell [ref=f122e199]:
+                    - generic [ref=f122e200]:
+                      - link "qa_deadline_fresh@email.com" [ref=f122e202] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-deadlines-org/learners/63a2a071-90b4-46e2-8c52-15fe42704c1e
+                        - generic [ref=f122e203]:
+                          - generic [aria-hidden] [ref=f122e204]: Q
+                          - generic [ref=f122e205]: qa_deadline_fresh@email.com
+                      - 'link "Quick view: qa_deadline_fresh@email.com" [ref=f122e207] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-deadlines-org/learners/63a2a071-90b4-46e2-8c52-15fe42704c1e
+                  - cell "Active" [ref=f122e212]
+                  - cell [ref=f122e214]:
+                    - img "None" [ref=f122e215]: —
+                  - cell [ref=f122e216]:
+                    - list [ref=f122e217]:
+                      - listitem [ref=f122e218]: Functionality Demo - Course Parts 0%
+                  - cell "Never" [ref=f122e219]
+                - row [ref=f122e220]:
+                  - cell [ref=f122e221]:
+                    - checkbox "Select qa_deadline_restored@email.com" [ref=f122e222] [cursor=pointer]
+                  - cell [ref=f122e223]:
+                    - generic [ref=f122e224]:
+                      - link "qa_deadline_restored@email.com" [ref=f122e226] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-deadlines-org/learners/71e7f536-19c9-489f-b0ed-937056dd35ea
+                        - generic [ref=f122e227]:
+                          - generic [aria-hidden] [ref=f122e228]: Q
+                          - generic [ref=f122e229]: qa_deadline_restored@email.com
+                      - 'link "Quick view: qa_deadline_restored@email.com" [ref=f122e231] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-deadlines-org/learners/71e7f536-19c9-489f-b0ed-937056dd35ea
+                  - cell "Active" [ref=f122e236]
+                  - cell [ref=f122e238]:
+                    - img "None" [ref=f122e239]: —
+                  - cell [ref=f122e240]:
+                    - list [ref=f122e241]:
+                      - listitem [ref=f122e242]: Functionality Demo - Course Parts 0%
+                  - cell "Never" [ref=f122e243]
+                - row [ref=f122e244]:
+                  - cell [ref=f122e245]:
+                    - checkbox "Select qa_deadline_paused_open@email.com" [ref=f122e246] [cursor=pointer]
+                  - cell [ref=f122e247]:
+                    - generic [ref=f122e248]:
+                      - link "qa_deadline_paused_open@email.com" [ref=f122e250] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-deadlines-org/learners/7fbba7e3-c402-4a22-a76b-dbe1b3d77ede
+                        - generic [ref=f122e251]:
+                          - generic [aria-hidden] [ref=f122e252]: Q
+                          - generic [ref=f122e253]: qa_deadline_paused_open@email.com
+                      - 'link "Quick view: qa_deadline_paused_open@email.com" [ref=f122e255] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-deadlines-org/learners/7fbba7e3-c402-4a22-a76b-dbe1b3d77ede
+                  - cell "Active" [ref=f122e260]
+                  - cell [ref=f122e262]:
+                    - img "None" [ref=f122e263]: —
+                  - cell [ref=f122e264]:
+                    - list [ref=f122e265]:
+                      - listitem [ref=f122e266]: Functionality Demo - Course Parts 0%
+                  - cell "Never" [ref=f122e267]
+                - row [ref=f122e268]:
+                  - cell [ref=f122e269]:
+                    - checkbox "Select qa_deadline_extended@email.com" [ref=f122e270] [cursor=pointer]
+                  - cell [ref=f122e271]:
+                    - generic [ref=f122e272]:
+                      - link "qa_deadline_extended@email.com" [ref=f122e274] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-deadlines-org/learners/95441f19-a4ea-484c-9fec-e2599763fe17
+                        - generic [ref=f122e275]:
+                          - generic [aria-hidden] [ref=f122e276]: Q
+                          - generic [ref=f122e277]: qa_deadline_extended@email.com
+                      - 'link "Quick view: qa_deadline_extended@email.com" [ref=f122e279] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-deadlines-org/learners/95441f19-a4ea-484c-9fec-e2599763fe17
+                  - cell "Active" [ref=f122e284]
+                  - cell [ref=f122e286]:
+                    - img "None" [ref=f122e287]: —
+                  - cell [ref=f122e288]:
+                    - list [ref=f122e289]:
+                      - listitem [ref=f122e290]: Functionality Demo - Course Parts 0%
+                  - cell "Never" [ref=f122e291]
+                - row [ref=f122e292]:
+                  - cell [ref=f122e293]:
+                    - checkbox "Select qa_deadline_paused@email.com" [ref=f122e294] [cursor=pointer]
+                  - cell [ref=f122e295]:
+                    - generic [ref=f122e296]:
+                      - link "qa_deadline_paused@email.com" [ref=f122e298] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134
+                        - generic [ref=f122e299]:
+                          - generic [aria-hidden] [ref=f122e300]: Q
+                          - generic [ref=f122e301]: qa_deadline_paused@email.com
+                      - 'link "Quick view: qa_deadline_paused@email.com" [ref=f122e303] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-deadlines-org/learners/96b20768-b12a-40d8-9d5d-172bd3496134
+                  - cell "Active" [ref=f122e308]
+                  - cell [ref=f122e310]:
+                    - img "None" [ref=f122e311]: —
+                  - cell [ref=f122e312]:
+                    - list [ref=f122e313]:
+                      - listitem [ref=f122e314]: Functionality Demo - Course Parts 0%
+                  - cell "Never" [ref=f122e315]
+                - row [ref=f122e316]:
+                  - cell [ref=f122e317]:
+                    - checkbox "Select qa_deadline_resumed@email.com" [ref=f122e318] [cursor=pointer]
+                  - cell [ref=f122e319]:
+                    - generic [ref=f122e320]:
+                      - link "qa_deadline_resumed@email.com" [ref=f122e322] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-deadlines-org/learners/b9cd662c-efe0-4a4b-9d7f-67bb8d70ef70
+                        - generic [ref=f122e323]:
+                          - generic [aria-hidden] [ref=f122e324]: Q
+                          - generic [ref=f122e325]: qa_deadline_resumed@email.com
+                      - 'link "Quick view: qa_deadline_resumed@email.com" [ref=f122e327] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-deadlines-org/learners/b9cd662c-efe0-4a4b-9d7f-67bb8d70ef70
+                  - cell "Active" [ref=f122e332]
+                  - cell [ref=f122e334]:
+                    - img "None" [ref=f122e335]: —
+                  - cell [ref=f122e336]:
+                    - list [ref=f122e337]:
+                      - listitem [ref=f122e338]: Functionality Demo - Course Parts 0%
+                  - cell "Never" [ref=f122e339]
+          - paragraph [ref=f122e341]: 8 learners
+  - contentinfo [ref=f122e344]:
+    - generic [ref=f122e345]:
+      - paragraph [ref=f122e346]: © 2026 FirstClass
+      - navigation "Legal" [ref=f122e347]:
+        - link "Terms and Conditions" [ref=f122e348] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f122e349] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f122e350] [cursor=pointer]: remove-unnecessary-admin-panel-functionality
+  - generic "Show toolbar" [ref=f122e352]: DJDT

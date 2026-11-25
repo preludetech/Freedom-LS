@@ -1,0 +1,146 @@
+- generic [active] [ref=f150e1]:
+  - generic [ref=f150e3]:
+    - generic [ref=f150e7]:
+      - generic [ref=f150e8]:
+        - generic [ref=f150e9] [cursor=pointer]: dock_to_right
+        - link "arrow_back" [ref=f150e12] [cursor=pointer]:
+          - /url: /admin/freedom_ls_learner_progress/courseprogress/
+        - heading "Learner progress chevron_right Course progress records chevron_right Qa_deadline_paused@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [level=1] [ref=f150e14]:
+          - link "Learner progress" [ref=f150e15] [cursor=pointer]:
+            - /url: /admin/freedom_ls_learner_progress/
+          - generic [ref=f150e16]: chevron_right
+          - link "Course progress records" [ref=f150e17] [cursor=pointer]:
+            - /url: /admin/freedom_ls_learner_progress/courseprogress/
+          - generic [ref=f150e18]: chevron_right
+          - link "Qa_deadline_paused@email.com - QA Deadlines Org - Functionality Demo - Course Parts" [ref=f150e19] [cursor=pointer]:
+            - /url: /admin/freedom_ls_learner_progress/courseprogress/59278405-7c8a-4013-b4e1-93179f66d714/change/
+      - link "more_horiz" [ref=f150e22] [cursor=pointer]:
+        - /url: "#"
+    - generic [ref=f150e25]:
+      - navigation [ref=f150e28]:
+        - link "General" [ref=f150e29] [cursor=pointer]:
+          - /url: "#general"
+        - link "Topics 2" [ref=f150e30] [cursor=pointer]:
+          - /url: "#topic_progress"
+          - text: Topics
+          - generic [ref=f150e31]: "2"
+        - link "Form attempts 1" [ref=f150e32] [cursor=pointer]:
+          - /url: "#form_attempts"
+          - text: Form attempts
+          - generic [ref=f150e33]: "1"
+      - generic [ref=f150e36]:
+        - group [ref=f150e37]:
+          - generic [ref=f150e38]:
+            - generic [ref=f150e40]:
+              - generic [ref=f150e41]: Learner
+              - generic [ref=f150e43]: qa_deadline_paused@email.com - QA Deadlines Org
+            - generic [ref=f150e46]:
+              - generic [ref=f150e47]: Course
+              - generic [ref=f150e49]: Functionality Demo - Course Parts
+            - generic [ref=f150e52]:
+              - generic [ref=f150e53]: Learner registration
+              - generic [ref=f150e55]: qa_deadline_paused@email.com - QA Deadlines Org - Functionality Demo - Course Parts
+            - generic [ref=f150e58]:
+              - generic [ref=f150e59]: Cohort registration
+              - generic [ref=f150e61]: "-"
+        - group [ref=f150e63]:
+          - heading "Progress" [level=2] [ref=f150e64]
+          - generic [ref=f150e65]:
+            - generic [ref=f150e67]:
+              - generic [ref=f150e68]: Created at
+              - generic [ref=f150e70]: Nov. 15, 2026, 6:50 a.m.
+            - generic [ref=f150e73]:
+              - generic [ref=f150e74]: Started at
+              - generic [ref=f150e76]: "-"
+            - generic [ref=f150e79]:
+              - generic [ref=f150e80]: Last accessed time
+              - generic [ref=f150e82]: "-"
+            - generic [ref=f150e85]:
+              - generic [ref=f150e86]: Last accessed item
+              - generic [ref=f150e88]: "-"
+            - generic [ref=f150e91]:
+              - generic [ref=f150e92]: Completed time
+              - generic [ref=f150e94]: "-"
+            - generic [ref=f150e97]:
+              - generic [ref=f150e98]: Progress percentage
+              - generic [ref=f150e100]: "0"
+        - group [ref=f150e102]:
+          - heading "Deadlines" [level=2] [ref=f150e103]
+          - generic [ref=f150e104]:
+            - generic [ref=f150e106]:
+              - generic [ref=f150e107]: Effective deadlines
+              - generic [ref=f150e110]:
+                - paragraph [ref=f150e111]: Paused since 23 Nov 2026, 08:50 SAST, until 30 Nov 2026
+                - list [ref=f150e112]:
+                  - listitem [ref=f150e113]: "Welcome: 31 Jan 2024, 23:59 SAST (Content default)"
+                  - listitem [ref=f150e114]: "What to Expect: 25 Nov 2026, 23:59 SAST (+3 days) (Content default)"
+                  - listitem [ref=f150e115]: "Key Ideas: 2 Dec 2026, 17:00 SAST (+3 days) (Content default)"
+                  - listitem [ref=f150e116]: "Knowledge Check: 9 Dec 2026, 23:59 SAST (+3 days) (Content default)"
+                  - listitem [ref=f150e117]: "Course Feedback: 18 Dec 2026, 23:59 SAST (+3 days) (Content default)"
+                  - listitem [ref=f150e118]: "Course time limit end: 16 Feb 2027, 23:59 SAST (+3 days) (Content default)"
+            - generic [ref=f150e120]:
+              - generic [ref=f150e121]: Effective deadline policy
+              - list [ref=f150e125]:
+                - listitem [ref=f150e126]: "mark_overdue: On (settings)"
+                - listitem [ref=f150e127]: "close_items: Off (settings)"
+                - listitem [ref=f150e128]: "end_course_access: Off (settings)"
+                - listitem [ref=f150e129]: "notify_educators: Off (settings)"
+                - listitem [ref=f150e130]: "learners_may_pause: Off (settings)"
+                - listitem [ref=f150e131]: "grace_window: 0:00:00 (settings)"
+                - listitem [ref=f150e132]: "after_access_ended: Outline and results (settings)"
+                - listitem [ref=f150e133]: "max_pauses: No limit (settings)"
+                - listitem [ref=f150e134]: "max_pause_days: No limit (settings)"
+        - text: topic start time last accessed time complete time topic start time last accessed time complete time Form Started Completed Result
+        - group [ref=f150e137]:
+          - heading "Pauses" [level=2] [ref=f150e138]
+          - region "scrollable content" [ref=f150e144]:
+            - table [ref=f150e146]:
+              - rowgroup [ref=f150e147]:
+                - row [ref=f150e148]:
+                  - cell "qa_deadline_paused@email.com - QA Deadlines Org on Functionality Demo - Course Parts, paused 2026-11-23" [ref=f150e149]:
+                    - paragraph [ref=f150e150]:
+                      - generic [ref=f150e151]: qa_deadline_paused@email.com - QA Deadlines Org on Functionality Demo - Course Parts, paused 2026-11-23
+                - row [ref=f150e152]:
+                  - cell "started at Nov. 23, 2026, 6:50 a.m." [ref=f150e153]:
+                    - text: started at
+                    - generic [ref=f150e154]: Nov. 23, 2026, 6:50 a.m.
+                  - cell "planned resume on Nov. 30, 2026" [ref=f150e156]:
+                    - text: planned resume on
+                    - generic [ref=f150e157]: Nov. 30, 2026
+                  - cell "ended at -" [ref=f150e159]:
+                    - text: ended at
+                    - generic [ref=f150e160]: "-"
+                  - cell "State Paused" [ref=f150e162]:
+                    - text: State
+                    - generic [ref=f150e163]: Paused
+                  - cell "Paused days 3" [ref=f150e165]:
+                    - text: Paused days
+                    - generic [ref=f150e166]: "3"
+                  - cell "reason QA seed" [ref=f150e168]:
+                    - text: reason
+                    - generic [ref=f150e169]: QA seed
+                  - cell [ref=f150e171]:
+                    - text: started by
+                    - link "demodev@email.com" [ref=f150e174] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_accounts/user/9/change/
+                  - cell "ended by -" [ref=f150e175]:
+                    - text: ended by
+                    - generic [ref=f150e176]: "-"
+              - rowgroup:
+                - row:
+                  - cell
+        - group [ref=f150e180]:
+          - heading "Deadline extensions" [level=2] [ref=f150e181]
+          - generic [ref=f150e183]:
+            - generic:
+              - generic:
+                - generic:
+                  - region "scrollable content":
+                    - generic:
+                      - table:
+                        - rowgroup:
+                          - row:
+                            - cell
+    - link "Close" [ref=f150e188] [cursor=pointer]:
+      - /url: /admin/freedom_ls_learner_progress/courseprogress/
+  - generic "Show toolbar" [ref=f150e190]: DJDT

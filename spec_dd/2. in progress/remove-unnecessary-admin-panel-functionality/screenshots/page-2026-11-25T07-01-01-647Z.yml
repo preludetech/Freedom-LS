@@ -1,0 +1,139 @@
+- generic [ref=f137e1]:
+  - generic [ref=f137e3]:
+    - generic [ref=f137e7]:
+      - generic [ref=f137e8]:
+        - generic [ref=f137e9] [cursor=pointer]: dock_to_right
+        - link "arrow_back" [ref=f137e12] [cursor=pointer]:
+          - /url: /admin/freedom_ls_deadlines/learnercourseregistrationdeadlineconfig/
+        - heading "Deadlines chevron_right Learner course registration deadline configs" [level=1] [ref=f137e14]:
+          - link "Deadlines" [ref=f137e15] [cursor=pointer]:
+            - /url: /admin/freedom_ls_deadlines/
+          - generic [ref=f137e16]: chevron_right
+          - link "Learner course registration deadline configs" [ref=f137e17] [cursor=pointer]:
+            - /url: /admin/freedom_ls_deadlines/learnercourseregistrationdeadlineconfig/
+      - link "add" [ref=f137e20] [cursor=pointer]:
+        - /url: /admin/freedom_ls_deadlines/learnercourseregistrationdeadlineconfig/add/
+    - group [ref=f137e27]:
+      - generic [ref=f137e28]:
+        - generic [ref=f137e30]:
+          - generic [ref=f137e31]: Learner email*
+          - textbox "Learner email*" [active] [ref=f137e34]
+        - generic [ref=f137e36]:
+          - generic [ref=f137e37]: Organisation
+          - generic [ref=f137e39]:
+            - generic [ref=f137e40]:
+              - combobox "Organisation" [ref=f137e41]:
+                - option "---------" [selected]
+                - option "DemoDev"
+                - option "Harbour College"
+                - option "Northwind Logistics"
+                - option "QA Deadlines Org"
+              - generic: expand_more
+            - generic [ref=f137e42]: Needed only when the email belongs to learners in more than one organisation.
+        - generic [ref=f137e44]:
+          - generic [ref=f137e45]: Course*
+          - generic [ref=f137e48]:
+            - combobox "Course*" [ref=f137e49]:
+              - option "---------" [selected]
+              - option "Content Widgets - Demo Reference"
+              - option "Forklift Safety Basics"
+              - option "Functionality Demo - Application gated course"
+              - option "Functionality Demo - Course Parts"
+              - option "Functionality Demo - Per-placement Due Dates"
+              - 'option "Functionality Demo - Price: currency without cents"'
+              - 'option "Functionality Demo - Price: expired sale"'
+              - 'option "Functionality Demo - Price: fixed"'
+              - 'option "Functionality Demo - Price: from"'
+              - 'option "Functionality Demo - Price: on request"'
+              - 'option "Functionality Demo - Price: range"'
+              - 'option "Functionality Demo - Price: sale with an end date"'
+              - option "Functionality Demo - question pools"
+              - option "Functionality Demo - Reference Material"
+              - option "Functionality Demo - show end with Quiz"
+              - option "Functionality Demo - show end with Topic"
+              - option "Functionality Demo - shuffled quiz"
+              - option "QA Form First Course"
+              - option "Standard Markdown - Demo Finance"
+              - option "Workplace Safety Essentials"
+              - option "Workplace Safety Essentials"
+            - generic: expand_more
+        - generic [ref=f137e51]:
+          - generic [ref=f137e52]: Mark overdue*
+          - generic [ref=f137e54]:
+            - generic [ref=f137e55]:
+              - combobox "Mark overdue*" [ref=f137e56]:
+                - option "Inherit" [selected]
+                - option "On"
+                - option "Off"
+              - generic: expand_more
+            - generic [ref=f137e57]: Show the missed-deadline marker on items past their deadline. "Inherit" uses the next layer up.
+        - generic [ref=f137e59]:
+          - generic [ref=f137e60]: Close items*
+          - generic [ref=f137e62]:
+            - generic [ref=f137e63]:
+              - combobox "Close items*" [ref=f137e64]:
+                - option "Inherit" [selected]
+                - option "On"
+                - option "Off"
+              - generic: expand_more
+            - generic [ref=f137e65]: Close incomplete items once their deadline and grace window pass. "Inherit" uses the next layer up.
+        - generic [ref=f137e67]:
+          - generic [ref=f137e68]: End course access*
+          - generic [ref=f137e70]:
+            - generic [ref=f137e71]:
+              - combobox "End course access*" [ref=f137e72]:
+                - option "Inherit" [selected]
+                - option "On"
+                - option "Off"
+              - generic: expand_more
+            - generic [ref=f137e73]: End a learner's access to the course once the time limit and grace window pass. "Inherit" uses the next layer up.
+        - generic [ref=f137e75]:
+          - generic [ref=f137e76]: Notify educators*
+          - generic [ref=f137e78]:
+            - generic [ref=f137e79]:
+              - combobox "Notify educators*" [ref=f137e80]:
+                - option "Inherit" [selected]
+                - option "On"
+                - option "Off"
+              - generic: expand_more
+            - generic [ref=f137e81]: Record that educators should be told about missed deadlines. "Inherit" uses the next layer up.
+        - generic [ref=f137e83]:
+          - generic [ref=f137e84]: Learners may pause*
+          - generic [ref=f137e86]:
+            - generic [ref=f137e87]:
+              - combobox "Learners may pause*" [ref=f137e88]:
+                - option "Inherit" [selected]
+                - option "On"
+                - option "Off"
+              - generic: expand_more
+            - generic [ref=f137e89]: Let learners pause this course themselves. "Inherit" uses the next layer up.
+        - generic [ref=f137e91]:
+          - generic [ref=f137e92]: Grace window
+          - generic [ref=f137e94]:
+            - textbox "Grace window" [ref=f137e96]
+            - generic [ref=f137e97]: Time after a deadline before items close or access ends, as DD HH:MM:SS. Empty uses the next layer up; zero means no grace.
+        - generic [ref=f137e99]:
+          - generic [ref=f137e100]: After access ended*
+          - generic [ref=f137e102]:
+            - generic [ref=f137e103]:
+              - combobox "After access ended*" [ref=f137e104]:
+                - option "Inherit" [selected]
+                - option "Outline and results"
+                - option "Nothing"
+              - generic: expand_more
+            - generic [ref=f137e105]: What a learner can still open once their access has ended. "Inherit" uses the next layer up.
+        - generic [ref=f137e107]:
+          - generic [ref=f137e108]: Max pauses
+          - generic [ref=f137e110]:
+            - spinbutton "Max pauses" [ref=f137e111]
+            - generic [ref=f137e112]: Empty uses the next layer up; 0 means no limit.
+        - generic [ref=f137e114]:
+          - generic [ref=f137e115]: Max pause days
+          - generic [ref=f137e117]:
+            - spinbutton "Max pause days" [ref=f137e118]
+            - generic [ref=f137e119]: Empty uses the next layer up; 0 means no limit.
+    - generic [ref=f137e122]:
+      - button "Save" [ref=f137e123] [cursor=pointer]
+      - button "Save and continue editing" [ref=f137e124] [cursor=pointer]
+      - button "Save and add another" [ref=f137e125] [cursor=pointer]
+  - generic "Show toolbar" [ref=f137e127]: DJDT
