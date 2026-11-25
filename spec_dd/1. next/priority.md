@@ -16,7 +16,6 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 ## Medium
 
-- `educator-interface-refactor`
 - `content-widget-sayit-reveal`
 - `deadlines`
 - `form-engine-branch-logic-2-and-conditions`

@@ -31,6 +31,8 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `deadlines-6-educator-management` (Deadlines)
 - 🟠 Medium · `deadlines-7-educator-at-risk` (Deadlines)
 - 🟠 Medium · `form-engine-branch-logic-2-and-conditions` (Forms and applications)
+- 🟠 Medium · `messaging-drafts` (User communication)
+- 🟠 Medium · `messaging-inbox-polish` (User communication)
 - 🟠 Medium · `user-communication-2-notification-email` (User communication)
 - 🟠 Medium · `user-communication-6-moderation` (User communication)
 - 🟠 Medium · `user-communication-help-desk` (User communication)
@@ -47,9 +49,8 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟡 Low · `admin-dashboard-signal-cards` (Educator interface)
 - 🟡 Low · `audit-log-coverage-gaps` (Educator interface)
 - 🟡 Low · `bulk-run-audit-summary` (Educator interface)
-- 🟡 Low · `educator-interface-data-table-filter-design` (Educator interface)
-- 🟡 Low · `educator-interface-misc-polish` (Educator interface)
-- 🟡 Low · `educator-interface-more polish` (Educator interface)
+- 🟡 Low · `educator-interface-page-polish` (Educator interface)
+- 🟡 Low · `educator-interface-staff-invitations-and-cohort-staff` (Educator interface)
 - 🟡 Low · `staff-person-profile-by-email` (Educator interface)
 - 🟡 Low · `landing-page-component-kit` (Referral tracking and marketing)
 - 🟡 Low · `lead-capture-forms` (Referral tracking and marketing)
@@ -59,6 +60,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `educator-revision-analytics` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-2-test-out` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
+- ⚪ Priority not set · `learner-interface-features-6-revision-dashboard` (Learner interface features)
 - ⚪ Priority not set · `housekeeping-sentry-cron-checkin` (Tooling and operations)
 - ⚪ Priority not set · `audit-log-describe-test-flake` (Tooling and operations)
 - ⚪ Priority not set · `extract-semantic-icons-app-2-host-icons` (Semantic icons extraction)
@@ -211,6 +213,7 @@ Test out of sections, revise with spaced repetition and flashcards, and watch ac
 - `learner-interface-features-2-test-out` — **ready** — Learners take a pretest and skip sections they already know; the skip is recorded as its own kind of completion.
 - `learner-interface-features-4-flashcards` — **ready** — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
 - `learner-interface-features-5-protected-video` — **ready** — Course content embeds video that only learners with access to the course can play; shared links stop working.
+- `learner-interface-features-6-revision-dashboard` — **ready** — Learners open a revision dashboard: per-course cards with due counts, weak and strong sections, and section sessions.
 - `educator-revision-analytics` — **ready** — Educators see the revision questions learners miss most, per-option answer counts and each learner's weak sections.
 
 ![Learner interface features](roadmap_diagrams/learner-interface-features.svg)
@@ -296,6 +299,8 @@ Notifications and direct messaging between learners and educators. Parent: `user
 - `user-communication-2-notification-email` — **ready** — Email delivery. Per-category immediate, daily, weekly or off preferences, quiet hours, unsubscribe, and a digest sweep in housekeeping.
 - `user-communication-6-moderation` — **ready** — Users report messages or block users. Site admins work a report queue and hide messages. Nothing is hard deleted.
 - `user-communication-8-realtime` — **blocked** by `user-communication-6-moderation` — Optional Django Channels push for the unread badge and open threads. Off by default, with polling as the fallback.
+- `messaging-inbox-polish` — **ready** — Recipient search by email and cohort, one New message flow, staff and cohort chips, full educator conversation history.
+- `messaging-drafts` — **ready** — Unsent messages are saved as drafts, marked in the conversation list and refilled into the message box.
 - `user-communication-help-desk` — **ready** — Learners ask for help on specific content from the course player, into a shared queue educators pick up.
 
 ![User communication](roadmap_diagrams/user-communication.svg)
@@ -309,6 +314,7 @@ Notifications and direct messaging between learners and educators. Parent: `user
 - Open questions:
   - where the report queue lives (`user-communication-6-moderation`);
   - what a digest holds and where a user's timezone comes from (`user-communication-2-notification-email`).
+- Collision: `messaging-inbox-polish` and `messaging-drafts` both change the composer and conversation list templates.
 - Out of scope: announcements, forums, group conversations, SMS and push, reply-by-email.
 
 ## Referral tracking and marketing
@@ -399,11 +405,13 @@ Priority: 🟡 Low
 
 Org admins manage learners, cohorts, registrations and staff. Parent: `educator-interface-full-polish`.
 
-- `educator-interface-misc-polish` — **ready** — Interface polish: optional learner names, cohort settings sub-panels, show and hide table columns, help icons, smaller mobile buttons.
-- `educator-interface-data-table-filter-design` — **ready** — One button per filter on data tables, instead of a single long drop-down. The UX still needs designing.
+- `educator-interface-page-polish` — **ready** — Tidier learner course progress, learner email on Settings, dashboard links, locked Cancel during bulk runs, smaller phone buttons.
+- `educator-interface-data-table-columns-and-filters` — **blocked** by `extract_panels_framework-5-package-and-install` — Data tables get a show and hide Columns control saved per user, and faster filter controls.
+- `educator-interface-contextual-help` — **blocked** by `extract_panels_framework-5-package-and-install` — A click, tap and keyboard help icon on panels, fields and buttons, with help text for educators.
+- `educator-interface-staff-invitations-and-cohort-staff` — **ready** — Staff page shows pending invitations and resends them; cohorts get a Staff tab anyone seeing the cohort can read.
+- `educator-interface-message-from-anywhere` — **blocked** by `educator-interface-staff-invitations-and-cohort-staff` — Educators start a conversation from the learner page header, the staff quick view and the cohort Staff tab.
 - `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks where history starts.
 - `bulk-run-audit-summary` — **ready** — Bulk actions write one run summary with folded per-object entries in the Audit log, and take an optional reason.
-- `educator-interface-more polish` — **ready** — Educators resend staff invitations and see who hasn't accepted, plus linked dashboard figures, learner-tab messaging and one new-message flow.
 - `remove-unnecessary-admin-panel-functionality` — **in progress** — Remove content engine, learner and cohort admin from the Django admin; content comes only from content_save.
 - `admin-dashboard-signal-cards` — **ready** — The admin index shows signup, registration, application and interest cards: last 7 days against the previous 7, newest entries.
 - `staff-person-profile-by-email` — **ready** — Staff look up one person by email and see account, attribution, applications, interests, recommendations and registrations with progress.
@@ -415,7 +423,10 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `admin-dashboard-signal-cards` and `staff-person-profile-by-email` are pull-ins from First-Class-LMS; `staff-person-profile-by-email` must settle its app and access first.
 - Collision: `audit-log-coverage-gaps` logs Django admin edits, which `remove-unnecessary-admin-panel-functionality` shrinks; whichever runs second checks the other's scope.
 - Access rules: anything outside the user's scope returns 404. An action the user has lost permission for returns 403 with a message. Controls the user can't use are hidden. No new dependencies.
-- References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`.
+- `educator-interface-page-polish` and `educator-interface-staff-invitations-and-cohort-staff` run in parallel now; `educator-interface-data-table-columns-and-filters` and `educator-interface-contextual-help` wait for the panel framework package and land in it.
+- Collision: `educator-interface-page-polish` and `educator-interface-message-from-anywhere` both change the learner quick view and learner page; whichever lands second rebases.
+- Designs needed before `/sdd:spec_from_idea`: every polish, columns, help, staff and message spec names its screens under Resources.
+- References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`. Polish research: `educator-interface-page-polish/research_comparable_systems.md`.
 
 ## Tooling and operations
 
