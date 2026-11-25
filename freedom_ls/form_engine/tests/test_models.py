@@ -1300,6 +1300,51 @@ def test_category_value_sum_sums_only_the_options_the_path_offers(
 
 
 @pytest.mark.django_db
+def test_category_value_sum_counts_a_retired_option_the_sitting_chose_in_the_maximum(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
+    page = FormPageFactory(form=form, order=0, category="theme")
+    question = FormQuestionFactory(
+        form_page=page, type="multiple_choice", order=0, category="topic"
+    )
+    QuestionOptionFactory(question=question, order=0, value="2")
+    chosen: QuestionOption = QuestionOptionFactory(
+        question=question, order=1, value="9"
+    )
+    progress: FormProgress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(
+        form_progress=progress, question=question
+    ).selected_options.add(chosen)
+    retire(chosen)
+
+    progress.complete()
+
+    progress.refresh_from_db()
+    theme = (progress.scores or {})["theme"]
+    assert (theme["score"], theme["max_score"]) == (9, 9)
+
+
+@pytest.mark.django_db
+def test_completing_a_survey_keeps_the_answer_to_a_question_retired_mid_sitting(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(form_page=page, order=0)
+    FormQuestionFactory(form_page=page, order=1)
+    progress: FormProgress = FormProgressFactory(form=form)
+    answer = QuestionAnswerFactory(form_progress=progress, question=question)
+    retire(question)
+
+    progress.complete()
+
+    progress.refresh_from_db()
+    assert list(progress.answers.all()) == [answer]
+    assert str(question.id) in (progress.asked or {})["questions"]
+
+
+@pytest.mark.django_db
 def test_question_number_skips_a_retired_question_and_a_retired_page(
     mock_site_context: object,
 ) -> None:

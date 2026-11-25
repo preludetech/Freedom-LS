@@ -1436,11 +1436,12 @@ def _refuse_relative_path_collisions(sources: Sequence[_ParsedSource]) -> None:
 
 def _course_retire_refusal(course_pks: Collection[uuid.UUID]) -> str:
     """The refusal for a run that would retire the given courses."""
-    rows = Course._base_manager.filter(pk__in=course_pks).order_by("title")
+    rows = list(Course._base_manager.filter(pk__in=course_pks).order_by("title"))
+    several = len(rows) != 1
     return _refusal(
-        f"content_save would retire {rows.count()} "
-        f"course{'s' if rows.count() != 1 else ''}, which closes "
-        f"{'them' if rows.count() != 1 else 'it'} to every learner.",
+        f"content_save would retire {len(rows)} "
+        f"course{'s' if several else ''}, which closes "
+        f"{'them' if several else 'it'} to every learner.",
         [("Courses no source path names:", [f"{c.title} ({c.pk})" for c in rows])],
         "Restore the course files, or run again with --allow-course-retire.",
     )

@@ -12,10 +12,12 @@ from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
     Form,
+    FormProgress,
     FormQuestion,
     FormStrategy,
     QuestionOption,
@@ -83,6 +85,23 @@ def test_survey_fill_page_does_not_render_a_retired_question_or_option(
     assert f"question_{questions[1].id}" not in rendered_names
     assert {f"question_{questions[i].id}" for i in (0, 2, 3)} <= rendered_names
     assert str(retired_option.id) not in rendered_values
+
+
+@pytest.mark.django_db
+def test_survey_fill_page_still_renders_a_retired_question_the_sitting_answered(
+    survey_with_retirements: tuple[Course, list[FormQuestion], QuestionOption],
+    client: Client,
+) -> None:
+    course, questions, _option = survey_with_retirements
+    _fill_page(client, course)
+    sitting = FormProgress.objects.get()
+    QuestionAnswerFactory(form_progress=sitting, question=questions[1])
+
+    content = _fill_page(client, course)
+
+    document = lxml.html.fromstring(content)
+    rendered_names = {node.get("name") for node in document.xpath("//*[@name]")}
+    assert f"question_{questions[1].id}" in rendered_names
 
 
 @pytest.mark.django_db

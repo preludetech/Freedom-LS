@@ -1005,3 +1005,58 @@ def test_full_path_keeps_a_retired_question_and_option(
 
     assert path.has_question(served_form.q_one.id)
     assert served_form.one_a.id in [o.id for o in path.options_of(path.questions()[0])]
+
+
+def test_compute_path_keeps_a_retired_question_the_sitting_answered(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    answered: FormQuestion = FormQuestionFactory(form_page=page, order=0)
+    unanswered: FormQuestion = FormQuestionFactory(form_page=page, order=1)
+    progress = FormProgressFactory(form=form)
+    _select(progress, answered)
+    retire(answered)
+    retire(unanswered)
+
+    path = current_path(progress)
+
+    assert [q.id for q in path.questions()] == [answered.id]
+
+
+def test_compute_path_keeps_a_retired_option_the_sitting_selected(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(form_page=page, order=0)
+    selected: QuestionOption = QuestionOptionFactory(question=question, order=0)
+    live = QuestionOptionFactory(question=question, order=1)
+    unselected: QuestionOption = QuestionOptionFactory(question=question, order=2)
+    progress = FormProgressFactory(form=form)
+    _select(progress, question, selected)
+    retire(selected)
+    retire(unselected)
+
+    path = current_path(progress)
+
+    assert path.options_of(path.questions()[0]) == [selected, live]
+
+
+def test_compute_path_keeps_a_retired_page_showing_only_what_the_sitting_answered(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    page: FormPage = FormPageFactory(form=form, order=0)
+    FormContentFactory(form_page=page, order=0)
+    answered = FormQuestionFactory(form_page=page, order=1)
+    FormQuestionFactory(form_page=page, order=2)
+    progress = FormProgressFactory(form=form)
+    _select(progress, answered)
+    retire(page)
+
+    path = current_path(progress)
+
+    assert [(p.id, [c.id for c in path.children_of(p)]) for p in path.pages] == [
+        (page.id, [answered.id])
+    ]

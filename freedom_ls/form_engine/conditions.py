@@ -17,7 +17,7 @@ from uuid import UUID
 
 from django.db.models import prefetch_related_objects
 
-from .live_tree import live_children, live_options, live_pages
+from .live_tree import live_children
 from .models import (
     Form,
     FormContent,
@@ -261,12 +261,31 @@ def _condition_holds(
     return option is None or option.id in selected.get(option.question_id, frozenset())
 
 
+def _kept_children(
+    page: FormPage, answers: Mapping[UUID, QuestionAnswer]
+) -> list[FormChild]:
+    """The page's children a sitting with no served paper may be shown.
+
+    The live children of a live page, plus any question the sitting has already
+    answered: one retired since, or one on a page retired since. Its answer is
+    kept, so the question stays where the sitting can see it.
+    """
+    live = [] if page.is_retired else live_children(page)
+    return [
+        child
+        for child in page.children()
+        if child in live or (isinstance(child, FormQuestion) and child.id in answers)
+    ]
+
+
 def _on_path_children(
-    page: FormPage, selected: Mapping[UUID, frozenset[UUID]]
+    page: FormPage,
+    selected: Mapping[UUID, frozenset[UUID]],
+    answers: Mapping[UUID, QuestionAnswer],
 ) -> list[FormChild]:
     return [
         child
-        for child in live_children(page)
+        for child in _kept_children(page, answers)
         if _condition_holds(child.condition_option, selected)
     ]
 
@@ -275,7 +294,9 @@ def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingP
     """The path the given answers produce over the form's live tree.
 
     Its options are the live ones, so a sitting not yet served a paper is offered
-    no retired option.
+    no retired option. A question the sitting has already answered stays on the
+    path after it is retired, with any retired option the answer selected, so
+    finishing the sitting keeps the answer. A retired question opens no gate.
     """
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     option_ids = {
@@ -287,11 +308,15 @@ def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingP
     selected: dict[UUID, frozenset[UUID]] = {}
     children_by_page: dict[UUID, tuple[FormChild, ...]] = {}
     options_by_question: dict[UUID, tuple[QuestionOption, ...]] = {}
-    all_pages = tuple(live_pages(form))
+    all_pages = tuple(
+        page
+        for page in form.pages.all()
+        if not page.is_retired or _kept_children(page, answers)
+    )
     for page in all_pages:
         if not _condition_holds(page.condition_option, selected):
             continue
-        children = _on_path_children(page, selected)
+        children = _on_path_children(page, selected, answers)
         # A page authored with children is left off the path once none of them
         # remain on it, whether gated out or retired. Only a page authored with
         # no children at all is kept as an empty page.
@@ -300,8 +325,14 @@ def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingP
         children_by_page[page.id] = tuple(children)
         for child in children:
             if isinstance(child, FormQuestion):
-                selected[child.id] = option_ids.get(child.id, frozenset())
-                options_by_question[child.id] = tuple(live_options(child))
+                chosen = option_ids.get(child.id, frozenset())
+                if not (child.is_retired or page.is_retired):
+                    selected[child.id] = chosen
+                options_by_question[child.id] = tuple(
+                    option
+                    for option in child.options.all()
+                    if not option.is_retired or option.id in chosen
+                )
     return _path(all_pages, children_by_page, options_by_question)
 
 

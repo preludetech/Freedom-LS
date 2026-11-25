@@ -35,7 +35,6 @@ if TYPE_CHECKING:
     from django.http import HttpRequest
 
     from freedom_ls.accounts.models import User
-    from freedom_ls.content_base.models import RetirableQuerySet
     from freedom_ls.content_engine.models import Course
     from freedom_ls.deadlines.models import CoursePause
     from freedom_ls.deadlines.policy import ResolvedDeadlinePolicy
@@ -538,7 +537,9 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
 
         # Retirement closes a course to registered learners too, so it sits outside
         # the registration exemption and the visibility override.
-        courses = cast("RetirableQuerySet[Course]", courses).not_retired()
+        # A plain filter: a caller may pass any Course queryset, and only a
+        # RetirableQuerySet has not_retired().
+        courses = courses.filter(retired_at__isnull=True)
         courses = self._inner.filter_visible(user=user, courses=courses)
         if override_visibility_to_visible():
             return courses

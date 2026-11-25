@@ -277,7 +277,13 @@ def build_course_catalogue(
             for item in reg.course.viewable_items(include_retired=True)
             if isinstance(item, Topic | Form)
         ]
-        live_ids = {item.id for item in reg.course.viewable_items()}
+        # A placement whose content row is gone resolves to None, so it is skipped
+        # here as it is above.
+        live_ids = {
+            item.id
+            for item in reg.course.viewable_items()
+            if isinstance(item, Topic | Form)
+        }
         course_items[reg.course_id] = items
         retired_item_ids_by_course[reg.course_id] = frozenset(
             item.id for item in items if item.id not in live_ids
@@ -698,13 +704,16 @@ def _offered_options_by_pair(
             offered[(attempt_id, question.id)] = loaded
         else:
             served_ids = served.get(question.id, frozenset())
-            # With none of its served options left the question shows what it has,
-            # exactly as the sitting's own path does.
+            # With none of its served options left the question shows every option
+            # it has, retired ones included, exactly as the sitting's own path does.
+            if not any(option.id in served_ids for option in loaded):
+                offered[(attempt_id, question.id)] = loaded
+                continue
             offered[(attempt_id, question.id)] = [
                 option
                 for option in loaded
                 if option.id in served_ids or not option.is_retired
-            ] or loaded
+            ]
     return offered
 
 

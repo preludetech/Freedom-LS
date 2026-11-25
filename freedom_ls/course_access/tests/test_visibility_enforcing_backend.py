@@ -621,3 +621,16 @@ class TestRetiredCourseIsClosed:
             )
 
         assert list(visible) == [live]
+
+    def test_filter_visible_takes_a_plain_queryset(
+        self, mock_site_context: object, backend_path: str, override_visible: bool
+    ) -> None:
+        live = CourseFactory()
+        retire(cast("Course", CourseFactory()))
+
+        with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=override_visible):
+            visible = _filter_visible_for(
+                backend_path, user=UserFactory(), courses=Course._base_manager.all()
+            )
+
+        assert list(visible) == [live]

@@ -34,6 +34,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
 )
 from freedom_ls.form_engine.queries import form_questions
+from freedom_ls.tests.retire import retire
 
 pytestmark = pytest.mark.django_db
 
@@ -428,3 +429,25 @@ def test_off_path_question_ids_include_a_question_the_served_paper_omits(
     off_path = off_path_question_ids(_loaded(progress))
 
     assert off_path[progress.pk] == {unserved.id}
+
+
+def test_off_path_question_ids_leave_out_a_retired_question_the_sitting_answered(
+    mock_site_context: Site,
+) -> None:
+    form: Form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    answered: FormQuestion = FormQuestionFactory(form_page=page, order=0)
+    unanswered: FormQuestion = FormQuestionFactory(form_page=page, order=1)
+    sitting = FormProgressFactory(form=form)
+    QuestionAnswerFactory(form_progress=sitting, question=answered)
+    retire(answered)
+    retire(unanswered)
+    loaded = list(
+        FormProgress.objects.filter(pk=sitting.pk)
+        .select_related("form")
+        .prefetch_related("answers__selected_options", "answers__question")
+    )
+
+    off_path = off_path_question_ids(loaded)
+
+    assert off_path[sitting.pk] == frozenset({unanswered.id})

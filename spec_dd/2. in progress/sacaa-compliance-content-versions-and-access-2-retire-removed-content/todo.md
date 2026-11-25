@@ -30,6 +30,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (claude) PR 293 review: confusion tables badge retired distractors by option, not by text
 - [x] (claude) PR 293 review: question_number never returns None for a retired question
 - [x] (claude) PR 293 review: deadline extend targets list live items only; deadline validators accept a stored retired item
+- [x] (claude) PR 293 review: a survey sitting keeps its answer to a question retired mid-sitting
+- [x] (claude) PR 293 review: the cohort report skips a placement whose content row is gone
+- [x] (claude) PR 293 review: filter_visible accepts a plain Course queryset
+- [x] (claude) PR 293 review: the report marks a sitting whose served options are all gone against every option
+- [x] (claude) PR 293 review: the course-retire refusal reads its courses once
+- [ ] (user) PR 293 review: decide how the cohort report shows a retired correct option. It lists every correct option, retired ones included, even for a sitting never offered it. Dropping retired ones would hide a correct option from sittings that were served it, so the choice is between a Retired badge on the chip (three templates) or leaving it as is
 
 ## 4. Documentation and pull request
 

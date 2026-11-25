@@ -29,7 +29,7 @@ from freedom_ls.content_engine.factories import (
     CoursePartFactory,
     TopicFactory,
 )
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -351,6 +351,24 @@ class TestBuildCourseCatalogue:
         topic = TopicFactory()
         _attach(course, topic, order=0)
         _attach(course, ActivityFactory(), order=1)
+
+        catalogue = build_course_catalogue(
+            load_registrations(cohort, mock_site_context.pk)
+        )
+
+        assert catalogue.all_items == [topic]
+
+    def test_a_placement_whose_content_row_is_gone_is_left_out(
+        self, mock_site_context: Site
+    ) -> None:
+        cohort = CohortFactory()
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        topic = TopicFactory()
+        _attach(course, topic, order=0)
+        gone = TopicFactory()
+        _attach(course, gone, order=1)
+        Topic.objects.filter(pk=gone.pk).delete()
 
         catalogue = build_course_catalogue(
             load_registrations(cohort, mock_site_context.pk)
@@ -1548,6 +1566,27 @@ class TestASittingIsScoredOnTheOptionsItWasOffered:
             form_progress=sitting, question=question
         ).selected_options.add(kept)
         QuestionOptionFactory(question=question, text="Added", correct=True, order=2)
+
+        assert self._verdicts(quiz, record) == [False]
+
+    def test_a_sitting_whose_served_options_are_all_gone_is_scored_on_every_option(
+        self,
+        question_with_a_retired_correct_option: tuple[
+            Form, FormPage, FormQuestion, QuestionOption, CourseProgress
+        ],
+    ) -> None:
+        quiz, page, question, kept, record = question_with_a_retired_correct_option
+        served: QuestionOption = QuestionOptionFactory(question=question, order=2)
+        sitting = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            served_paper=served_paper_of([(page, [question])], {question: [served]}),
+        )
+        QuestionAnswerFactory(
+            form_progress=sitting, question=question
+        ).selected_options.add(kept)
+        served.delete()
 
         assert self._verdicts(quiz, record) == [False]
 
