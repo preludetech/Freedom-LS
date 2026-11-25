@@ -470,9 +470,8 @@ Example: `demo_content/functionality_demo_question_pools/` has a `QUIZ` whose "T
 ## Sections a question tests (`sections`)
 
 `sections` names the topics or course parts a question tests. `content_save` stores the link, and
-the admin shows it on the question. Revision uses it: a question joins a learner's revision once
-they finish a section it tests. It works on every form `strategy`, so a bank form need not be a
-`QUIZ`.
+revision uses it: a question joins a learner's revision once they finish a section it tests. It
+works on every form `strategy`, so a bank form need not be a `QUIZ`.
 
 ```yaml
 sections:
