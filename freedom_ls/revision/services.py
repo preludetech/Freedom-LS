@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from django.db import transaction
 from django.db.models import Count, Q, QuerySet
 
+from freedom_ls.form_engine.live_tree import live_options
 from freedom_ls.form_engine.models import FormQuestion, QuestionOption
 from freedom_ls.form_engine.scoring import is_quiz_answer_correct
 from freedom_ls.form_engine.served_paper import new_seed, shuffle_with_locks
@@ -86,10 +87,10 @@ def shuffled_options(question: FormQuestion, seed: int) -> list[QuestionOption]:
     """The question's options in the order this showing serves them.
 
     Rebuilt from the seed on every render rather than stored, so a reload
-    shows the order the learner was first given.
+    shows the order the learner was first given. Retired options are left out.
     """
     return shuffle_with_locks(
-        list(question.options.all()),
+        live_options(question),
         lambda option: option.locked,
         Random(seed),  # noqa: S311 - ordering, not security
     )
@@ -127,8 +128,8 @@ def record_answer(
         )
         if earlier is not None:
             return earlier
-    options = list(question.options.all())
-    was_correct = is_quiz_answer_correct(selected_option_ids, options)
+    # Revision has no served paper, so the options on offer are the live ones.
+    was_correct = is_quiz_answer_correct(selected_option_ids, live_options(question))
     before = scheduler.new_card(now) if created else schedule_card(schedule)
     after, rating = scheduler.review(
         before, scheduler.rating_for(was_correct, guessed=False), now

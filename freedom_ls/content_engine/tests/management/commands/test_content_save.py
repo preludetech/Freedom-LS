@@ -6377,6 +6377,36 @@ quiz_pass_percentage: 70
     assert (form.requires_declaration, form.declaration_text) == (False, "")
 
 
+@pytest.mark.django_db
+def test_a_removed_forms_question_is_retired_without_being_marked_dropped(
+    site: Site, mock_site_context: Site, tmp_path: Path, dropped_signal_ids
+) -> None:
+    """One run drops a question from a form that stays and removes another form whole.
+
+    Both questions retire. Only the one whose form was loaded is marked dropped
+    and announced, so the removed form's question keeps its revision rows.
+    """
+    one, two = (uuid.UUID(_BANK_QUESTION_UUIDS[name]) for name in ("one", "two"))
+    _write_bank_form(tmp_path / "a", "a", ["one"])
+    _write_bank_form(tmp_path / "b", "b", ["two"])
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+    _write_bank_form(tmp_path / "a", "a", [])
+    shutil.rmtree(tmp_path / "b")
+
+    save_content_to_db(tmp_path, site.name, retire_missing=True)
+
+    retired = set(
+        FormQuestion._base_manager.filter(retired_at__isnull=False).values_list(
+            "pk", flat=True
+        )
+    )
+    assert (retired, _dropped_question_ids(), dropped_signal_ids) == (
+        {one, two},
+        {one},
+        [[one]],
+    )
+
+
 # Retiring rows a save run no longer finds in the source.
 
 RETIRED_AT_RUN = datetime(2026, 5, 1, 9, 30, tzinfo=UTC)

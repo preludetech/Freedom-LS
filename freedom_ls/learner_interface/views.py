@@ -73,6 +73,7 @@ from freedom_ls.form_engine.declarations import (
     form_requires_declaration,
     sitting_needs_declaration,
 )
+from freedom_ls.form_engine.live_tree import live_options
 from freedom_ls.form_engine.models import (
     Form,
     FormDeclaration,
@@ -3019,7 +3020,7 @@ def partial_course_revision_answer(
     ):
         return _render_revision_card(request, course, record, state)
 
-    own_option_ids = {option.id for option in question.options.all()}
+    own_option_ids = {option.id for option in live_options(question)}
     selected: set[uuid.UUID] = set()
     for value in request.POST.getlist(f"question_{question.id}"):
         try:

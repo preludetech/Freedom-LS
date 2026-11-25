@@ -95,11 +95,23 @@ def _placed_sections(record: CourseProgress) -> _PlacedSections:
 
 
 def _revisable_questions() -> QuerySet[FormQuestion]:
-    """Questions that can be asked in revision at all, whoever the learner is."""
+    """Questions that can be asked in revision at all, whoever the learner is.
+
+    A retired question, or one on a retired page or form, is never asked, and
+    a retired option does not count as the question's correct one.
+    """
     return FormQuestion.objects.filter(
-        type__in=OPTION_QUESTION_TYPES, dropped_from_source_at__isnull=True
+        type__in=OPTION_QUESTION_TYPES,
+        dropped_from_source_at__isnull=True,
+        retired_at__isnull=True,
+        form_page__retired_at__isnull=True,
+        form_page__form__retired_at__isnull=True,
     ).filter(
-        Exists(QuestionOption.objects.filter(question=OuterRef("pk"), correct=True))
+        Exists(
+            QuestionOption.objects.filter(
+                question=OuterRef("pk"), correct=True, retired_at__isnull=True
+            )
+        )
     )
 
 

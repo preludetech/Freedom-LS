@@ -23,6 +23,7 @@ from freedom_ls.revision.factories import (
     RevisionReviewFactory,
     RevisionScheduleFactory,
 )
+from freedom_ls.revision.models import RevisionSchedule
 from freedom_ls.revision.queries import (
     bank_questions,
     bank_sections,
@@ -44,6 +45,7 @@ from freedom_ls.revision.tests.helpers import (
     question_testing_part,
     question_testing_topic,
 )
+from freedom_ls.tests.retire import retire
 
 
 @pytest.mark.django_db
@@ -712,3 +714,84 @@ def test_last_reviewed_at_is_none_without_reviews(mock_site_context) -> None:
     course, user, *_ = _finished_topic_with_question()
 
     assert last_reviewed_at(user, course) is None
+
+
+def _finished_topic_question() -> tuple[User, CourseProgress, FormQuestion]:
+    """A learner who has finished a topic with one question, and that question."""
+    course: Course = CourseFactory()
+    topic, _ = place_topic(course)
+    question = question_testing_topic(topic)
+    user: User = UserFactory()
+    record = course_progress_record(course, user)
+    finish_topic(record, topic)
+    return user, record, question
+
+
+def _retire_question(question: FormQuestion) -> None:
+    retire(question)
+
+
+def _retire_page(question: FormQuestion) -> None:
+    retire(question.form_page)
+
+
+def _retire_form(question: FormQuestion) -> None:
+    retire(question.form_page.form)
+
+
+def _retire_correct_option(question: FormQuestion) -> None:
+    retire(question.options.get(correct=True))
+
+
+RETIREMENTS = [
+    pytest.param(_retire_question, id="question"),
+    pytest.param(_retire_page, id="page"),
+    pytest.param(_retire_form, id="form"),
+    pytest.param(_retire_correct_option, id="only_correct_option"),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("retire_it", RETIREMENTS)
+def test_retired_question_is_not_banked(mock_site_context, retire_it) -> None:
+    _, record, question = _finished_topic_question()
+
+    retire_it(question)
+
+    assert list(bank_questions(record)) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("retire_it", RETIREMENTS)
+def test_retired_question_is_not_counted_as_ready(mock_site_context, retire_it) -> None:
+    user, record, question = _finished_topic_question()
+
+    retire_it(question)
+
+    assert ready_count(user, record, timezone.now(), limit=40) == 0
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("retire_it", RETIREMENTS)
+def test_course_whose_only_question_is_retired_has_no_revision_questions(
+    mock_site_context, retire_it
+) -> None:
+    _, record, question = _finished_topic_question()
+
+    retire_it(question)
+
+    assert course_has_revision_questions(record.course) is False
+
+
+@pytest.mark.django_db
+def test_question_made_live_again_is_banked_with_its_schedule_kept(
+    mock_site_context,
+) -> None:
+    user, record, question = _finished_topic_question()
+    schedule = RevisionScheduleFactory(user=user, question=question)
+    retire(question)
+
+    FormQuestion.objects.filter(pk=question.pk).update(retired_at=None)
+
+    assert list(bank_questions(record)) == [question]
+    assert list(RevisionSchedule.objects.filter(user=user)) == [schedule]

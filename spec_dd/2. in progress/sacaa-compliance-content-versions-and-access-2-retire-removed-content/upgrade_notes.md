@@ -52,6 +52,9 @@ Retired rows are never deleted, so every learner record pointing at them stays i
   `freedom_ls.content_base.models`), or check `is_retired` on a single row. FLS's own learner views,
   sitemaps and the `VisibilityEnforcingBackend` already do this. A custom `COURSE_ACCESS_BACKEND`
   needs no change: the enforcing wrapper closes retired courses before it reaches your backend.
+- **Revision banks follow retirement.** A retired question, or one on a retired form or page,
+  leaves every learner's revision bank and comes back, with its schedule, if it is un-retired.
+  Retired options are not shown on a revision card.
 
 ## Manual steps
 

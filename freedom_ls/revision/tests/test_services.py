@@ -31,6 +31,7 @@ from freedom_ls.revision.tests.helpers import (
     place_topic,
     question_testing_topic,
 )
+from freedom_ls.tests.retire import retire, retired
 
 NOW = datetime(2026, 9, 1, 10, 0, tzinfo=UTC)
 
@@ -487,3 +488,25 @@ def test_second_tap_restores_the_exact_due_of_a_long_review_interval(banked) -> 
 
     schedule = RevisionSchedule.objects.get(user=user, question=question)
     assert _schedule_columns(schedule) == good
+
+
+@pytest.mark.django_db
+def test_shuffled_options_leave_out_a_retired_option(mock_site_context) -> None:
+    question = _ten_options()
+    gone = retire(question.options.get(text="Option 3"))
+
+    options = shuffled_options(question, 12345)
+
+    assert (len(options), gone in options) == (9, False)
+
+
+@pytest.mark.django_db
+def test_answer_is_marked_against_live_options_only(banked) -> None:
+    """A retired correct option the learner was never shown does not make a right answer wrong."""
+    user, record, question = banked
+    chosen = _correct_ids(question)
+    retired(QuestionOptionFactory(question=question, text="Old right", correct=True))
+
+    review = record_answer(user, record, question, chosen, NOW)
+
+    assert review.was_correct is True

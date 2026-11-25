@@ -38,6 +38,7 @@ from freedom_ls.revision.tests.helpers import (
     question_testing_topic,
 )
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse
@@ -1143,3 +1144,41 @@ def test_reference_and_finish_pages_keep_the_outline_revision_entry(
     response = _client_for(user).get(_route_url(route, course))
 
     assert response.context["revision_due_text"] == "1 due"
+
+
+@pytest.mark.django_db
+def test_question_retired_during_a_session_is_skipped_for_the_next(
+    mock_site_context,
+) -> None:
+    course, _, (first, second), client = _banked_session(question_count=2)
+    retire(first)
+
+    response = client.get(_revision_url(course))
+
+    html = response.content.decode()
+    assert (f"question_{first.id}" in html, f"question_{second.id}" in html) == (
+        False,
+        True,
+    )
+
+
+@pytest.mark.django_db
+def test_card_leaves_out_a_retired_option(mock_site_context) -> None:
+    course, _, (question,), client = _banked_session()
+    gone = retire(_wrong_option(question))
+
+    response = client.get(_revision_url(course))
+
+    assert str(gone.id) not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_answer_naming_a_retired_option_returns_422_and_writes_nothing(
+    mock_site_context,
+) -> None:
+    course, _, (question,), client = _banked_session()
+    gone = retire(_wrong_option(question))
+
+    response = _post_answer(client, course, question, [str(gone.id)])
+
+    assert (response.status_code, RevisionReview.objects.count()) == (422, 0)
