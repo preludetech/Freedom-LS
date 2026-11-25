@@ -6,15 +6,26 @@ run beside, the decisions already taken and the assumptions every idea in the ef
 
 ## What
 
-The panel framework leaves FLS and becomes `django-panel-framework`, a public MIT-licensed GitHub
-repo checked out at `/home/sheena/workspace/lms/django_apps/panel_framework`, released as the tag
+The panel framework leaves FLS and becomes `django-panel-framework`, a public GitHub repo owned by
+Prelude Technologies, all rights reserved for now, checked out at
+`/home/sheena/workspace/lms/django_apps/panel_framework`, released as the tag
 `v0.1.0`. FLS then depends on that tag, edits it live in worktrees, and carries the change to
 First-Class and the concrete template through its normal upgrade-notes flow.
 
+Repo exists on Github at: https://github.com/preludetech/django-panel-framework.git
+
 The package repo:
 - An explicit `[build-system]` (hatchling). Templates, static files and migrations ship as package
-  data. A test builds the wheel and asserts the template, static and migration files are in it,
-  because an editable install hides a missing file.
+  data, and so does `templates/panel_framework/icons/HEROICONS_LICENSE.txt`. A test builds the wheel
+  and asserts the template, static, migration and licence-notice files are in it, because an editable
+  install hides a missing file.
+- A `LICENSE` file that reads, in substance: "Copyright (c) 2026 Prelude Technologies. All rights
+  reserved. No licence is granted to use, copy, modify or distribute this software. Licensing terms
+  are to be decided." It then lists each bundled third-party asset, its licence and where its notice
+  file sits. Prelude's notice covers only Prelude's own code; the third-party assets keep their own
+  licences.
+- The README says the package is not open source yet and that outside contributions (pull requests,
+  patches) are not accepted. No `CONTRIBUTING.md`.
 - The app moves from `freedom_ls/panel_framework`. Its app label becomes `panel_framework` and its
   migrations are regenerated as one clean `0001`. The `BulkActionRun` FK to `django.contrib.sites` is
   kept.
@@ -26,7 +37,7 @@ The package repo:
   a breaking change keeps the old surface with a deprecation warning for one tag.
 
 FLS:
-- `[project].dependencies` gains `django-panel-framework @ git+https://github.com/<org>/django-panel-framework.git@v0.1.0`.
+- `[project].dependencies` gains `django-panel-framework @ git+https://github.com/preludetech/django-panel-framework.git@v0.1.0`.
   There is no `[tool.uv.sources]` entry for it, and no `uv.toml` (a project `uv.toml` shadows the whole
   `[tool.uv]` table and cannot set a source).
 - The in-tree app is deleted. Every import prefix `freedom_ls.panel_framework` becomes
@@ -71,8 +82,16 @@ of its own; the editable layer gives live edits across every worktree without ch
 
 ## What is settled
 
-- Public GitHub repo, MIT, distribution name `django-panel-framework`, import name and app label
-  `panel_framework`, first release `v0.1.0`. No PyPI, no submodule.
+- Public GitHub repo at `preludetech/django-panel-framework`, owned by Prelude Technologies.
+  Distribution name `django-panel-framework`, import name and app label `panel_framework`, first
+  release `v0.1.0`. No PyPI, no submodule.
+- Licence: none chosen yet. The repo is public but all rights reserved, so the choice stays open:
+  any licence can be granted later, while a version released under an open licence could not be
+  taken back. No tag or file in this spec states an open-source licence.
+- No outside contributions while the licence is undecided. Prelude Technologies stays the only
+  copyright holder of its code, so it can license the package however it chooses later.
+- Third-party licences are respected: the Heroicons bodies stay under MIT with their notice file
+  shipped beside them, and `LICENSE` names them.
 - The label change drops data, not migrates it: the deployed table holds nothing worth keeping.
   The new `0001` creates `panel_framework_bulkactionrun`, a different table name, so old and new do
   not collide on a database that still has the old table.
@@ -113,7 +132,9 @@ of its own; the editable layer gives live edits across every worktree without ch
   "no raw SQL" convention before it lands; if the review refuses it, the fallback is a
   documented manual step in the upgrade notes. The spec confirms the host app and the migration
   order against the new package's `0001`.
-- Which hosting org owns the repo, and the exact URL in the pin.
+- Whether First-Class needs written permission from Prelude Technologies to use the package while
+  it is all rights reserved. Not needed if First-Class is Prelude's own project; a short written
+  grant if it belongs to someone else. This must be settled before First-Class installs the tag.
 - Whether CI needs a `pre-merge` job or a pre-commit hook for the locked-rev check, and where the
   check lives.
 - Whether the Python stage added to the concrete template's Dockerfile needs `git` installed
@@ -126,6 +147,7 @@ of its own; the editable layer gives live edits across every worktree without ch
   developer doc (spec 6).
 - Any change to the framework's behaviour or its host contract (specs 1 to 4).
 - PyPI publishing, a private repo, a git submodule, a shared core package.
+- Choosing an open-source licence, and accepting outside contributions.
 - Migrating data from the old table.
 - Tidying `/home/sheena/workspace/lms/django_apps/content_engine` and `site_aware_models`.
 - Re-auditing the framework's tests in `test-organisation-and-hygene-15-educator-interface`.

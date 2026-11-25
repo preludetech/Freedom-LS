@@ -134,7 +134,9 @@ The panel framework moves into its own installable package, because another Djan
 
 **Notes**
 - Specs touching `educator_interface`, `comms`, `reports` or `learner_management` rebase onto `extract_panels_framework-5-package-and-install` once it changes the import prefix.
-- Decided: a public MIT repo released by git tag; no PyPI and no submodule. App label `panel_framework` starting from a clean `0001`, and no data is migrated. FLS pins it with a PEP 508 git URL in `[project].dependencies`.
+- Decided: a public repo at `preludetech/django-panel-framework`, owned by Prelude Technologies, released by git tag; no PyPI and no submodule.
+- Decided: no licence yet. The repo is all rights reserved until Prelude Technologies chooses one, takes no outside contributions, and keeps bundled third-party licence notices (Heroicons, MIT).
+- Decided: app label `panel_framework` starting from a clean `0001`, and no data is migrated. FLS pins it with a PEP 508 git URL in `[project].dependencies`.
 - Decided: multi-site stays. A settings-declared site resolver defaults to `get_current_site`.
 - Assumed: there is no shared core package. If one turns out to be needed, stop and say so. The package ships overridable primitives, and the host schedules the bulk-run sweep.
 - Open: the uv editable-install spike (`extract_panels_framework-5-package-and-install`).
@@ -461,8 +463,8 @@ The icons app becomes an installable package another Django project can use and 
 - Strictly sequential: each spec builds on the one before.
 - Decided: the package ships all 63 current semantic names, FLS-domain ones included. Host-added names layer on top; host settings win over app registrations, which win over built-ins.
 - Decided: "custom icons" means remapping within the active set, pointing a name at the host's own SVG file, and registering a whole custom icon set.
-- Assumed: distribution copies the panel framework: public MIT repo beside it in `django_apps/`, released by git tag, pinned with a PEP 508 git URL, `CHANGELOG.md` with upgrade flags.
-- Assumed: icon data ships as a generated subset of the four Iconify sets; an optional setting points at a full `@iconify-json` directory for glyphs outside it.
+- Assumed: distribution copies the panel framework: public repo owned by Prelude Technologies beside it in `django_apps/`, all rights reserved until a licence is chosen, no outside contributions, released by git tag, pinned with a PEP 508 git URL, `CHANGELOG.md` with upgrade flags.
+- Assumed: icon data ships as a generated subset of the four Iconify sets, each with its own licence notice; an optional setting points at a full `@iconify-json` directory for glyphs outside it.
 - Assumed: settings move to `SEMANTIC_ICONS_*`; the old `FREEDOM_LS_ICON_*` names keep working with a deprecation warning for one tag. Import name and app label become `semantic_icons`; `<c-icon>` and its arguments do not change, so no template edits.
 - Assumed: the panel framework package does not depend on this one; FLS meets the panel framework's icon host contract through it.
 - Out of scope: changing how templates call `<c-icon>`, new icon sets beyond the four, an icon picker UI.

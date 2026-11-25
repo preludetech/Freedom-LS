@@ -6,8 +6,9 @@ run beside, the decisions already taken and the assumptions every idea in the ef
 
 ## What
 
-The icons app leaves FLS and becomes `django-semantic-icons`, a public MIT-licensed GitHub repo
-checked out at `/home/sheena/workspace/lms/django_apps/semantic_icons`, released as the tag `v0.1.0`.
+The icons app leaves FLS and becomes `django-semantic-icons`, a public GitHub repo owned by Prelude
+Technologies, all rights reserved for now, checked out at
+`/home/sheena/workspace/lms/django_apps/semantic_icons`, released as the tag `v0.1.0`.
 FLS then depends on that tag, edits it live in worktrees, and carries the change to First-Class
 through its normal upgrade-notes flow. This copies the pattern `extract_panels_framework-5-package-and-install`
 proved. Wherever that spec settled a choice this idea leaves open (hosting org and pin URL, the
@@ -18,6 +19,13 @@ The package repo:
   vendored icon data and its licence notices ship as package data. A test builds the wheel and
   asserts the template, the icon data and the licence notices are in it, because an editable install
   hides a missing file.
+- A `LICENSE` file that reads, in substance: "Copyright (c) 2026 Prelude Technologies. All rights
+  reserved. No licence is granted to use, copy, modify or distribute this software. Licensing terms
+  are to be decided." It then lists each vendored icon set, its licence and where its notice
+  file sits. Prelude's notice covers only Prelude's own code; the icon sets keep their own
+  licences.
+- The README says the package is not open source yet and that outside contributions (pull requests,
+  patches) are not accepted. No `CONTRIBUTING.md`.
 - The app moves from `freedom_ls/icons`. Its import name and app label become `semantic_icons`, so
   the check ids become `semantic_icons.E0xx` and `semantic_icons.W001`. The app has no models, so
   there are no migrations to write.
@@ -31,7 +39,7 @@ The package repo:
   this spec ships.
 
 FLS:
-- `[project].dependencies` gains `django-semantic-icons @ git+https://github.com/<org>/django-semantic-icons.git@v0.1.0`,
+- `[project].dependencies` gains `django-semantic-icons @ git+https://github.com/preludetech/django-semantic-icons.git@v0.1.0`,
   the same PEP 508 form as the panel package, with no `[tool.uv.sources]` entry and no `uv.toml`.
 - `freedom_ls/icons` is deleted. Every import prefix `freedom_ls.icons` becomes `semantic_icons`,
   in `content_engine` (`course_icon`, `icon_validation`, `content_tags`, `course_icon_tags`),
@@ -71,8 +79,15 @@ gives live edits across every worktree without changing the committed `pyproject
 
 ## What is settled
 
-- Public GitHub repo, MIT, distribution name `django-semantic-icons`, import name and app label
-  `semantic_icons`, first release `v0.1.0`. No PyPI, no submodule.
+- Public GitHub repo at `preludetech/django-semantic-icons`, owned by Prelude Technologies.
+  Distribution name `django-semantic-icons`, import name and app label `semantic_icons`, first
+  release `v0.1.0`. No PyPI, no submodule.
+- Licence, contributions and First-Class's permission follow the panel package: all rights
+  reserved until a licence is chosen, no outside contributions, no tag or file stating an
+  open-source licence.
+- Each vendored icon set keeps its own licence. Its notice ships with its data, `LICENSE` names
+  the set and its licence, and any attribution a set's licence requires is met. A set whose
+  licence the package cannot meet is not vendored.
 - `extract-semantic-icons-app-1-standalone-app` and `extract-semantic-icons-app-2-host-icons` have
   already made the package standalone and complete: neutral settings, bundled icon data, host
   icons, startup checks. This spec moves the code and re-verifies it from a clean checkout, and does
@@ -102,7 +117,6 @@ gives live edits across every worktree without changing the committed `pyproject
   (`course_icon_tags` is distinct) and the panel package, and decides.
 - **How the package declares `django-cotton`.** As a `[project].dependencies` entry or as a documented
   host requirement, given `<c-icon>` needs cotton installed and its loaders configured.
-- Which hosting org owns the repo, and the exact URL in the pin (follows the panel package's answer).
 - Whether the locked-rev check is shared with the panel package's or a second copy.
 
 ## Out of scope
@@ -112,6 +126,7 @@ gives live edits across every worktree without changing the committed `pyproject
 - The Claude Code plugin and the host doc (`extract-semantic-icons-app-4-claude-plugin`).
 - Changing how templates call `<c-icon>`, new icon sets beyond the four, an icon picker UI.
 - PyPI publishing, a private repo, a git submodule.
+- Choosing an open-source licence, and accepting outside contributions.
 - Tidying the other repos in `/home/sheena/workspace/lms/django_apps/`.
 
 ## Resources
