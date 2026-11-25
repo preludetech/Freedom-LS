@@ -10,3 +10,5 @@ Asked by `/sdd:start` before the spec was written.
 - Q: Where do a course's completed items and quiz attempts go once the Courses tab is a table? → A: One row per course in the table, then a section per course below it for completed items and quiz attempts. (asked while research ran)
 - Q: Drop the no-activity flag reason on the Courses tab only, or everywhere it repeats the badge? → A: Everywhere the reason only repeats the badge; report downloads keep it. (asked while research ran)
 - Q: Page-header actions are already small; what does item 7 change? → A: Dialog footer only; QA confirms the page header at 375px. (asked while research ran)
+- Q: Flagged-first ordering cannot reuse the per-learner gather at constant query count. How? → A: A new page-wide gather in `freedom_ls/reports`, run from a `LearnerDataTable.get_rows` override. (asked at spec review)
+- Q: Apply the recommended option for every other spec-review judgement call? → A: Yes. (asked at spec review)
