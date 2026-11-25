@@ -48,6 +48,8 @@ no design states tested
 | 9.3 | desktop | pass | ![](screenshots/page-2026-11-24T12-49-21-624Z.png) | Removing only the pricing-demo entry is refused by existing validation ("Unknown category" in the 7 price courses). Removing the category and its course references retired it (count line `CourseCategory 1`). The Pricing dashboard section is gone, and the price courses stay in the catalogue under "Available courses" (1 to 3 of 10). |
 | 9.4 | desktop | skip | none | Deleting the application form while the gated course still names it is refused by existing validation ('names application_form ... which is not a loaded FORM'), so the scenario cannot be reached through `content_save`. The change was reverted. |
 
+Rows 8.1-8.3 record admin changelist checks that were later cut: `remove-unnecessary-admin-panel-functionality` deletes the content and form admins, so the retired filter and column were removed, and Test 8 now covers only the answers page (row 8.4).
+
 ## Bug B1: Quiz confusions do not mark a chosen retired option
 
 Manifestations:
