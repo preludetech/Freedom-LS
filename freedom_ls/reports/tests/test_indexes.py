@@ -1528,6 +1528,26 @@ class TestASittingIsScoredOnTheOptionsItWasOffered:
 
         assert self._verdicts(quiz, record) == [True]
 
+    def test_a_live_correct_option_added_since_the_paper_makes_the_answer_wrong(
+        self,
+        question_with_a_retired_correct_option: tuple[
+            Form, FormPage, FormQuestion, QuestionOption, CourseProgress
+        ],
+    ) -> None:
+        quiz, page, question, kept, record = question_with_a_retired_correct_option
+        sitting = form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            served_paper=served_paper_of([(page, [question])], {question: [kept]}),
+        )
+        QuestionAnswerFactory(
+            form_progress=sitting, question=question
+        ).selected_options.add(kept)
+        QuestionOptionFactory(question=question, text="Added", correct=True, order=2)
+
+        assert self._verdicts(quiz, record) == [False]
+
     def test_a_sitting_with_no_paper_is_scored_on_every_option_retired_ones_included(
         self, question_with_a_retired_correct_option
     ):

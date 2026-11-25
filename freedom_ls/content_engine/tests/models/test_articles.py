@@ -22,6 +22,7 @@ from freedom_ls.content_engine.models import Article, ArticleVisibility, Topic
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retired
 
 requires_blog = pytest.mark.skipif(
     app_not_installed("freedom_ls.blog"), reason="blog app is not installed"
@@ -166,6 +167,29 @@ def test_image_file_ignores_a_file_belonging_to_another_site(mock_site_context):
         site=Site.objects.create(name="other", domain="other.example.com"),
     )
     article = ArticleFactory(file_path="articles/a.md", image="photo.png")
+
+    assert article.image_file is None
+
+
+@pytest.mark.django_db
+def test_image_file_ignores_a_retired_file(mock_site_context: Site) -> None:
+    retired(FileFactory(file_path="articles/photo.png"))
+    article = ArticleFactory(file_path="articles/a.md", image="photo.png")
+
+    assert article.image_file is None
+
+
+@pytest.mark.django_db
+def test_with_image_files_ignores_a_retired_file(mock_site_context: Site) -> None:
+    retired(FileFactory(file_path="articles/photo.png"))
+    ArticleFactory(
+        file_path="articles/a.md",
+        slug="a",
+        image="photo.png",
+        published_on=date(2026, 3, 1),
+    )
+
+    (article,) = Article.objects.published().with_image_files()
 
     assert article.image_file is None
 

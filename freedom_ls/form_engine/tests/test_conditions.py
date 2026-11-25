@@ -766,6 +766,18 @@ def test_an_option_added_after_serving_is_listed_as_added_and_never_served(
     assert added.id not in {o.id for o in path.options_of(sf.q_one)}
 
 
+def test_a_retired_option_left_off_the_paper_is_not_listed_as_added(
+    served_form: ServedForm,
+) -> None:
+    sf = served_form
+    paper = _reordered_paper(sf)
+    retire(cast("QuestionOption", QuestionOptionFactory(question=sf.q_one, order=3)))
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert path.options_added_since(sf.q_one) == []
+
+
 def test_a_question_whose_options_are_all_served_has_none_added_since(
     served_form: ServedForm,
 ) -> None:

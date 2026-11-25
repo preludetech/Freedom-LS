@@ -86,7 +86,7 @@ def delete_deadlines_on_removed_part_topics(
     The placement's own rows went with it in the cascade, but the part's topic rows
     belong to the part and stay, so this course's deadlines on them would otherwise
     linger on reference material, which has no deadline. A topic row the course still
-    reaches some other way keeps its deadlines.
+    reaches some other way keeps its deadlines, retired or not.
     """
     part_items = ContentCollectionItem._base_manager.filter(
         site=site,
@@ -99,7 +99,7 @@ def delete_deadlines_on_removed_part_topics(
             item.id
             for item in Course._base_manager.get(
                 pk=course.pk
-            ).viewable_collection_items()
+            ).viewable_collection_items(include_retired=True)
         ]
     )
     deleted: Counter[str] = Counter()

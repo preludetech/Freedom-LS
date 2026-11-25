@@ -458,7 +458,7 @@ def _offered_options(
     return list(question.options.all())
 
 
-def _marking_options(
+def marking_options(
     question: FormQuestion, served: SittingPath | None
 ) -> list[QuestionOption]:
     """The options a stored score is checked against: those the sitting was
@@ -878,7 +878,7 @@ class FormProgress(SiteAwareModel):
                 continue
             selected_option_ids = {o.id for o in answer.selected_options.all()}
             if is_quiz_answer_correct(
-                selected_option_ids, _marking_options(question, served)
+                selected_option_ids, marking_options(question, served)
             ):
                 score += 1
 
@@ -932,9 +932,16 @@ class FormProgress(SiteAwareModel):
             return incorrect_answers
 
         served = self._served_path(path)
-        positions = served.question_positions() if served is not None else None
+        questions = self._quiz_questions(served)
+        # A sitting with no served paper was given every question, retired ones
+        # included, so it is numbered among all of them, in authored order.
+        positions = (
+            served.question_positions()
+            if served is not None
+            else {question.id: n for n, question in enumerate(questions, start=1)}
+        )
 
-        for question in self._quiz_questions(served):
+        for question in questions:
             # A free-text question has no options, so there is nothing to
             # show as either the selected or the correct answer — it would
             # render as an empty review card. Such a question is not meant to
@@ -954,11 +961,13 @@ class FormProgress(SiteAwareModel):
                 selected_options = list(answer.selected_options.all())
             selected_option_ids = {o.id for o in selected_options}
 
-            offered = _offered_options(question, served)
-            is_correct = is_quiz_answer_correct(selected_option_ids, offered)
+            # The same options the score is computed against, so the list
+            # explains every mark the score takes off.
+            marking = marking_options(question, served)
+            is_correct = is_quiz_answer_correct(selected_option_ids, marking)
 
             if not is_correct:
-                correct_options = [option for option in offered if option.correct]
+                correct_options = [option for option in marking if option.correct]
                 if served is not None:
                     # Listed in the order this learner was shown them, which on
                     # a shuffled paper is not the authored one.
@@ -978,11 +987,7 @@ class FormProgress(SiteAwareModel):
                         "question": question,
                         # The number this learner was shown, which on a shuffled
                         # paper is not the authored one.
-                        "number": (
-                            positions[question.id]
-                            if positions is not None
-                            else question.question_number()
-                        ),
+                        "number": positions[question.id],
                         "learner_selected": selected_options,
                         "correct_options": correct_options,
                     }

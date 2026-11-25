@@ -23,6 +23,7 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.educator_interface.panels.learner.quiz_attempt import (
     openable_sitting_ids,
+    quiz_attempt_paper_context,
 )
 from freedom_ls.educator_interface.tests.helpers import (
     _get_document,
@@ -63,6 +64,7 @@ from freedom_ls.learner_progress.factories import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.tests.retire import retire
 
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("mock_site_context")]
 
@@ -754,6 +756,32 @@ def test_a_correct_option_added_after_submission_marks_the_question_incorrect(
     assert "This quiz has changed since the attempt was marked." in text
     assert "Marked incorrect" in text
     assert "Marked correct" not in text
+
+
+def test_a_retired_correct_option_left_off_the_paper_neither_marks_nor_lists() -> None:
+    organisation = OrganisationFactory()
+    form = _quiz()
+    page = _form_page(form=form, order=1)
+    question, (kept, gone) = _question(
+        page, "Question A", 1, [("A one", True), ("A two", True)]
+    )
+    question.type = "checkboxes"
+    question.save()
+    retire(gone)
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of([(page, [question])], {question: [kept]}),
+        scores={"score": 1, "max_score": 1},
+    )
+    _answer(sitting, question, kept)
+
+    context = quiz_attempt_paper_context(sitting)
+
+    marks = cast("dict", context["question_marks"])
+    assert marks[question.id].verdict == "correct"
+    assert context["options_added_since"] == {}
+    assert context["score_outdated"] is False
 
 
 def test_an_option_added_after_submission_is_listed_last_and_labelled(

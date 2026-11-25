@@ -681,7 +681,9 @@ def _offered_options_by_pair(
     questions: QuestionIndex,
     forms: FormProgressIndex,
 ) -> dict[tuple[UUID, UUID], list[QuestionOption]]:
-    """The options each (sitting, question) pair was offered.
+    """The options each (sitting, question) pair is marked against: those it was
+    offered, plus any live option added since, as `marking_options` gives the
+    stored score.
 
     A sitting with a served paper was offered the options the paper names that
     the question still has. One without, a quiz sitting completed before served
@@ -699,7 +701,9 @@ def _offered_options_by_pair(
             # With none of its served options left the question shows what it has,
             # exactly as the sitting's own path does.
             offered[(attempt_id, question.id)] = [
-                option for option in loaded if option.id in served_ids
+                option
+                for option in loaded
+                if option.id in served_ids or not option.is_retired
             ] or loaded
     return offered
 

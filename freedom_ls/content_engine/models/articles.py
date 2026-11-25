@@ -41,7 +41,7 @@ class ArticleQuerySet(RetirableQuerySet["Article"]):
         }
         found = {
             (file.site_id, file.file_path): file
-            for file in File.objects.filter(
+            for file in File.objects.not_retired().filter(
                 site_id__in={site_id for site_id, _ in wanted},
                 file_path__in={path for _, path in wanted},
             )
@@ -102,9 +102,14 @@ class Article(TitledContent, MarkdownContent):
         """
         if not self.image:
             return None
-        return File.objects.filter(
-            site_id=self.site_id, file_path=self.calculate_path_from_root(self.image)
-        ).first()
+        return (
+            File.objects.not_retired()
+            .filter(
+                site_id=self.site_id,
+                file_path=self.calculate_path_from_root(self.image),
+            )
+            .first()
+        )
 
     def get_absolute_url(self) -> str:
         return reverse("blog:article_detail", kwargs={"slug": self.slug})

@@ -479,6 +479,36 @@ def test_part_section_opens_at_its_first_nested_placement(mock_site_context) -> 
 
 
 @pytest.mark.django_db
+def test_part_section_opens_at_its_first_live_nested_placement(
+    mock_site_context: None,
+) -> None:
+    course = CourseFactory()
+    part, (first, second) = place_part_with_topics(course, 2)
+    retire(first)
+
+    placement = section_first_placement(course, part)
+
+    assert placement is not None
+    assert placement.child == second
+
+
+@pytest.mark.django_db
+def test_part_whose_live_placements_are_finished_banks_its_questions(
+    mock_site_context: None,
+) -> None:
+    course = CourseFactory()
+    part, (first, second) = place_part_with_topics(course, 2)
+    question = question_testing_part(part)
+    record = course_progress_record(course, UserFactory())
+    finish_topic(record, first)
+    retire(second)
+
+    banked = list(bank_questions(record))
+
+    assert banked == [question]
+
+
+@pytest.mark.django_db
 def test_topic_section_opens_at_its_own_placement(mock_site_context) -> None:
     course = CourseFactory()
     topic, item = place_topic(course)

@@ -12,6 +12,11 @@ from django.contrib.sites.models import Site
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
+from freedom_ls.content_engine.factories import (
+    CourseFactory,
+    CoursePartFactory,
+    TopicFactory,
+)
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
@@ -34,7 +39,10 @@ from freedom_ls.deadlines.models import (
     ExtensionTarget,
     LearnerDeadlineOverride,
 )
-from freedom_ls.deadlines.signals import carry_over_deadline_overrides
+from freedom_ls.deadlines.signals import (
+    carry_over_deadline_overrides,
+    delete_deadlines_on_removed_part_topics,
+)
 from freedom_ls.deadlines.tests.helpers import (
     write_course,
     write_part,
@@ -43,6 +51,7 @@ from freedom_ls.deadlines.tests.helpers import (
 from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.tests.factories import SiteFactory
+from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import drop_ambient_request
 
 PART_A = "01. A"
@@ -389,3 +398,27 @@ def test_a_first_loads_carry_over_cost_does_not_grow_with_the_rows(
     large = _receiver_query_count(tmp_path / "large", site, topic_count=9)
 
     assert small == large
+
+
+@pytest.mark.django_db
+def test_removing_one_of_two_placements_keeps_an_override_on_a_retired_topic(
+    site: Site, mock_site_context: Site
+) -> None:
+    course: Course = CourseFactory()
+    part: CoursePart = CoursePartFactory()
+    topic: Topic = TopicFactory()
+    part.items.create(child=topic, order=0)
+    course.items.create(child=part, order=0)
+    second = course.items.create(child=part, order=1)
+    item = ContentCollectionItem.objects.get(collection_id=part.pk, child_id=topic.pk)
+    override = LearnerDeadlineOverrideFactory(
+        course_progress=CourseProgressFactory(course=course), collection_item=item
+    )
+    retire(topic)
+    second.delete()
+
+    delete_deadlines_on_removed_part_topics(
+        sender=ContentCollectionItem, site=site, course=course, part=part
+    )
+
+    assert LearnerDeadlineOverride.objects.filter(pk=override.pk).exists()

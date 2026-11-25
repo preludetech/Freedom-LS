@@ -14,6 +14,7 @@ from freedom_ls.content_engine.models import (
     CoursePart,
     Topic,
 )
+from freedom_ls.content_engine.models.courses import live_collection_items
 from freedom_ls.content_engine.models.question_sections import (
     FormQuestionCoursePart,
     FormQuestionTopic,
@@ -72,7 +73,7 @@ def _placed_sections(record: CourseProgress) -> _PlacedSections:
         elif isinstance(child, CoursePart):
             part_ids.add(child.pk)
             order.append(child.pk)
-            nested = child.collection_items()
+            nested = live_collection_items(child)
             # A part with nothing nested has nothing to finish, so it banks nothing.
             if nested and all(nested_item.pk in completed for nested_item in nested):
                 finished_part_ids.add(child.pk)
@@ -388,7 +389,7 @@ def section_first_placement(
             continue
         if isinstance(section, Topic):
             return item
-        nested = section.collection_items()
+        nested = live_collection_items(section)
         return nested[0] if nested else None
     return None
 

@@ -768,6 +768,22 @@ def test_incorrect_answers_without_a_served_paper_carry_the_authored_number(
 
 
 @pytest.mark.django_db
+def test_incorrect_answers_without_a_served_paper_number_among_retired_questions_too(
+    mock_site_context: object,
+) -> None:
+    progress, (first, second, third) = _three_question_quiz()
+    retire(first)
+
+    incorrect = progress.get_incorrect_quiz_answers()
+
+    assert [(item["question"], item["number"]) for item in incorrect] == [
+        (first, 1),
+        (second, 2),
+        (third, 3),
+    ]
+
+
+@pytest.mark.django_db
 def test_incorrect_answers_numbers_skip_a_free_text_question(
     mock_site_context: object,
 ) -> None:
@@ -1187,6 +1203,24 @@ def test_a_missed_question_lists_only_the_correct_options_the_paper_offered(
     (item,) = sitting.progress.get_incorrect_quiz_answers()
 
     assert item["correct_options"] == [sitting.kept_correct]
+
+
+@pytest.mark.django_db
+def test_a_live_correct_option_added_since_the_paper_lists_the_question_as_missed(
+    retired_correct_option: RetiredCorrectOption,
+) -> None:
+    sitting = retired_correct_option
+    sitting.progress.served_paper = served_paper_of(
+        [(sitting.page, [sitting.question])],
+        {sitting.question: [sitting.kept_correct]},
+    )
+    sitting.progress.save()
+    added = QuestionOptionFactory(question=sitting.question, order=2, correct=True)
+
+    (item,) = sitting.progress.get_incorrect_quiz_answers()
+
+    assert sitting.progress.compute_quiz_scores()["score"] == 0
+    assert item["correct_options"] == [sitting.kept_correct, added]
 
 
 @pytest.mark.django_db
