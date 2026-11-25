@@ -27,7 +27,9 @@ Thin overlays (reference the `ds`/`sdd` skill, add only the FLS delta): `admin-i
 
 Top level: `init`, `update_claude_plugin_fls_content`, `update_concrete_projects`
 (run from the FLS `main` worktree: integrates completed specs into each concrete project listed in
-`.claude/fls-dev/config.local.md`), `update_product_docs`, `update_upgrade_notes`.
+`.claude/fls-dev/config.local.md`), `update_product_docs`, `update_upgrade_notes`,
+`sales_feature_doc` (regenerates `docs/sales/features.md`, the sales-level list of built features,
+from `docs/product/`).
 `concrete/`: `README`, `update_fls`.
 `protected/`: `design_check`, `frontend_check` (helpers read by path, not advertised as slash commands).
 
