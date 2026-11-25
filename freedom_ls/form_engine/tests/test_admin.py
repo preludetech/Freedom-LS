@@ -31,6 +31,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
 )
 from freedom_ls.form_engine.queries import FINAL_GROUP_TITLE
+from freedom_ls.tests.retire import retired
 
 CHANGE_URL_NAME = "admin:freedom_ls_form_engine_formprogress_change"
 
@@ -417,6 +418,43 @@ def test_a_valid_bound_passes_the_model_check(mock_site_context) -> None:
     question = FormQuestionFactory(type=QuestionType.DATE, max="2010-01-01")
 
     question.clean()
+
+
+@pytest.mark.django_db
+def test_the_change_page_marks_a_retired_question_and_a_chosen_retired_option(
+    staff_client: Client,
+) -> None:
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    question = retired(
+        FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    )
+    option = retired(QuestionOptionFactory(question=question, text="Gone option"))
+    progress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(
+        form_progress=progress, question=question
+    ).selected_options.add(option)
+
+    body = _change_page(staff_client, progress)
+
+    assert body.count("Retired") == 2
+    assert "Gone option" in body
+
+
+@pytest.mark.django_db
+def test_the_change_page_marks_nothing_retired_for_live_content(
+    staff_client: Client,
+) -> None:
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    question = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    option = QuestionOptionFactory(question=question)
+    progress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(
+        form_progress=progress, question=question
+    ).selected_options.add(option)
+
+    assert "Retired" not in _change_page(staff_client, progress)
 
 
 # ---------------------------------------------------------------------------
