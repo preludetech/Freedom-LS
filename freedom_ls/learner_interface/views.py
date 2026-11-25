@@ -99,6 +99,7 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_message,
 )
 from freedom_ls.form_engine.queries import (
+    count_sitting_pages,
     count_sitting_questions,
     stored_score_outdated,
 )
@@ -1972,7 +1973,7 @@ def view_form(
         "previous_url": previous_url,
         **(player_context or {}),
         "question_count": count_sitting_questions(form),
-        "page_count": form.pages.count(),
+        "page_count": count_sitting_pages(form),
     }
 
     return render(request, "learner_interface/course_form.html", context)

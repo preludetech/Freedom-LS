@@ -13,7 +13,7 @@ from .conditions import (
     load_form_tree,
     sitting_path,
 )
-from .live_tree import live_children, live_pages
+from .live_tree import live_children, live_pages, served_pages
 from .models import (
     Form,
     FormPage,
@@ -153,6 +153,12 @@ def count_sitting_questions(form: Form) -> int:
     return total
 
 
+def count_sitting_pages(form: Form) -> int:
+    """How many pages one sitting of the form is served, retired pages left out."""
+    load_form_tree(form)
+    return len(served_pages(form))
+
+
 def page_questions(form_page: FormPage) -> list[FormQuestion]:
     """The questions on a page, in the order the page lays them out.
 
@@ -219,11 +225,9 @@ def _answer_row(
     path: SittingPath,
 ) -> AnswerRow:
     answer = answers.get(question.id)
-    # The path is built from live questions, so it never reaches a retired one;
-    # an answer to it proves the sitting was asked.
-    is_asked = path.has_question(question.id) or (
-        question.is_retired and answer is not None
-    )
+    # Every kind of path keeps a retired question the sitting was asked, so the
+    # path alone says whether it was.
+    is_asked = path.has_question(question.id)
     return _row(question, answer if is_asked else None, is_asked)
 
 

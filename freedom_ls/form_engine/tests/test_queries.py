@@ -38,6 +38,7 @@ from freedom_ls.form_engine.queries import (
     answer_groups,
     attempt_completes_form,
     count_form_questions,
+    count_sitting_pages,
     count_sitting_questions,
     drawing_page_counts,
     form_questions,
@@ -656,6 +657,43 @@ def test_count_sitting_questions_skips_retired_rows_on_plain_and_drawing_pages(
     FormQuestionFactory(form_page=retired_page, order=0)
 
     assert count_sitting_questions(Form.objects.get(pk=form.pk)) == 3
+
+
+@pytest.mark.django_db
+def test_count_sitting_pages_counts_only_the_pages_a_new_sitting_is_served(
+    mock_site_context: object,
+) -> None:
+    form = FormFactory()
+    FormQuestionFactory(form_page=FormPageFactory(form=form, order=0))
+    FormPageFactory(form=form, order=1)
+    emptied_page = FormPageFactory(form=form, order=2)
+    retired(cast("FormQuestion", FormQuestionFactory(form_page=emptied_page)))
+    retired(cast("FormPage", FormPageFactory(form=form, order=3)))
+
+    assert count_sitting_pages(Form.objects.get(pk=form.pk)) == 2
+
+
+@pytest.mark.django_db
+def test_a_retired_answered_question_behind_a_closed_gate_is_not_asked(
+    mock_site_context: object,
+) -> None:
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    source = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    opens_gate = QuestionOptionFactory(question=source, order=0)
+    closes_gate = QuestionOptionFactory(question=source, order=1)
+    gated = retired(
+        FormQuestionFactory(form_page=page, order=1, condition_option=opens_gate)
+    )
+    progress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(form_progress=progress, question=source).selected_options.add(
+        closes_gate
+    )
+    QuestionAnswerFactory(form_progress=progress, question=gated)
+
+    row = answer_groups(progress)[0].rows[1]
+
+    assert (row.question, row.is_asked, row.answer) == (gated, False, None)
 
 
 @pytest.mark.django_db

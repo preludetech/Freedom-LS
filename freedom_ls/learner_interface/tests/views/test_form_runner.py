@@ -64,6 +64,7 @@ from freedom_ls.learner_progress.attempts import (
 )
 from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.tests.retire import retire
 
 # Form-runner view tests: stale-attempt safety net, runner context, form_submit_and_exit.
 
@@ -2425,6 +2426,62 @@ def test_form_start_resumes_past_a_skipped_optional_question(mock_site_context, 
         "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 4},
     )
+
+
+@pytest.mark.django_db
+def test_a_page_retired_mid_sitting_leaves_the_answers_on_later_pages(
+    mock_site_context, client
+):
+    """Page numbers are authored positions, so retiring an earlier page must not
+    send the learner's next submit to a different page."""
+    form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
+    pages = [FormPageFactory(form=form, order=order) for order in range(4)]
+    questions = [
+        FormQuestionFactory(form_page=page, type="short_text", order=0, required=False)
+        for page in pages
+    ]
+    course = course_with_form(form)
+    user = UserFactory()
+    register_user_for_course(course, user)
+    attempt = form_attempt(course, user, form)
+    QuestionAnswerFactory(
+        form_progress=attempt, question=questions[3], text_answer="page four"
+    )
+    retire(cast("FormPage", pages[0]))
+    client.force_login(user)
+
+    client.post(
+        reverse(
+            "learner_interface:form_fill_page",
+            kwargs={"course_slug": course.slug, "index": 1, "page_number": 3},
+        ),
+        {f"question_{questions[2].id}": "page three"},
+    )
+
+    assert set(attempt.answers.values_list("question_id", "text_answer")) == {
+        (questions[2].id, "page three"),
+        (questions[3].id, "page four"),
+    }
+
+
+@pytest.mark.django_db
+def test_view_form_page_count_leaves_out_a_retired_page(mock_site_context, client):
+    user = UserFactory()
+    form = FormFactory()
+    FormQuestionFactory(form_page=FormPageFactory(form=form, order=0), order=0)
+    retire(cast("FormPage", FormPageFactory(form=form, order=1)))
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+
+    response = client.get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response.context["page_count"] == 1
 
 
 # ---------------------------------------------------------------------------

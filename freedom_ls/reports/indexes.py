@@ -628,7 +628,12 @@ def build_question_index(
     questions: list[FormQuestion],
     options_by_question: dict[UUID, list[QuestionOption]],
 ) -> QuestionIndex:
-    """Number the loaded questions per form and index them for lookup."""
+    """Number the loaded questions per form and index them for lookup.
+
+    A live question is numbered among the live ones and a retired one, or one
+    on a retired page, among every question of its form, as
+    `FormQuestion.question_number` does.
+    """
     correct_option_texts: dict[UUID, list[str]] = {
         question.id: [
             option.text
@@ -638,12 +643,17 @@ def build_question_index(
         for question in questions
     }
     number_by_id: dict[UUID, int] = {}
-    per_form_counter: dict[UUID, int] = defaultdict(int)
+    live_counter: dict[UUID, int] = defaultdict(int)
+    whole_tree_counter: dict[UUID, int] = defaultdict(int)
     by_form: dict[UUID, list[FormQuestion]] = defaultdict(list)
     for question in questions:
         form_id = question.form_page.form_id
-        per_form_counter[form_id] += 1
-        number_by_id[question.id] = per_form_counter[form_id]
+        whole_tree_counter[form_id] += 1
+        if question.is_retired or question.form_page.is_retired:
+            number_by_id[question.id] = whole_tree_counter[form_id]
+        else:
+            live_counter[form_id] += 1
+            number_by_id[question.id] = live_counter[form_id]
         by_form[form_id].append(question)
 
     return QuestionIndex(

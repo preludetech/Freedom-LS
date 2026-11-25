@@ -910,7 +910,19 @@ def test_compute_path_leaves_out_a_retired_page(mock_site_context: object) -> No
 
     path = compute_path(_fresh(form), {})
 
-    assert [p.id for p in path.all_pages] == [kept_page.id]
+    assert path.pages == [kept_page]
+
+
+def test_compute_path_keeps_the_page_numbers_after_a_retired_page(
+    mock_site_context: object,
+) -> None:
+    form: Form = FormFactory()
+    retire(cast("FormPage", FormPageFactory(form=form, order=0)))
+    kept_page = FormPageFactory(form=form, order=1)
+
+    path = compute_path(_fresh(form), {})
+
+    assert path.page_number_of(kept_page.id) == 2
 
 
 def test_compute_path_hands_out_live_options_only(mock_site_context: object) -> None:

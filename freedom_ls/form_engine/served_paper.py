@@ -15,7 +15,7 @@ from uuid import UUID
 from django.db.models import prefetch_related_objects
 
 from .conditions import SERVED_TREE_LOOKUPS, FormChild, ServedPage, ServedPaper
-from .live_tree import live_children, live_options, live_pages
+from .live_tree import live_children, live_options, served_pages
 from .models import (
     Form,
     FormPage,
@@ -93,11 +93,7 @@ def build_served_paper(form: Form) -> ServedPaper:
     """The paper a sitting starting now is served, shuffled as the form's knobs say."""
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     seed = new_seed()
-    # A page authored with children is left off once all of them are retired,
-    # as compute_path leaves it off; a page authored empty is still served.
-    page_rows = [
-        page for page in live_pages(form) if not page.children() or live_children(page)
-    ]
+    page_rows = served_pages(form)
     if form.shuffle_pages:
         _scope_rng(seed, "pages").shuffle(page_rows)
     pages: list[ServedPage] = []

@@ -22,6 +22,17 @@ def live_pages(form: Form) -> list[FormPage]:
     return [page for page in form.pages.all() if not page.is_retired]
 
 
+def served_pages(form: Form) -> list[FormPage]:
+    """The pages a sitting starting now is served, in authored order.
+
+    A page authored with children is left out once all of them are retired; a
+    page authored empty is still served.
+    """
+    return [
+        page for page in live_pages(form) if not page.children() or live_children(page)
+    ]
+
+
 def live_children(page: FormPage) -> list[FormChild]:
     """The page's questions and content a new sitting may be served, in order."""
     return [child for child in page.children() if not child.is_retired]

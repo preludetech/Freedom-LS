@@ -297,6 +297,7 @@ def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingP
     no retired option. A question the sitting has already answered stays on the
     path after it is retired, with any retired option the answer selected, so
     finishing the sitting keeps the answer. A retired question opens no gate.
+    A retired page keeps its page number and is left off the path.
     """
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     option_ids = {
@@ -308,12 +309,14 @@ def compute_path(form: Form, answers: Mapping[UUID, QuestionAnswer]) -> SittingP
     selected: dict[UUID, frozenset[UUID]] = {}
     children_by_page: dict[UUID, tuple[FormChild, ...]] = {}
     options_by_question: dict[UUID, tuple[QuestionOption, ...]] = {}
-    all_pages = tuple(
-        page
-        for page in form.pages.all()
-        if not page.is_retired or _kept_children(page, answers)
-    )
+    # Every page, retired ones included: page numbers are positions in this
+    # tuple, and a sitting's numbers must not shift when a page is retired.
+    all_pages = tuple(form.pages.all())
     for page in all_pages:
+        # A retired page stays off the path unless the sitting answered on it.
+        # Checked here because a page with no children is otherwise kept.
+        if page.is_retired and not _kept_children(page, answers):
+            continue
         if not _condition_holds(page.condition_option, selected):
             continue
         children = _on_path_children(page, selected, answers)

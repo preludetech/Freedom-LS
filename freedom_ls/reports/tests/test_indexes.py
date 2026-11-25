@@ -922,6 +922,29 @@ class TestLoadQuizQuestions:
         assert questions == []
 
 
+class TestBuildQuestionIndex:
+    def test_a_live_question_is_numbered_as_a_new_sitting_sees_it(
+        self, mock_site_context
+    ):
+        quiz = FormFactory(strategy=FormStrategy.QUIZ)
+        retired_page = retired(FormPageFactory(form=quiz, order=0))
+        FormQuestionFactory(form_page=retired_page, order=0)
+        page = FormPageFactory(form=quiz, order=1)
+        first = FormQuestionFactory(form_page=page, order=0)
+        gone = retired(FormQuestionFactory(form_page=page, order=1))
+        last = FormQuestionFactory(form_page=page, order=2)
+
+        index = build_question_index(
+            *load_quiz_questions(mock_site_context.pk, {quiz.id})
+        )
+
+        assert (
+            index.number_by_id[first.id],
+            index.number_by_id[gone.id],
+            index.number_by_id[last.id],
+        ) == (1, 3, 2)
+
+
 class TestLoadSelectedOptionsByPair:
     def test_a_survey_answer_is_excluded(self, mock_site_context):
         course = CourseFactory()

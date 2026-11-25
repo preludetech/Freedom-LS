@@ -137,9 +137,15 @@ RETIRABLE_MODELS: tuple[type[Model], ...] = (
 )
 
 
+def _key_field(model: type[Model]) -> str:
+    """The field that identifies a row to a save: a File's path, any other row's pk."""
+    return "file_path" if model is File else "pk"
+
+
 def _row_key(row: Model) -> Hashable:
-    """What identifies a row to a save: a File's path, any other row's pk."""
-    return row.file_path if isinstance(row, File) else row.pk
+    """What identifies a row to a save."""
+    key: Hashable = getattr(row, _key_field(type(row)))
+    return key
 
 
 @dataclass
@@ -1890,10 +1896,8 @@ def _retire_missing(site: Site, ledger: _RunLedger, run_time: datetime) -> None:
     """Retire every live row of the site that the run did not find in the source."""
     for model in RETIRABLE_MODELS:
         live = model._base_manager.filter(site=site, retired_at__isnull=True)
-        key = "file_path__in" if model is File else "pk__in"
-        pks = list(
-            live.exclude(**{key: ledger.seen[model]}).values_list("pk", flat=True)
-        )
+        seen = {f"{_key_field(model)}__in": ledger.seen[model]}
+        pks = list(live.exclude(**seen).values_list("pk", flat=True))
         # update() skips auto_now, and readers find changed rows by updated_at.
         model._base_manager.filter(pk__in=pks).update(
             retired_at=run_time, updated_at=run_time
@@ -1959,7 +1963,7 @@ def _write_sources(
             model: set(
                 model._base_manager.filter(
                     site=site, retired_at__isnull=False
-                ).values_list("file_path" if model is File else "pk", flat=True)
+                ).values_list(_key_field(model), flat=True)
             )
             for model in RETIRABLE_MODELS
         }
