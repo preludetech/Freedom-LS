@@ -351,6 +351,21 @@ def test_the_declaration_footer_has_no_previous_button(
 
 
 @pytest.mark.django_db
+def test_the_name_field_has_no_helper_text_about_what_is_stored(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
+    """A line about storing the name, time and IP address under the field confused learners."""
+    course, _form, _user = declaration_course
+
+    response = client.get(_declaration_url(course))
+
+    document = lxml.html.fromstring(response.content)
+    [name_input] = document.xpath("//*[@data-testid='declaration-typed-name']")
+    assert name_input.get("aria-describedby") is None
+    assert "IP address" not in document.text_content()
+
+
+@pytest.mark.django_db
 def test_the_page_escapes_the_authors_declaration_text(
     mock_site_context: object, client: Client
 ) -> None:

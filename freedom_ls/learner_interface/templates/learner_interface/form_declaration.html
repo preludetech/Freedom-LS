@@ -57,8 +57,7 @@
                            {% if declaration_form.typed_name.value and not declaration_form.typed_name.errors %}value="{{ declaration_form.typed_name.value }}"{% endif %}
                            {% if declaration_form.typed_name.errors %}aria-invalid="true"{% endif %}
                            {% if declaration_form.typed_name.errors and not declaration_form.agreed.errors %}autofocus{% endif %}
-                           aria-describedby="typed-name-help{% if declaration_form.typed_name.errors %} typed_name-error{% endif %}">
-                    <p id="typed-name-help" class="text-sm text-muted">Your name is stored with this declaration, the time and your IP address.</p>
+                           {% if declaration_form.typed_name.errors %}aria-describedby="typed_name-error"{% endif %}>
                     {% if declaration_form.typed_name.errors %}
                         <p id="typed_name-error" class="text-error text-sm">{{ declaration_form.typed_name.errors.0 }}</p>
                     {% endif %}
