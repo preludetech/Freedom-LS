@@ -16,6 +16,8 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 ## Medium
 
+- `panel-framework-close-and-toast-response`
+- `panel-framework-dialogs-without-javascript`
 - `content-widget-sayit-reveal`
 - `deadlines`
 - `form-engine-branch-logic-2-and-conditions`
@@ -24,9 +26,12 @@ adds anything missing under "Priority not set"; move it from there to the level 
 - `referral-tracking-external-referer-first-touch`
 - `server-side-conversion-tracking`
 - `cookie-banner`
+- `audit-log-describe-test-flake`
+- `extract-semantic-icons-app`
 
 ## Low
 
+- `housekeeping-sentry-cron-checkin`
 - `corporate-job-course-recommendations`
 - `faster-test-runs`
 - `reference-material-content-4-library-courses`
@@ -41,8 +46,3 @@ adds anything missing under "Priority not set"; move it from there to the level 
 ## Priority not set
 
 - `learner-interface-features`
-- `housekeeping-sentry-cron-checkin`
-- `audit-log-describe-test-flake`
-- `extract-semantic-icons-app`
-- `panel-framework-close-and-toast-response`
-- `panel-framework-dialogs-without-javascript`

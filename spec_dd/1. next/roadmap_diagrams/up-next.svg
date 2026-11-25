@@ -20,6 +20,10 @@
 <path d="M934.0,593.0 C974.0,593.0 974.0,641.5 1014.0,641.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,962.5 C314.0,962.5 314.0,1064.0 354.0,1064.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,1030.5 C314.0,1030.5 314.0,1124.5 354.0,1124.5" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,403.5 C314.0,403.5 314.0,356.0 354.0,356.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M274.0,471.5 C314.0,471.5 314.0,356.0 354.0,356.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,356.0 C644.0,356.0 644.0,661.0 684.0,661.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<path d="M604.0,424.0 C644.0,424.0 644.0,661.0 684.0,661.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,539.5 C314.0,539.5 314.0,606.0 354.0,606.0 L604.0,606.0 C644.0,606.0 644.0,782.0 684.0,782.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,690.5 C314.0,690.5 314.0,630.0 354.0,630.0 L604.0,630.0 C644.0,630.0 644.0,782.0 684.0,782.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M604.0,676.0 C644.0,676.0 644.0,782.0 684.0,782.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
@@ -29,10 +33,6 @@
 <path d="M274.0,471.5 C314.0,471.5 314.0,560.0 354.0,560.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,471.5 C314.0,471.5 314.0,792.0 354.0,792.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,1098.5 C314.0,1098.5 314.0,1185.0 354.0,1185.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,403.5 C314.0,403.5 314.0,356.0 354.0,356.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M274.0,471.5 C314.0,471.5 314.0,356.0 354.0,356.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,356.0 C644.0,356.0 644.0,661.0 684.0,661.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
-<path d="M604.0,424.0 C644.0,424.0 644.0,661.0 684.0,661.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <rect x="24.0" y="144.5" width="250" height="65" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,144.5 H30.0 A6,6 0 0 0 24.0,150.5 V203.5 A6,6 0 0 0 30.0,209.5 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="166.5" fill="#111827">sacaa-compliance-content-</text>
@@ -136,6 +136,18 @@
 <rect x="354.0" y="1107.0" width="250" height="35" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,1107.0 H360.0 A6,6 0 0 0 354.0,1113.0 V1136.0 A6,6 0 0 0 360.0,1142.0 H362.0 Z" fill="#fb923c"/>
 <text x="370.0" y="1129.0" fill="#111827">user-communication-8-realtime</text>
+<rect x="24.0" y="378.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,378.5 H30.0 A6,6 0 0 0 24.0,384.5 V422.5 A6,6 0 0 0 30.0,428.5 H32.0 Z" fill="#fb923c"/>
+<text x="40.0" y="400.5" fill="#111827">extract-semantic-icons-app-2-</text>
+<text x="40.0" y="415.5" fill="#111827">host-icons</text>
+<rect x="354.0" y="331.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,331.0 H360.0 A6,6 0 0 0 354.0,337.0 V375.0 A6,6 0 0 0 360.0,381.0 H362.0 Z" fill="#fb923c"/>
+<text x="370.0" y="353.0" fill="#111827">extract-semantic-icons-app-3-</text>
+<text x="370.0" y="368.0" fill="#111827">package-and-install</text>
+<rect x="684.0" y="636.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,636.0 H690.0 A6,6 0 0 0 684.0,642.0 V680.0 A6,6 0 0 0 690.0,686.0 H692.0 Z" fill="#fb923c"/>
+<text x="700.0" y="658.0" fill="#111827">extract-semantic-icons-app-4-</text>
+<text x="700.0" y="673.0" fill="#111827">claude-plugin</text>
 <rect x="24.0" y="514.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M32.0,514.5 H30.0 A6,6 0 0 0 24.0,520.5 V558.5 A6,6 0 0 0 30.0,564.5 H32.0 Z" fill="#facc15"/>
 <text x="40.0" y="536.5" fill="#111827">faster-test-runs-2-reuse-test-</text>
@@ -176,18 +188,6 @@
 <path d="M362.0,1160.0 H360.0 A6,6 0 0 0 354.0,1166.0 V1204.0 A6,6 0 0 0 360.0,1210.0 H362.0 Z" fill="#facc15"/>
 <text x="370.0" y="1182.0" fill="#111827">educator-interface-message-</text>
 <text x="370.0" y="1197.0" fill="#111827">from-anywhere</text>
-<rect x="24.0" y="378.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,378.5 H30.0 A6,6 0 0 0 24.0,384.5 V422.5 A6,6 0 0 0 30.0,428.5 H32.0 Z" fill="#9ca3af"/>
-<text x="40.0" y="400.5" fill="#111827">extract-semantic-icons-app-2-</text>
-<text x="40.0" y="415.5" fill="#111827">host-icons</text>
-<rect x="354.0" y="331.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,331.0 H360.0 A6,6 0 0 0 354.0,337.0 V375.0 A6,6 0 0 0 360.0,381.0 H362.0 Z" fill="#9ca3af"/>
-<text x="370.0" y="353.0" fill="#111827">extract-semantic-icons-app-3-</text>
-<text x="370.0" y="368.0" fill="#111827">package-and-install</text>
-<rect x="684.0" y="636.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M692.0,636.0 H690.0 A6,6 0 0 0 684.0,642.0 V680.0 A6,6 0 0 0 690.0,686.0 H692.0 Z" fill="#9ca3af"/>
-<text x="700.0" y="658.0" fill="#111827">extract-semantic-icons-app-4-</text>
-<text x="700.0" y="673.0" fill="#111827">claude-plugin</text>
 <rect x="24.0" y="1234" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="1244" fill="#374151">in progress</text>
 <rect x="154.3" y="1234" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>

@@ -23,6 +23,8 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
+- 🟠 Medium · `panel-framework-close-and-toast-response` (Panel framework)
+- 🟠 Medium · `panel-framework-dialogs-without-javascript` (Panel framework)
 - 🟠 Medium · `content-widget-sayit-reveal-4-audio-access-control` (Audio content widgets)
 - 🟠 Medium · `learner-interface-features-4-flashcards` (Learner interface features, via `content-widget-sayit-reveal`)
 - 🟠 Medium · `deadlines-4-learner-self-pause` (Deadlines)
@@ -38,6 +40,9 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟠 Medium · `referral-tracking-external-referer-first-touch` (Referral tracking and marketing)
 - 🟠 Medium · `server-side-conversion-tracking` (Referral tracking and marketing)
 - 🟠 Medium · `cookie-banner` (Referral tracking and marketing)
+- 🟠 Medium · `audit-log-describe-test-flake` (Tooling and operations)
+- 🟠 Medium · `extract-semantic-icons-app-2-host-icons` (Semantic icons extraction)
+- 🟡 Low · `housekeeping-sentry-cron-checkin` (Tooling and operations)
 - 🟡 Low · `corporate-job-course-recommendations-4-educator-interface-screens` (Registration rules)
 - 🟡 Low · `corporate-job-course-recommendations-5-attribute-csv-import` (Registration rules)
 - 🟡 Low · `faster-test-runs-12-reliable-full-run-record` (Faster test runs)
@@ -59,11 +64,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `learner-interface-features-2-test-out` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-6-revision-dashboard` (Learner interface features)
-- ⚪ Priority not set · `housekeeping-sentry-cron-checkin` (Tooling and operations)
-- ⚪ Priority not set · `audit-log-describe-test-flake` (Tooling and operations)
-- ⚪ Priority not set · `extract-semantic-icons-app-2-host-icons` (Semantic icons extraction)
-- ⚪ Priority not set · `panel-framework-close-and-toast-response` (Panel framework)
-- ⚪ Priority not set · `panel-framework-dialogs-without-javascript` (Panel framework)
 
 ### Needs work on main first
 
@@ -82,15 +82,11 @@ Keeping learner records for SACAA's five-year rule, and signed quiz declarations
 ![SACAA record retention and declarations](roadmap_diagrams/sacaa-record-retention-and-declarations.svg)
 
 **Notes**
-- Build order: the two specs share no code and run in parallel.
-- Collisions: `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` changes the form schema, `Form`, `FormProgress`, `content_save` and `form_start`, like `sacaa-compliance-3-question-pools`; whichever lands second rebases.
 - Decided: only superusers force delete, at any time, with a required reason written to the audit log; no retention-window gate and no automatic cleanup.
 - Decided: force delete replaces the User admin's delete button and "delete selected" action as the one erasure path.
-- Decided: every attempt signs; the typed name must be non-empty and is stored as typed.
 - Assumption: force deleting a user removes every record today's user deletion removes, plus their course progress, which today blocks deletion (`PROTECT`).
 - Assumption: force deleting a learner removes that `Learner` and its registrations, cohort memberships and course progress in that organisation; the `User` stays.
-- Assumption: of `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` and `sacaa-compliance-4-attempt-review`, whichever lands second shows the declaration on the educator attempt view.
-- Out of scope: locking progress, attempt and answer records in the admin; self-service account deletion; declarations on non-quiz forms.
+- Out of scope: locking progress, attempt and answer records in the admin; self-service account deletion.
 - References: CAR 141.01.17 five-year retention in `sacaa-compliance/research_sacaa_requirements.md`.
 
 ## SACAA content versions and access
@@ -108,7 +104,7 @@ Question versions, retired content, safer content saves and logged access to que
 
 **Notes**
 - Build order: `sacaa-compliance-content-versions-and-access-2-retire-removed-content`, then `sacaa-compliance-content-versions-and-access-3-question-versions`; `sacaa-compliance-content-versions-and-access-4-question-access` runs beside them; `sacaa-compliance-content-versions-and-access-5-answered-version-review` last.
-- Collisions: `sacaa-compliance-content-versions-and-access-2-retire-removed-content` and `sacaa-compliance-content-versions-and-access-3-question-versions` both change `content_save`; the latter changes the served paper and collides with `sacaa-compliance-3-question-pools`.
+- Collisions: `sacaa-compliance-content-versions-and-access-2-retire-removed-content` and `sacaa-compliance-content-versions-and-access-3-question-versions` both change `content_save`.
 - Decided: each source path is a git repo with a clean tree before the save, checked on disk only; `--generate-uuids` dirties it afterwards by design; the commit hash is recorded.
 - Decided: retired content is served to no one; progress, answers and attempts are kept; content back in the source is un-retired; nothing is deleted.
 - Decided: `FormQuestion` keeps its uuid and each change makes an immutable version; an attempt pins its versions at start and finishes on them.
@@ -203,6 +199,17 @@ Applications become steps an applicant works through over weeks, decided by a de
 - Out of scope: outside systems reporting a step done, provider lists and distance ranking, more than one sign-off, and scanning uploaded files (not planned).
 - References: `research_review_foundations.md`, `research_help_requests.md` and `intake_courses_case.md` in the parent.
 
+## Panel framework
+
+Priority: 🟠 Medium
+
+Gaps in the panel framework's dialogs and responses.
+
+- `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
+- `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
+
+![Panel framework](roadmap_diagrams/panel-framework.svg)
+
 ## Learner interface features
 
 Priority: 🟠 Medium
@@ -218,13 +225,12 @@ Test out of sections, revise with spaced repetition and flashcards, and watch ac
 ![Learner interface features](roadmap_diagrams/learner-interface-features.svg)
 
 **Notes**
-- Order is set by dependencies only. `learner-interface-features-2-test-out` and `learner-interface-features-3-revision-questions` run in parallel. `learner-interface-features-5-protected-video` can start any time.
-- Collision: `learner-interface-features-2-test-out` adds a new kind of completion, and `learner-interface-features-3-revision-questions` adds a section's questions to the bank when the section completes. Whichever lands second makes test-out completion count.
+- Order is set by dependencies only. `learner-interface-features-2-test-out` and `learner-interface-features-5-protected-video` can start any time.
+- `learner-interface-features-2-test-out` adds a section's questions to the revision bank when it is tested out, as completing the section does.
 - Decided: design questions (what a section is, the pretest's shape, the scheduler, the video host) are settled in each spec's own research, not in the cut. Flashcards are their own spec.
 - Assumed: the `youtube` component stays as it is beside protected video.
 - Open questions:
   - the pretest's shape, how a skip is recorded and reported, renewal registrations, and the "recertification not planned" lines here and in `docs/product/roadmap.md` (`learner-interface-features-2-test-out`);
-  - scheduler, explanations, and history when an author edits a question (`learner-interface-features-3-revision-questions`);
   - video host and build or buy (`learner-interface-features-5-protected-video`).
 - Out of scope: the other features in section 4 of `research_learner_features.md`.
 - References: `research_learner_features.md` and `research_question_model.md` in the parent.
@@ -335,6 +341,46 @@ Where signups come from, and what visitors are told about tracking.
 - `referral-tracking-external-referer-first-touch` must agree with the existing attribution touch list.
 - The `referral-tracking-*` specs and `landing-page-component-kit` are pull-ins from First-Class-LMS. `landing-page-component-kit` first needs a decision on whether FLS owns marketing pages.
 
+## Tooling and operations
+
+Priority: 🟠 Medium
+
+Developer tooling, deployment and downstream fixes.
+
+- `from-address-system-check` — **ready** — A `mail` system check warns when the email backend really delivers but `DEFAULT_FROM_EMAIL` is blank.
+- `housekeeping-sentry-cron-checkin` — **ready** — When a monitor slug is configured, `fls_run_housekeeping` checks in with Sentry Crons.
+- `forced-site-name-for-host-based-site-lookup` — **ready** — `FORCE_SITE_NAME` reaches host-based site lookup in development, so every dev port works.
+- `audit-log-describe-test-flake` — **ready** — Find and fix why the audit-log describe test fails in loaded full runs but passes alone.
+- `dev-site-bootstrap-command` — **ready** — A development command that creates the forced-name dev Site and a verified dev superuser.
+
+![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
+
+**Notes**
+- `housekeeping-sentry-cron-checkin`, `forced-site-name-for-host-based-site-lookup` and `dev-site-bootstrap-command` are pull-ins from First-Class-LMS.
+
+## Semantic icons extraction
+
+Priority: 🟠 Medium
+
+The icons app becomes an installable package another Django project can use and extend with its own icons. Parent: `extract-semantic-icons-app`.
+
+- `extract-semantic-icons-app-2-host-icons` — **ready** — Host projects add semantic names, point names at their own SVGs, and register whole custom icon sets, all checked at startup.
+- `extract-semantic-icons-app-3-package-and-install` — **blocked** by `extract-semantic-icons-app-2-host-icons`, `extract_panels_framework-5-package-and-install` — The public `django-semantic-icons` repo, tagged `v0.1.0`; FLS and First-Class install it by git tag.
+- `extract-semantic-icons-app-4-claude-plugin` — **blocked** by `extract-semantic-icons-app-3-package-and-install`, `extract_panels_framework-6-claude-plugin` — A generic `semantic-icons` Claude Code plugin and host doc in the package repo; `fls-dev:icon-usage` keeps only FLS specifics.
+
+![Semantic icons extraction](roadmap_diagrams/semantic-icons-extraction.svg)
+
+**Notes**
+- Strictly sequential: each spec builds on the one before.
+- Decided: the package ships all 63 current semantic names, FLS-domain ones included. Host-added names layer on top; host settings win over app registrations, which win over built-ins.
+- Decided: "custom icons" means remapping within the active set, pointing a name at the host's own SVG file, and registering a whole custom icon set.
+- Assumed: distribution copies the panel framework: public repo owned by Prelude Technologies beside it in `django_apps/`, all rights reserved until a licence is chosen, no outside contributions, released by git tag, pinned with a PEP 508 git URL, `CHANGELOG.md` with upgrade flags.
+- Assumed: icon data ships as a generated subset of the four Iconify sets, each with its own licence notice; an optional setting points at a full `@iconify-json` directory for glyphs outside it.
+- Assumed: settings move to `SEMANTIC_ICONS_*`; the old `FREEDOM_LS_ICON_*` names keep working with a deprecation warning for one tag. Import name and app label become `semantic_icons`; `<c-icon>` and its arguments do not change, so no template edits.
+- Assumed: the panel framework package does not depend on this one; FLS meets the panel framework's icon host contract through it.
+- Out of scope: changing how templates call `<c-icon>`, new icon sets beyond the four, an icon picker UI.
+- References: `research_coupling_audit.md` in the parent; the extract_panels_framework research files for packaging.
+
 ## Registration rules
 
 Priority: 🟡 Low
@@ -419,60 +465,8 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 **Notes**
 - Decided: deactivate, never delete. Admins grant only their own level and below, inside their own scope. Only `site_admin` grants `site_admin`.
 - `admin-dashboard-signal-cards` and `staff-person-profile-by-email` are pull-ins from First-Class-LMS; `staff-person-profile-by-email` must settle its app and access first.
-- Collision: `audit-log-coverage-gaps` logs Django admin edits, which `remove-unnecessary-admin-panel-functionality` shrinks; whichever runs second checks the other's scope.
 - Access rules: anything outside the user's scope returns 404. An action the user has lost permission for returns 403 with a message. Controls the user can't use are hidden. No new dependencies.
 - `educator-interface-page-polish` and `educator-interface-staff-invitations-and-cohort-staff` run in parallel now; `educator-interface-data-table-columns-and-filters` and `educator-interface-contextual-help` wait for the panel framework package and land in it.
 - Collision: `educator-interface-page-polish` and `educator-interface-message-from-anywhere` both change the learner quick view and learner page; whichever lands second rebases.
 - Designs needed before `/sdd:spec_from_idea`: every polish, columns, help, staff and message spec names its screens under Resources.
 - References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`. Polish research: `educator-interface-page-polish/research_comparable_systems.md`.
-
-## Tooling and operations
-
-Priority: 🟡 Low
-
-Developer tooling, deployment and downstream fixes.
-
-- `from-address-system-check` — **ready** — A `mail` system check warns when the email backend really delivers but `DEFAULT_FROM_EMAIL` is blank.
-- `housekeeping-sentry-cron-checkin` — **ready** — When a monitor slug is configured, `fls_run_housekeeping` checks in with Sentry Crons.
-- `forced-site-name-for-host-based-site-lookup` — **ready** — `FORCE_SITE_NAME` reaches host-based site lookup in development, so every dev port works.
-- `audit-log-describe-test-flake` — **ready** — Find and fix why the audit-log describe test fails in loaded full runs but passes alone.
-- `dev-site-bootstrap-command` — **ready** — A development command that creates the forced-name dev Site and a verified dev superuser.
-
-![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
-
-**Notes**
-- `housekeeping-sentry-cron-checkin`, `forced-site-name-for-host-based-site-lookup` and `dev-site-bootstrap-command` are pull-ins from First-Class-LMS.
-
-## Semantic icons extraction
-
-Priority: ⚪ Priority not set
-
-The icons app becomes an installable package another Django project can use and extend with its own icons. Parent: `extract-semantic-icons-app`.
-
-- `extract-semantic-icons-app-2-host-icons` — **ready** — Host projects add semantic names, point names at their own SVGs, and register whole custom icon sets, all checked at startup.
-- `extract-semantic-icons-app-3-package-and-install` — **blocked** by `extract-semantic-icons-app-2-host-icons`, `extract_panels_framework-5-package-and-install` — The public `django-semantic-icons` repo, tagged `v0.1.0`; FLS and First-Class install it by git tag.
-- `extract-semantic-icons-app-4-claude-plugin` — **blocked** by `extract-semantic-icons-app-3-package-and-install`, `extract_panels_framework-6-claude-plugin` — A generic `semantic-icons` Claude Code plugin and host doc in the package repo; `fls-dev:icon-usage` keeps only FLS specifics.
-
-![Semantic icons extraction](roadmap_diagrams/semantic-icons-extraction.svg)
-
-**Notes**
-- Strictly sequential: each spec builds on the one before.
-- Decided: the package ships all 63 current semantic names, FLS-domain ones included. Host-added names layer on top; host settings win over app registrations, which win over built-ins.
-- Decided: "custom icons" means remapping within the active set, pointing a name at the host's own SVG file, and registering a whole custom icon set.
-- Assumed: distribution copies the panel framework: public repo owned by Prelude Technologies beside it in `django_apps/`, all rights reserved until a licence is chosen, no outside contributions, released by git tag, pinned with a PEP 508 git URL, `CHANGELOG.md` with upgrade flags.
-- Assumed: icon data ships as a generated subset of the four Iconify sets, each with its own licence notice; an optional setting points at a full `@iconify-json` directory for glyphs outside it.
-- Assumed: settings move to `SEMANTIC_ICONS_*`; the old `FREEDOM_LS_ICON_*` names keep working with a deprecation warning for one tag. Import name and app label become `semantic_icons`; `<c-icon>` and its arguments do not change, so no template edits.
-- Assumed: the panel framework package does not depend on this one; FLS meets the panel framework's icon host contract through it.
-- Out of scope: changing how templates call `<c-icon>`, new icon sets beyond the four, an icon picker UI.
-- References: `research_coupling_audit.md` in the parent; the extract_panels_framework research files for packaging.
-
-## Panel framework
-
-Priority: ⚪ Priority not set
-
-Gaps in the panel framework's dialogs and responses.
-
-- `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
-- `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
-
-![Panel framework](roadmap_diagrams/panel-framework.svg)
