@@ -26,7 +26,7 @@
 <text x="40.0" y="174.5" fill="#111827">extract_panels_framework-5-</text>
 <text x="40.0" y="189.5" fill="#111827">package-and-install</text>
 <text x="40.0" y="204.5" fill="#6b7280" font-style="italic">Panel framework extraction</text>
-<rect x="24.0" y="280.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="280.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,280.0 H30.0 A6,6 0 0 0 24.0,286.0 V309.0 A6,6 0 0 0 30.0,315.0 H32.0 Z" fill="#facc15"/>
 <text x="40.0" y="302.0" fill="#111827">educator-interface-page-polish</text>
 <rect x="354.0" y="280.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>

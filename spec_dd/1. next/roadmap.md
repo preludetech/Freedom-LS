@@ -15,6 +15,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-2-quiz-declaration` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🟠 Medium · `referral-tracking-marketing-channels` (Referral tracking and marketing)
+- 🟡 Low · `educator-interface-page-polish` (Educator interface)
 - 🟡 Low · `remove-unnecessary-admin-panel-functionality` (Educator interface)
 
 ### Ready to start
@@ -49,7 +50,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🟡 Low · `admin-dashboard-signal-cards` (Educator interface)
 - 🟡 Low · `audit-log-coverage-gaps` (Educator interface)
 - 🟡 Low · `bulk-run-audit-summary` (Educator interface)
-- 🟡 Low · `educator-interface-page-polish` (Educator interface)
 - 🟡 Low · `educator-interface-staff-invitations-and-cohort-staff` (Educator interface)
 - 🟡 Low · `staff-person-profile-by-email` (Educator interface)
 - 🟡 Low · `landing-page-component-kit` (Referral tracking and marketing)
@@ -405,7 +405,7 @@ Priority: 🟡 Low
 
 Org admins manage learners, cohorts, registrations and staff. Parent: `educator-interface-full-polish`.
 
-- `educator-interface-page-polish` — **ready** — Tidier learner course progress, learner email on Settings, dashboard links, locked Cancel during bulk runs, smaller phone buttons.
+- `educator-interface-page-polish` — **in progress** — Tidier learner course progress, learner email on Settings, dashboard links, locked Cancel during bulk runs, smaller phone buttons.
 - `educator-interface-data-table-columns-and-filters` — **blocked** by `extract_panels_framework-5-package-and-install` — Data tables get a show and hide Columns control saved per user, and faster filter controls.
 - `educator-interface-contextual-help` — **blocked** by `extract_panels_framework-5-package-and-install` — A click, tap and keyboard help icon on panels, fields and buttons, with help text for educators.
 - `educator-interface-staff-invitations-and-cohort-staff` — **ready** — Staff page shows pending invitations and resends them; cohorts get a Staff tab anyone seeing the cohort can read.
