@@ -20,7 +20,7 @@ from freedom_ls.form_engine.models import FormStrategy
 
 @pytest.mark.django_db
 def test_a_quiz_with_the_flag_requires_a_declaration_of_a_signed_in_user(
-    mock_site_context,
+    mock_site_context: object,
 ) -> None:
     form = FormFactory(strategy=FormStrategy.QUIZ, requires_declaration=True)
 
@@ -28,21 +28,27 @@ def test_a_quiz_with_the_flag_requires_a_declaration_of_a_signed_in_user(
 
 
 @pytest.mark.django_db
-def test_an_anonymous_user_is_not_asked_for_a_declaration(mock_site_context) -> None:
+def test_an_anonymous_user_is_not_asked_for_a_declaration(
+    mock_site_context: object,
+) -> None:
     form = FormFactory(strategy=FormStrategy.QUIZ, requires_declaration=True)
 
     assert form_requires_declaration(form, AnonymousUser()) is False
 
 
 @pytest.mark.django_db
-def test_a_quiz_without_the_flag_requires_no_declaration(mock_site_context) -> None:
+def test_a_quiz_without_the_flag_requires_no_declaration(
+    mock_site_context: object,
+) -> None:
     form = FormFactory(strategy=FormStrategy.QUIZ, requires_declaration=False)
 
     assert form_requires_declaration(form, UserFactory()) is False
 
 
 @pytest.mark.django_db
-def test_a_form_that_is_not_a_quiz_requires_no_declaration(mock_site_context) -> None:
+def test_a_form_that_is_not_a_quiz_requires_no_declaration(
+    mock_site_context: object,
+) -> None:
     form = FormFactory(
         strategy=FormStrategy.CATEGORY_VALUE_SUM, requires_declaration=True
     )
@@ -52,7 +58,7 @@ def test_a_form_that_is_not_a_quiz_requires_no_declaration(mock_site_context) ->
 
 @pytest.mark.django_db
 def test_an_unsigned_sitting_of_a_declaration_quiz_needs_its_declaration(
-    mock_site_context,
+    mock_site_context: object,
 ) -> None:
     form = FormFactory(strategy=FormStrategy.QUIZ, requires_declaration=True)
     sitting = FormProgressFactory(form=form)
@@ -61,7 +67,7 @@ def test_an_unsigned_sitting_of_a_declaration_quiz_needs_its_declaration(
 
 
 @pytest.mark.django_db
-def test_a_signed_sitting_needs_no_declaration(mock_site_context) -> None:
+def test_a_signed_sitting_needs_no_declaration(mock_site_context: object) -> None:
     form = FormFactory(strategy=FormStrategy.QUIZ, requires_declaration=True)
     sitting = FormProgressFactory(form=form)
     FormDeclarationFactory(form_progress=sitting)
@@ -70,7 +76,7 @@ def test_a_signed_sitting_needs_no_declaration(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_an_anonymous_sitting_needs_no_declaration(mock_site_context) -> None:
+def test_an_anonymous_sitting_needs_no_declaration(mock_site_context: object) -> None:
     form = FormFactory(strategy=FormStrategy.QUIZ, requires_declaration=True)
     sitting = FormProgressFactory(form=form, user=None)
 

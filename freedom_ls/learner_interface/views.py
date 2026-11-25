@@ -108,6 +108,7 @@ from freedom_ls.learner_management.queries import (
     own_organisation_for_course,
 )
 from freedom_ls.learner_progress.attempts import (
+    close_left_signed_sitting,
     completed_attempts,
     finalise_stale_incomplete,
     get_latest_incomplete,
@@ -2040,7 +2041,7 @@ def _form_page_redirect(
 
 
 @login_required
-def form_start(request, course_slug, index):
+def form_start(request: HttpRequest, course_slug: str, index: int) -> HttpResponse:
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
@@ -2053,11 +2054,16 @@ def form_start(request, course_slug, index):
     form = cast("Form", collection_item.child)
 
     if form_requires_declaration(form, request.user):
-        open_sitting = get_latest_incomplete(course_progress, collection_item)
+        # A signed sitting the learner left is finalised (submit-on-exit forms
+        # only) and they sign again for the next one. Any other signed sitting is
+        # resumed as it stands: start_attempt here could mint one nobody signed.
+        open_sitting = close_left_signed_sitting(
+            course_progress,
+            collection_item,
+            kept_if_untouched_since=_latest_pause_start(course_progress),
+        )
         if open_sitting is None or sitting_needs_declaration(open_sitting):
             return _declaration_redirect(course_slug, index)
-        # A signed open sitting is resumed as it stands. Calling start_attempt here
-        # could finalise it and mint a new sitting that nobody signed.
         form_progress = open_sitting
     else:
         # Finalise a stale incomplete attempt (submit-on-exit forms only), then resume
@@ -2084,7 +2090,12 @@ def form_declaration(
     # The gate redirects when there is no record, so none is left here.
     course_progress = cast("CourseProgress", gate.course_progress)
     form = cast("Form", collection_item.child)
-    if not form_requires_declaration(form, request.user):
+    open_sitting = get_latest_incomplete(course_progress, collection_item)
+    if not form_requires_declaration(form, request.user) or (
+        # Signed already: form_start decides whether it resumes or is finalised,
+        # so a second signature never ends the attempt in progress.
+        open_sitting is not None and not sitting_needs_declaration(open_sitting)
+    ):
         return redirect(
             "learner_interface:form_start", course_slug=course_slug, index=index
         )

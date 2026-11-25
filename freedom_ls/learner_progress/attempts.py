@@ -137,6 +137,50 @@ def finalise_stale_incomplete(
     return incomplete
 
 
+def _kept_open(open_sitting: FormProgress, *, signing: bool) -> bool:
+    """Whether a new start should carry on with this open sitting rather than
+    finalise it: it is unanswered and either a double start or, when the
+    learner is signing, not yet signed."""
+    if open_sitting.answers.exists():
+        return False
+    if open_sitting.start_time >= timezone.now() - START_REUSE_WINDOW:
+        return True
+    # Nothing is served for an unsigned sitting until it is signed, so the
+    # learner never left it; finalising it would leave an attempt with no
+    # declaration.
+    return (
+        signing
+        and not FormDeclaration.objects.filter(form_progress=open_sitting).exists()
+    )
+
+
+def close_left_signed_sitting(
+    course_progress: CourseProgress,
+    collection_item: ContentCollectionItem,
+    *,
+    kept_if_untouched_since: datetime | None = None,
+) -> FormProgress | None:
+    """The open sitting a declaration quiz should resume, after finalising one
+    the learner left (submit-on-exit forms only).
+
+    The counterpart of `start_attempt` for a start that signs nothing: it
+    decides under the same lock, and by the same rules, whether the open
+    sitting carries on. An unsigned sitting is never finalised here, since the
+    learner is sent to sign it. Returns None when no sitting is left open.
+    """
+    with transaction.atomic():
+        CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
+        open_sitting = get_latest_incomplete(course_progress, collection_item)
+        if open_sitting is None or _kept_open(open_sitting, signing=True):
+            return open_sitting
+        finalised = finalise_stale_incomplete(
+            course_progress,
+            collection_item,
+            kept_if_untouched_since=kept_if_untouched_since,
+        )
+        return None if finalised is not None else open_sitting
+
+
 def start_attempt(
     course_progress: CourseProgress,
     collection_item: ContentCollectionItem,
@@ -160,21 +204,8 @@ def start_attempt(
     with transaction.atomic():
         CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
         open_sitting = get_latest_incomplete(course_progress, collection_item)
-        reusable = (
-            open_sitting is not None
-            and not open_sitting.answers.exists()
-            and (
-                open_sitting.start_time >= timezone.now() - START_REUSE_WINDOW
-                # Nothing is served for an unsigned sitting until it is signed,
-                # so the learner never left it; finalising it would leave an
-                # attempt with no declaration.
-                or (
-                    declaration is not None
-                    and not FormDeclaration.objects.filter(
-                        form_progress=open_sitting
-                    ).exists()
-                )
-            )
+        reusable = open_sitting is not None and _kept_open(
+            open_sitting, signing=declaration is not None
         )
         if not reusable:
             finalise_stale_incomplete(

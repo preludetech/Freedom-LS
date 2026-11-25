@@ -2,7 +2,7 @@ import contextlib
 
 from guardian.admin import GuardedModelAdmin
 from import_export.admin import ExportActionMixin
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from unfold.contrib.import_export.forms import ExportForm
 
 from django.contrib import admin
@@ -130,3 +130,20 @@ def admin_change_link(
         url,
         text,
     )
+
+
+class ReadOnlyInline(TabularInline):
+    """A record's rows that only a service writes, so the inline offers no add, change or
+    delete."""
+
+    exclude = ["site"]
+    extra = 0
+
+    def has_add_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
+        return False

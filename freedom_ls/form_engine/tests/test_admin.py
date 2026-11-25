@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
 import pytest
 
 from django.contrib import admin
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
+from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
@@ -761,7 +763,7 @@ def test_an_ungated_form_content_block_has_no_condition(mock_site_context) -> No
 
 
 @pytest.mark.django_db
-def test_the_change_page_shows_the_declaration_read_only(staff_client) -> None:
+def test_the_change_page_shows_the_declaration_read_only(staff_client: Client) -> None:
     progress = FormProgressFactory()
     FormDeclarationFactory(
         form_progress=progress,
@@ -782,7 +784,9 @@ def test_the_change_page_shows_the_declaration_read_only(staff_client) -> None:
 
 
 @pytest.fixture
-def deleter_client(mock_site_context, logged_in_client):
+def deleter_client(
+    mock_site_context: object, logged_in_client: Callable[[User], Client]
+) -> Client:
     """Staff holding only the delete permissions for users and sittings."""
     deleter = UserFactory(is_staff=True, is_superuser=False)
     deleter.user_permissions.set(
@@ -799,7 +803,9 @@ def deleter_client(mock_site_context, logged_in_client):
 
 
 @pytest.mark.django_db
-def test_deleting_a_signed_sitting_deletes_its_declaration(deleter_client) -> None:
+def test_deleting_a_signed_sitting_deletes_its_declaration(
+    deleter_client: Client,
+) -> None:
     declaration = FormDeclarationFactory()
     url = reverse(
         "admin:freedom_ls_form_engine_formprogress_delete",
@@ -818,7 +824,7 @@ def test_deleting_a_signed_sitting_deletes_its_declaration(deleter_client) -> No
 
 @pytest.mark.django_db
 def test_deleting_a_user_with_a_signed_sitting_deletes_the_declaration(
-    deleter_client,
+    deleter_client: Client,
 ) -> None:
     declaration = FormDeclarationFactory()
     user = declaration.form_progress.user

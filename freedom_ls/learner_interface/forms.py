@@ -43,5 +43,8 @@ class FormDeclarationForm(forms.Form):
         return value
 
     def declaration_changed(self) -> bool:
-        """Whether the text on the page changed since the learner loaded it."""
-        return self.has_error("text_hash", code="stale")
+        """Whether the text on the page changed since the learner loaded it.
+
+        A missing hash counts too: the learner can't be shown to have read the
+        current text, and the page re-renders with the right one."""
+        return self.has_error("text_hash")

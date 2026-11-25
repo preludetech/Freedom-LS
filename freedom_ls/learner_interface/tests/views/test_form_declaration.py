@@ -9,6 +9,7 @@ from typing import cast
 import lxml.html
 import pytest
 import time_machine
+from pytest_django.fixtures import SettingsWrapper
 
 from django.http import HttpResponse
 from django.test import Client
@@ -31,6 +32,7 @@ from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
@@ -131,8 +133,8 @@ def _sittings() -> tuple[int, int, int]:
 
 @pytest.mark.django_db
 def test_form_start_on_a_declaration_quiz_with_no_open_sitting_redirects_to_the_declaration_and_writes_nothing(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, _form, _user = declaration_course
 
     response = client.get(_start_url(course))
@@ -142,7 +144,9 @@ def test_form_start_on_a_declaration_quiz_with_no_open_sitting_redirects_to_the_
 
 
 @pytest.mark.django_db
-def test_form_start_resumes_a_signed_open_sitting(declaration_course, client):
+def test_form_start_resumes_a_signed_open_sitting(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, user = declaration_course
     sitting = form_attempt(course, user, form)
     FormDeclarationFactory(form_progress=sitting)
@@ -155,8 +159,8 @@ def test_form_start_resumes_a_signed_open_sitting(declaration_course, client):
 
 @pytest.mark.django_db
 def test_form_start_redirects_an_unsigned_open_sitting_to_the_declaration(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, user = declaration_course
     sitting = form_attempt(course, user, form)
 
@@ -167,10 +171,11 @@ def test_form_start_redirects_an_unsigned_open_sitting_to_the_declaration(
     assert sitting.completed_time is None
 
 
-@pytest.mark.django_db
-def test_form_start_neither_finalises_nor_replaces_a_signed_idle_submit_on_exit_sitting(
-    mock_site_context, client
-):
+def _signed_submit_on_exit_sitting(
+    client: Client, *, answered: bool = True
+) -> tuple[Course, FormProgress]:
+    """A logged-in learner's signed sitting at a submit-on-exit declaration quiz,
+    started longer ago than a double start."""
     user = UserFactory()
     form = _declaration_quiz(submit_on_exit=True)
     course = course_with_form(form)
@@ -178,21 +183,81 @@ def test_form_start_neither_finalises_nor_replaces_a_signed_idle_submit_on_exit_
     client.force_login(user)
     sitting = form_attempt(course, user, form)
     FormDeclarationFactory(form_progress=sitting)
+    if answered:
+        QuestionAnswerFactory(
+            form_progress=sitting,
+            question=FormQuestion.objects.get(form_page__form=form),
+        )
     FormProgress.objects.filter(pk=sitting.pk).update(
         start_time=timezone.now() - START_REUSE_WINDOW - timedelta(seconds=1)
     )
+    return course, sitting
 
-    client.get(_start_url(course))
 
+@pytest.mark.django_db
+def test_form_start_submits_a_signed_submit_on_exit_sitting_the_learner_left(
+    mock_site_context: object, client: Client
+) -> None:
+    course, sitting = _signed_submit_on_exit_sitting(client)
+
+    response = client.get(_start_url(course))
+
+    assert _location(response) == _declaration_url(course)
     sitting.refresh_from_db()
-    assert sitting.completed_time is None
+    assert sitting.completed_time is not None
     assert FormProgress.objects.count() == 1
 
 
 @pytest.mark.django_db
+def test_form_start_resumes_a_signed_submit_on_exit_sitting_on_a_double_start(
+    mock_site_context: object, client: Client
+) -> None:
+    course, sitting = _signed_submit_on_exit_sitting(client, answered=False)
+    FormProgress.objects.filter(pk=sitting.pk).update(start_time=timezone.now())
+
+    response = client.get(_start_url(course))
+
+    assert _location(response) == _page_one_url(course)
+    sitting.refresh_from_db()
+    assert sitting.completed_time is None
+
+
+@pytest.mark.django_db
+def test_form_start_keeps_a_signed_submit_on_exit_sitting_interrupted_by_a_pause(
+    mock_site_context: object, client: Client
+) -> None:
+    course, sitting = _signed_submit_on_exit_sitting(client)
+    record = course_progress_record(course, cast("User", sitting.user))
+    CoursePauseFactory(course_progress=record, started_at=timezone.now())
+    resume_course(record, actor=None, reason="Back")
+
+    response = client.get(_start_url(course))
+
+    assert _location(response) == _page_one_url(course)
+    sitting.refresh_from_db()
+    assert sitting.completed_time is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_the_declaration_page_sends_a_signed_open_sitting_to_form_start(
+    mock_site_context: object, client: Client, method: str
+) -> None:
+    course, sitting = _signed_submit_on_exit_sitting(client)
+    form = cast("Form", sitting.form)
+
+    response = getattr(client, method)(_declaration_url(course), _signature(form))
+
+    assert _location(response) == _start_url(course)
+    sitting.refresh_from_db()
+    assert sitting.completed_time is None
+    assert _sittings() == (1, 1, 1)
+
+
+@pytest.mark.django_db
 def test_form_start_on_a_quiz_without_the_flag_starts_a_sitting_as_before(
-    mock_site_context, client
-):
+    mock_site_context: object, client: Client
+) -> None:
     user = UserFactory()
     form = _declaration_quiz()
     form.requires_declaration = False
@@ -208,7 +273,9 @@ def test_form_start_on_a_quiz_without_the_flag_starts_a_sitting_as_before(
 
 
 @pytest.mark.django_db
-def test_form_start_on_a_survey_starts_a_sitting_as_before(mock_site_context, client):
+def test_form_start_on_a_survey_starts_a_sitting_as_before(
+    mock_site_context: object, client: Client
+) -> None:
     user = UserFactory()
     form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
     FormPageFactory(form=form, order=0)
@@ -223,7 +290,9 @@ def test_form_start_on_a_survey_starts_a_sitting_as_before(mock_site_context, cl
 
 
 @pytest.mark.django_db
-def test_the_page_shows_the_effective_declaration_text(declaration_course, client):
+def test_the_page_shows_the_effective_declaration_text(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, _user = declaration_course
 
     response = client.get(_declaration_url(course))
@@ -234,7 +303,9 @@ def test_the_page_shows_the_effective_declaration_text(declaration_course, clien
 
 
 @pytest.mark.django_db
-def test_the_declaration_paragraphs_are_spaced_apart(mock_site_context, client):
+def test_the_declaration_paragraphs_are_spaced_apart(
+    mock_site_context: object, client: Client
+) -> None:
     """Paragraphs of the declaration text had no gap between them and read as one block."""
     user = UserFactory()
     form = _declaration_quiz(declaration_text="First paragraph.\n\nSecond paragraph.")
@@ -251,7 +322,9 @@ def test_the_declaration_paragraphs_are_spaced_apart(mock_site_context, client):
 
 
 @pytest.mark.django_db
-def test_the_back_link_sits_at_the_left_not_centred(declaration_course, client):
+def test_the_back_link_sits_at_the_left_not_centred(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     """The back link inherited the column's text-centre and rendered centred above the heading."""
     course, _form, _user = declaration_course
 
@@ -264,7 +337,9 @@ def test_the_back_link_sits_at_the_left_not_centred(declaration_course, client):
 
 
 @pytest.mark.django_db
-def test_the_declaration_footer_has_no_previous_button(declaration_course, client):
+def test_the_declaration_footer_has_no_previous_button(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     """The footer repeated the back link as a Previous button; the back link is the only way back."""
     course, _form, _user = declaration_course
 
@@ -276,7 +351,9 @@ def test_the_declaration_footer_has_no_previous_button(declaration_course, clien
 
 
 @pytest.mark.django_db
-def test_the_page_escapes_the_authors_declaration_text(mock_site_context, client):
+def test_the_page_escapes_the_authors_declaration_text(
+    mock_site_context: object, client: Client
+) -> None:
     user = UserFactory()
     form = _declaration_quiz(declaration_text="Honest <script>alert(1)</script> work.")
     course = course_with_form(form)
@@ -293,8 +370,8 @@ def test_the_page_escapes_the_authors_declaration_text(mock_site_context, client
 
 @pytest.mark.django_db
 def test_the_page_offers_an_empty_name_field_that_asks_the_browser_for_a_name(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, _form, _user = declaration_course
 
     response = client.get(_declaration_url(course))
@@ -306,7 +383,9 @@ def test_the_page_offers_an_empty_name_field_that_asks_the_browser_for_a_name(
 
 
 @pytest.mark.django_db
-def test_the_page_carries_the_hash_of_the_text_it_shows(declaration_course, client):
+def test_the_page_carries_the_hash_of_the_text_it_shows(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, _user = declaration_course
 
     response = client.get(_declaration_url(course))
@@ -320,8 +399,8 @@ def test_the_page_carries_the_hash_of_the_text_it_shows(declaration_course, clie
 
 @pytest.mark.django_db
 def test_a_valid_signature_stores_the_declaration_as_rendered_and_opens_page_one(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, user = declaration_course
 
     response = client.post(
@@ -340,7 +419,9 @@ def test_a_valid_signature_stores_the_declaration_as_rendered_and_opens_page_one
 
 
 @pytest.mark.django_db
-def test_a_valid_signature_writes_the_served_paper(declaration_course, client):
+def test_a_valid_signature_writes_the_served_paper(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, _user = declaration_course
 
     client.post(_declaration_url(course), _signature(form))
@@ -350,8 +431,8 @@ def test_a_valid_signature_writes_the_served_paper(declaration_course, client):
 
 @pytest.mark.django_db
 def test_a_repeated_post_of_one_signature_stores_one_declaration(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, _user = declaration_course
 
     client.post(_declaration_url(course), _signature(form))
@@ -362,8 +443,8 @@ def test_a_repeated_post_of_one_signature_stores_one_declaration(
 
 @pytest.mark.django_db
 def test_try_again_after_a_completed_attempt_asks_for_a_second_signature(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, user = declaration_course
     client.post(_declaration_url(course), _signature(form))
     first = FormProgress.objects.get()
@@ -384,8 +465,8 @@ def test_try_again_after_a_completed_attempt_asks_for_a_second_signature(
 
 @pytest.mark.django_db
 def test_a_paused_submit_on_exit_sitting_signed_through_the_declaration_is_kept(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     user = UserFactory()
     course = CourseFactory()
     course.items.create(child=TopicFactory(), order=0)
@@ -413,8 +494,10 @@ def test_a_paused_submit_on_exit_sitting_signed_through_the_declaration_is_kept(
 
 @pytest.mark.django_db
 def test_a_missing_trusted_proxy_header_refuses_the_signature_and_writes_nothing(
-    declaration_course, client, settings
-):
+    declaration_course: tuple[Course, Form, User],
+    client: Client,
+    settings: SettingsWrapper,
+) -> None:
     course, form, _user = declaration_course
     settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
 
@@ -427,8 +510,8 @@ def test_a_missing_trusted_proxy_header_refuses_the_signature_and_writes_nothing
 @pytest.mark.django_db
 @pytest.mark.parametrize("method", ["get", "post"])
 def test_a_blocked_item_is_redirected_as_form_start_redirects_it(
-    mock_site_context, client, method
-):
+    mock_site_context: object, client: Client, method: str
+) -> None:
     user = UserFactory()
     course = CourseFactory()
     course.items.create(child=TopicFactory(), order=0)
@@ -448,8 +531,8 @@ def test_a_blocked_item_is_redirected_as_form_start_redirects_it(
 @pytest.mark.parametrize("method", ["get", "post"])
 @time_machine.travel(AFTER_CLOSE, tick=False)
 def test_a_closed_item_is_redirected_as_form_start_redirects_it(
-    mock_site_context, client, method
-):
+    mock_site_context: object, client: Client, method: str
+) -> None:
     user = UserFactory()
     form = _declaration_quiz()
     course = course_with_form(form)
@@ -468,8 +551,8 @@ def test_a_closed_item_is_redirected_as_form_start_redirects_it(
 @pytest.mark.django_db
 @pytest.mark.parametrize("method", ["get", "post"])
 def test_a_learner_without_access_is_redirected_as_form_start_redirects_them(
-    mock_site_context, client, method
-):
+    mock_site_context: object, client: Client, method: str
+) -> None:
     form = _declaration_quiz()
     course = course_with_form(form)
     client.force_login(UserFactory())
@@ -482,7 +565,9 @@ def test_a_learner_without_access_is_redirected_as_form_start_redirects_them(
 
 
 @pytest.mark.django_db
-def test_a_quiz_without_the_flag_redirects_to_form_start(mock_site_context, client):
+def test_a_quiz_without_the_flag_redirects_to_form_start(
+    mock_site_context: object, client: Client
+) -> None:
     user = UserFactory()
     form = _declaration_quiz()
     form.requires_declaration = False
@@ -497,7 +582,9 @@ def test_a_quiz_without_the_flag_redirects_to_form_start(mock_site_context, clie
 
 
 @pytest.mark.django_db
-def test_a_survey_redirects_to_form_start(mock_site_context, client):
+def test_a_survey_redirects_to_form_start(
+    mock_site_context: object, client: Client
+) -> None:
     user = UserFactory()
     form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
     course = course_with_form(form)
@@ -530,8 +617,10 @@ def _rejected_page(
     ],
 )
 def test_a_rejected_signature_returns_422_and_stores_nothing(
-    declaration_course, client, overrides
-):
+    declaration_course: tuple[Course, Form, User],
+    client: Client,
+    overrides: dict[str, str],
+) -> None:
     status, _document = _rejected_page(declaration_course, client, **overrides)
 
     assert status == 422
@@ -555,8 +644,12 @@ def test_a_rejected_signature_returns_422_and_stores_nothing(
     ],
 )
 def test_a_field_error_is_linked_to_its_input_and_takes_focus(
-    declaration_course, client, overrides, field_id, error_id
-):
+    declaration_course: tuple[Course, Form, User],
+    client: Client,
+    overrides: dict[str, str],
+    field_id: str,
+    error_id: str,
+) -> None:
     _response, document = _rejected_page(declaration_course, client, **overrides)
 
     [error] = document.xpath(f'//*[@id="{error_id}"]')
@@ -569,8 +662,8 @@ def test_a_field_error_is_linked_to_its_input_and_takes_focus(
 
 @pytest.mark.django_db
 def test_the_unticked_box_error_shares_a_group_with_its_tick_box(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     """The error used to be a separate form child, so a full section gap opened
     between the tick box and its error."""
     _response, document = _rejected_page(declaration_course, client, agreed="")
@@ -583,7 +676,9 @@ def test_the_unticked_box_error_shares_a_group_with_its_tick_box(
 
 
 @pytest.mark.django_db
-def test_the_first_field_in_error_alone_takes_focus(declaration_course, client):
+def test_the_first_field_in_error_alone_takes_focus(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     _response, document = _rejected_page(
         declaration_course, client, agreed="", typed_name=""
     )
@@ -593,7 +688,9 @@ def test_the_first_field_in_error_alone_takes_focus(declaration_course, client):
 
 
 @pytest.mark.django_db
-def test_a_rejected_box_keeps_the_typed_name(declaration_course, client):
+def test_a_rejected_box_keeps_the_typed_name(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     _response, document = _rejected_page(declaration_course, client, agreed="")
 
     [name] = document.xpath('//*[@id="id_typed_name"]')
@@ -601,7 +698,9 @@ def test_a_rejected_box_keeps_the_typed_name(declaration_course, client):
 
 
 @pytest.mark.django_db
-def test_a_rejected_name_keeps_the_box_ticked(declaration_course, client):
+def test_a_rejected_name_keeps_the_box_ticked(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     _response, document = _rejected_page(declaration_course, client, typed_name=" ")
 
     [box] = document.xpath('//*[@id="id_agreed"]')
@@ -610,8 +709,8 @@ def test_a_rejected_name_keeps_the_box_ticked(declaration_course, client):
 
 @pytest.mark.django_db
 def test_a_stale_text_hash_explains_the_change_and_clears_both_fields(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     _course, form, _user = declaration_course
 
     _response, document = _rejected_page(declaration_course, client, text_hash="stale")
@@ -628,7 +727,29 @@ def test_a_stale_text_hash_explains_the_change_and_clears_both_fields(
 
 
 @pytest.mark.django_db
-def test_a_field_error_shows_no_changed_callout(declaration_course, client):
+def test_a_signature_without_a_text_hash_is_treated_as_a_changed_declaration(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
+    course, form, _user = declaration_course
+    signature = _signature(form)
+    del signature["text_hash"]
+
+    response = client.post(_declaration_url(course), signature)
+
+    assert response.status_code == 422
+    document = lxml.html.fromstring(response.content)
+    assert document.xpath('//*[@data-testid="declaration-changed"]')
+    [hidden] = document.xpath('//input[@name="text_hash"]')
+    assert hidden.get("value") == declaration_text_hash(
+        form.effective_declaration_text()
+    )
+    assert _sittings() == (0, 0, 0)
+
+
+@pytest.mark.django_db
+def test_a_field_error_shows_no_changed_callout(
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     _response, document = _rejected_page(declaration_course, client, agreed="")
 
     assert not document.xpath('//*[@data-testid="declaration-changed"]')
@@ -648,8 +769,8 @@ def _answer_post(form: Form) -> dict[str, str]:
 
 @pytest.mark.django_db
 def test_form_fill_page_get_sends_an_unsigned_sitting_to_the_declaration_and_writes_nothing(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, user = declaration_course
     sitting = form_attempt(course, user, form)
 
@@ -663,8 +784,8 @@ def test_form_fill_page_get_sends_an_unsigned_sitting_to_the_declaration_and_wri
 
 @pytest.mark.django_db
 def test_form_fill_page_post_on_an_unsigned_sitting_saves_no_answers(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, user = declaration_course
     sitting = form_attempt(course, user, form)
 
@@ -679,8 +800,8 @@ def test_form_fill_page_post_on_an_unsigned_sitting_saves_no_answers(
 
 @pytest.mark.django_db
 def test_form_submit_and_exit_sends_an_unsigned_sitting_to_the_declaration(
-    mock_site_context, client
-):
+    mock_site_context: object, client: Client
+) -> None:
     user = UserFactory()
     form = _declaration_quiz(submit_on_exit=True)
     course = course_with_form(form)
@@ -699,8 +820,8 @@ def test_form_submit_and_exit_sends_an_unsigned_sitting_to_the_declaration(
 @pytest.mark.django_db
 @time_machine.travel(AFTER_CLOSE, tick=False)
 def test_form_submit_and_exit_finalises_an_unsigned_sitting_of_a_closed_quiz(
-    mock_site_context, client
-):
+    mock_site_context: object, client: Client
+) -> None:
     user = UserFactory()
     form = _declaration_quiz(submit_on_exit=True)
     course = course_with_form(form)
@@ -720,8 +841,8 @@ def test_form_submit_and_exit_finalises_an_unsigned_sitting_of_a_closed_quiz(
 @pytest.mark.django_db
 @time_machine.travel(datetime(2026, 9, 1, 10, 0, tzinfo=UTC), tick=False)
 def test_form_submit_and_exit_finalises_an_unsigned_sitting_after_access_ended(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     user = UserFactory()
     course = CourseFactory(time_limit_days=30)
     form = _declaration_quiz(submit_on_exit=True)
@@ -743,8 +864,8 @@ def test_form_submit_and_exit_finalises_an_unsigned_sitting_after_access_ended(
 
 @pytest.mark.django_db
 def test_signing_from_continue_form_keeps_the_unsigned_sitting(
-    declaration_course, client
-):
+    declaration_course: tuple[Course, Form, User], client: Client
+) -> None:
     course, form, user = declaration_course
     sitting = form_attempt(course, user, form)
     start_time = sitting.start_time
@@ -758,7 +879,9 @@ def test_signing_from_continue_form_keeps_the_unsigned_sitting(
 
 
 @pytest.mark.django_db
-def test_a_signed_sitting_goes_through_both_routes(mock_site_context, client):
+def test_a_signed_sitting_goes_through_both_routes(
+    mock_site_context: object, client: Client
+) -> None:
     user = UserFactory()
     form = _declaration_quiz(submit_on_exit=True)
     course = course_with_form(form)

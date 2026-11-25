@@ -44,7 +44,7 @@ pytestmark = pytest.mark.dev_tooling
 
 
 @pytest.fixture
-def qa_site(mock_site_context) -> Site:
+def qa_site(mock_site_context: object) -> Site:
     site: Site = Site.objects.get_current()
     site.name = "DemoDev"
     site.save()
@@ -97,7 +97,9 @@ def _run() -> None:
 
 
 @pytest.mark.django_db
-def test_rerun_resets_scenario_sittings_and_spares_other_learners(qa_site):
+def test_rerun_resets_scenario_sittings_and_spares_other_learners(
+    qa_site: Site,
+) -> None:
     course = _course()
     bystander = cast(CourseProgress, CourseProgressFactory(course=course))
     own_quiz = Form.objects.get(title=OWN_DECLARATION_QUIZ)

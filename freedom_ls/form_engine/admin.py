@@ -1,4 +1,3 @@
-from unfold.admin import TabularInline
 from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.apps import apps
@@ -10,7 +9,11 @@ from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_change_link
+from freedom_ls.site_aware_models.admin import (
+    ReadOnlyInline,
+    SiteAwareModelAdmin,
+    admin_change_link,
+)
 from freedom_ls.site_aware_models.admin_filters import (
     CompletionListFilter,
     InclusiveRangeDateTimeFilter,
@@ -318,7 +321,7 @@ class FormProgressCompletionFilter(CompletionListFilter):
     completion_field = "completed_time"
 
 
-class FormDeclarationInline(TabularInline):
+class FormDeclarationInline(ReadOnlyInline):
     """Read-only display of the declaration signed for a sitting.
 
     The declaration has no admin of its own, so deleting a sitting or its user
@@ -326,26 +329,9 @@ class FormDeclarationInline(TabularInline):
     """
 
     model = FormDeclaration
-    extra = 0
-    can_delete = False
     _DECLARATION_FIELDS = ("declaration_text", "typed_name", "signed_at", "ip_address")
     fields = _DECLARATION_FIELDS
     readonly_fields = _DECLARATION_FIELDS
-
-    def has_add_permission(
-        self, request: HttpRequest, obj: FormProgress | None = None
-    ) -> bool:
-        return False
-
-    def has_change_permission(
-        self, request: HttpRequest, obj: FormProgress | None = None
-    ) -> bool:
-        return False
-
-    def has_delete_permission(
-        self, request: HttpRequest, obj: FormProgress | None = None
-    ) -> bool:
-        return False
 
 
 @admin.register(FormProgress)

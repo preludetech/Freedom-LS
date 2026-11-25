@@ -71,7 +71,7 @@ from freedom_ls.deadlines.resolver import (
 from freedom_ls.learner_management.admin import CohortCourseRegistrationAdmin
 from freedom_ls.learner_progress.admin import CourseProgressAdmin
 from freedom_ls.learner_progress.models import CourseProgress
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin import ReadOnlyInline, SiteAwareModelAdmin
 from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -479,23 +479,6 @@ def effective_deadline_policy(
         format_html_join("", "<li>{}: {} ({})</li>", lines),
         ends_line,
     )
-
-
-class ReadOnlyInline(TabularInline):
-    """A record's rows that only a service writes, so the inline offers no add, change or
-    delete."""
-
-    exclude = ["site"]
-    extra = 0
-
-    def has_add_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
-
-    def has_change_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
-
-    def has_delete_permission(self, request: HttpRequest, obj: object = None) -> bool:
-        return False
 
 
 class CoursePauseInline(ReadOnlyInline):

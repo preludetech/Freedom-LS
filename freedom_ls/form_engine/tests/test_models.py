@@ -1000,7 +1000,9 @@ def test_rendered_explanation_renders_markdown(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_effective_declaration_text_is_the_authors_text_when_set(mock_site_context):
+def test_effective_declaration_text_is_the_authors_text_when_set(
+    mock_site_context: object,
+) -> None:
     form = FormFactory(declaration_text="Author wording.")
 
     assert form.effective_declaration_text() == "Author wording."
@@ -1008,8 +1010,8 @@ def test_effective_declaration_text_is_the_authors_text_when_set(mock_site_conte
 
 @pytest.mark.django_db
 def test_effective_declaration_text_is_the_site_default_when_the_author_left_it_empty(
-    mock_site_context,
-):
+    mock_site_context: object,
+) -> None:
     form = FormFactory(declaration_text="")
 
     with override_settings(FORM_DECLARATION_DEFAULT_TEXT="Project wording."):
@@ -1017,7 +1019,7 @@ def test_effective_declaration_text_is_the_site_default_when_the_author_left_it_
 
 
 @pytest.mark.django_db
-def test_saving_a_stored_declaration_again_raises(mock_site_context):
+def test_saving_a_stored_declaration_again_raises(mock_site_context: object) -> None:
     declaration = FormDeclarationFactory()
     declaration.typed_name = "Changed Name"
 
@@ -1026,7 +1028,7 @@ def test_saving_a_stored_declaration_again_raises(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_queryset_update_of_declarations_raises(mock_site_context):
+def test_queryset_update_of_declarations_raises(mock_site_context: object) -> None:
     FormDeclarationFactory()
 
     with pytest.raises(ValueError, match="append-only"):
@@ -1034,7 +1036,7 @@ def test_queryset_update_of_declarations_raises(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_bulk_update_of_declarations_raises(mock_site_context):
+def test_bulk_update_of_declarations_raises(mock_site_context: object) -> None:
     declaration = FormDeclarationFactory()
     declaration.typed_name = "Changed Name"
 
@@ -1043,7 +1045,7 @@ def test_bulk_update_of_declarations_raises(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_declarations_of_another_site_are_not_listed(mock_site_context):
+def test_declarations_of_another_site_are_not_listed(mock_site_context: object) -> None:
     FormDeclarationFactory()
     with site_context(SiteFactory(domain="other.example.com", name="Other")):
         FormDeclarationFactory()
@@ -1052,7 +1054,9 @@ def test_declarations_of_another_site_are_not_listed(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_deleting_the_form_progress_deletes_its_declaration(mock_site_context):
+def test_deleting_the_form_progress_deletes_its_declaration(
+    mock_site_context: object,
+) -> None:
     declaration = FormDeclarationFactory()
 
     declaration.form_progress.delete()
@@ -1061,7 +1065,7 @@ def test_deleting_the_form_progress_deletes_its_declaration(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_deleting_the_user_deletes_the_declaration(mock_site_context):
+def test_deleting_the_user_deletes_the_declaration(mock_site_context: object) -> None:
     declaration = FormDeclarationFactory()
 
     declaration.form_progress.user.delete()
