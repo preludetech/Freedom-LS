@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import html
 import re
 from collections.abc import Callable
 from datetime import timedelta
@@ -24,6 +23,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.panels.dashboard.panels import gathered_figures
 from freedom_ls.educator_interface.tests.helpers import (
     FAILED_QUIZ_REASON,
@@ -230,7 +230,7 @@ def test_the_attention_tile_counts_every_flagged_learner_beyond_the_list_cap(
     document = lxml.html.fromstring(response.content.decode())
     assert ATTENTION_LIST_MAX == 12
     assert _tiles(response)["Learners needing attention"] == "15"
-    assert len(document.xpath("//a[@aria-controls='quick-view']")) == 12
+    assert len(document.xpath("//li/a[@aria-controls='quick-view']")) == 12
     assert "Showing 12 of 15 learners flagged." in response.content.decode()
 
 
@@ -353,7 +353,10 @@ def test_an_over_limit_cohort_is_counted_inline_and_named_in_a_notice(
     assert _tiles(loaded)["Learners needing attention"] == "1"
     assert (
         "Big has 3 learners, over the report's learner limit of 2, so it is not "
-        "included." in html.unescape(loaded.content.decode())
+        "included."
+        in " ".join(
+            lxml.html.fromstring(loaded.content.decode()).text_content().split()
+        )
     )
 
 
@@ -371,7 +374,7 @@ def test_no_figures_date_is_shown_when_every_cohort_is_over_the_limit(
     assert "Figures as of" not in loaded
     assert (
         "Big has 2 learners, over the report's learner limit of 1, so it is not "
-        "included." in html.unescape(loaded)
+        "included." in " ".join(lxml.html.fromstring(loaded).text_content().split())
     )
 
 
@@ -475,8 +478,8 @@ def test_an_attention_row_has_one_learner_link_and_a_named_quick_view_trigger(
     response = _load_region(logged_in_client(user), organisation)
 
     document = lxml.html.fromstring(response.content.decode())
-    (row,) = document.xpath("//li[.//a[@aria-controls='quick-view']]")
-    (button,) = row.xpath(".//a[@aria-controls='quick-view']")
+    (row,) = document.xpath("//li[./a[@aria-controls='quick-view']]")
+    (button,) = row.xpath("./a[@aria-controls='quick-view']")
     assert len(row.xpath(f".//a[@href='{learner_path}'][not(@aria-controls)]")) == 1
     assert button.get("aria-label") == "Quick view: Learner Alpha"
     assert button.get("hx-get") == f"{learner_path}/__quick-view"
@@ -503,9 +506,9 @@ def test_an_attention_row_names_each_flagged_cohorts_active_courses_without_an_i
     response = _load_region(logged_in_client(user), organisation)
 
     document = lxml.html.fromstring(response.content.decode())
-    (row,) = document.xpath("//li[.//a[@aria-controls='quick-view']]")
-    (cohort_item,) = row.xpath(".//li[a[contains(., 'Night class')]]")
-    (cohort_link,) = cohort_item.xpath("./a")
+    (row,) = document.xpath("//li[./a[@aria-controls='quick-view']]")
+    (cohort_item,) = row.xpath(".//li[span/a[contains(., 'Night class')]]")
+    (cohort_link,) = cohort_item.xpath("./span/a[not(@aria-controls)]")
     assert cohort_link.text_content().strip() == "Night class"
     assert "no-underline" in cohort_link.get("class").split()
     (courses_label,) = cohort_item.xpath(".//dt")
@@ -530,7 +533,7 @@ def test_an_attention_rows_cohort_list_shows_no_list_markers(
     response = _load_region(logged_in_client(user), organisation)
 
     document = lxml.html.fromstring(response.content.decode())
-    (cohort_list,) = document.xpath("//li[.//a[@aria-controls='quick-view']]//ul")
+    (cohort_list,) = document.xpath("//li[./a[@aria-controls='quick-view']]//ul")
     assert "list-none" in cohort_list.get("class").split()
 
 
@@ -661,3 +664,130 @@ def test_the_dashboard_prints_the_failed_quiz_reason_not_the_idle_one(
     assert "No recorded activity" in text
     assert IDLE_REASON not in text
     assert FAILED_QUIZ_REASON in text
+
+
+def _interface_path(organisation: Organisation, path_string: str) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
+    )
+
+
+@pytest.mark.django_db
+def test_the_learners_tile_link_is_named_by_what_it_counts(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    _members(_registered_cohort(organisation), ["Alpha", "Bravo"])
+
+    response = logged_in_client(user).get(_dashboard_url(organisation))
+
+    document = lxml.html.fromstring(response.content.decode())
+    (link,) = document.xpath("//a[.//dl[dt='Learners']]")
+    assert link.get("aria-label") == "2 learners"
+    assert link.get("href") == _interface_path(organisation, "learners")
+
+
+@pytest.mark.django_db
+def test_an_attention_rows_cohort_name_is_followed_by_a_quick_view_trigger(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    cohort = _registered_cohort(organisation, name="Night class")
+    _members(cohort, ["Alpha"])
+    cohort_path = _interface_path(organisation, f"cohorts/{cohort.pk}")
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (name_link,) = document.xpath(
+        f"//section[.//h2[normalize-space()='Needs attention']]//a[@href='{cohort_path}'][not(@aria-controls)]"
+    )
+    (trigger,) = name_link.xpath("following-sibling::a[@aria-controls='quick-view']")
+    assert trigger.get("hx-get") == f"{cohort_path}/__quick-view"
+    assert trigger.get("aria-label") == "Quick view: Night class"
+
+
+@pytest.mark.django_db
+def test_a_cohort_progress_row_has_a_quick_view_trigger_for_its_cohort(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    cohort = _registered_cohort(organisation, name="Night class")
+    _members(cohort, ["Alpha"])
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (card,) = document.xpath("//section[.//h2[normalize-space()='Cohort progress']]")
+    (trigger,) = card.xpath(".//a[@aria-controls='quick-view']")
+    assert trigger.get("hx-get") == (
+        f"{_interface_path(organisation, f'cohorts/{cohort.pk}')}/__quick-view"
+    )
+
+
+@pytest.mark.django_db
+def test_a_course_visible_to_the_viewer_is_a_link_to_its_page(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    course = _course_with_topic(title="Hydrology")
+    cohort = CohortFactory(organisation=organisation)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    _members(cohort, ["Alpha"])
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (link,) = document.xpath("//ul//dd/a")
+    assert link.text_content().strip() == "Hydrology"
+    assert link.get("href") == _interface_path(organisation, f"courses/{course.pk}")
+
+
+@pytest.mark.django_db
+def test_a_course_outside_courses_visible_to_is_plain_text(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A registration always makes its course visible, so the stand-in
+    is the only way to put a course outside the set the course page checks."""
+    organisation, user = educator
+    cohort = CohortFactory(organisation=organisation)
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=_course_with_topic(title="Hydrology")
+    )
+    _members(cohort, ["Alpha"])
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.panels.dashboard.panels.courses_visible_to",
+        lambda user, organisation: Course.objects.none(),
+    )
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (courses,) = document.xpath("//ul//dd")
+    assert courses.text_content().strip() == "Hydrology"
+    assert courses.xpath(".//a") == []
+
+
+@pytest.mark.django_db
+@override_settings(REPORTS_MAX_LEARNERS=2)
+def test_the_over_limit_notice_links_the_cohort_name_before_the_reason(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    cohort = _registered_cohort(organisation, name="Big")
+    _members(cohort, ["A", "B", "C"])
+
+    response = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (link,) = document.xpath("//a[normalize-space()='Big'][not(@aria-controls)]")
+    assert link.get("href") == _interface_path(organisation, f"cohorts/{cohort.pk}")
+    assert "has 3 learners" in link.tail

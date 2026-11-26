@@ -25,6 +25,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     cohort_learner_count,
     cohorts_visible_to,
+    courses_visible_to,
 )
 from freedom_ls.panel_framework.lazy_panels import LazyBodyPanel
 from freedom_ls.reports.config import config as reports_config
@@ -33,6 +34,7 @@ from freedom_ls.reports.report_data import (
     AtRiskFlag,
     CohortProgressData,
     over_limit_message,
+    over_limit_reason,
 )
 from freedom_ls.reports.screen_cache import cached_cohort_progress_many
 
@@ -102,6 +104,13 @@ class ExcludedCohort:
     def message(self) -> str:
         return over_limit_message(
             self.cohort.name, self.learner_count, reports_config.REPORTS_MAX_LEARNERS
+        )
+
+    @property
+    def reason(self) -> str:
+        """The message after the cohort's name, for a template that links the name."""
+        return over_limit_reason(
+            self.learner_count, reports_config.REPORTS_MAX_LEARNERS
         )
 
 
@@ -282,9 +291,23 @@ class DashboardPanel(LazyBodyPanel):
         return context
 
     def get_loaded_context(self) -> dict[str, object]:
+        request = cast("OrganisationScopedRequest", self.request)
         figures = gathered_figures(self.visible_cohorts)
+        course_ids = {
+            registration.course_id
+            for row in figures.attention_rows
+            for entry in row.cohorts
+            for registration in entry.cohort.course_registrations.all()
+        }
         return {
             "figures": figures,
+            # The course page 404s for a course outside this set, so a name
+            # outside it stays plain text.
+            "visible_course_ids": set(
+                courses_visible_to(request.user, request.organisation)
+                .filter(pk__in=course_ids)
+                .values_list("pk", flat=True)
+            ),
             "avatars": learner_avatars(
                 row.learner_id for row in figures.attention_rows
             ),

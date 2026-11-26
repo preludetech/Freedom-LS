@@ -24,12 +24,17 @@ CONFUSIONS_PER_QUIZ_MAX = 10
 MIN_RESPONDENTS_FOR_PERCENTAGE = 10
 
 
-def over_limit_message(cohort_name: str, learner_count: int, limit: int) -> str:
-    """Why a cohort has no report figures: it is over the report's learner limit."""
+def over_limit_reason(learner_count: int, limit: int) -> str:
+    """Why a cohort has no report figures, after its name: it is over the learner limit."""
     return (
-        f"{cohort_name} has {learner_count} learners, over the report's "
+        f"has {learner_count} learners, over the report's "
         f"learner limit of {limit}, so it is not included."
     )
+
+
+def over_limit_message(cohort_name: str, learner_count: int, limit: int) -> str:
+    """Why a cohort has no report figures: it is over the report's learner limit."""
+    return f"{cohort_name} {over_limit_reason(learner_count, limit)}"
 
 
 class ReportTooLargeError(PanelBodyTooLargeError):

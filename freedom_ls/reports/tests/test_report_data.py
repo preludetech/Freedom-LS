@@ -11,6 +11,7 @@ from freedom_ls.reports.report_data import (
     QuizAttempt,
     ReportTooLargeError,
     over_limit_message,
+    over_limit_reason,
 )
 
 
@@ -39,3 +40,7 @@ def test_a_quiz_attempt_given_no_completion_reason_reads_as_learner_submitted() 
     )
 
     assert attempt.completion_reason == CompletionReason.LEARNER_SUBMITTED.label
+
+
+def test_the_over_limit_message_is_the_cohort_name_followed_by_the_reason() -> None:
+    assert over_limit_message("Big", 3, 2) == f"Big {over_limit_reason(3, 2)}"
