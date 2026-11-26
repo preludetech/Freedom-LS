@@ -61,10 +61,19 @@ A page fails at a viewport on any of:
 - an HTTP 500 or 404
 - a visible traceback
 - no main navigation region, or no primary content region
-- an error-level console entry
+- an error-level console entry that is not a known vendored console error (below)
 - on the two small viewports only, a navigation that overflows or overlaps the content
 
 Record page, viewport, pass or fail, and a one-line reason. Take no screenshots.
+
+### Known vendored console errors
+
+An entry passes only when its message and its source file both match one row. Any other error on
+the same page still fails it.
+
+| Message contains | Source file ends with | Why it passes |
+|---|---|---|
+| `Permissions policy violation: unload is not allowed` | `admin/js/admin/RelatedObjectLookups.js` | Chromium blocks the deprecated `unload` event; Django's admin script still registers a listener for it. The fix belongs upstream. |
 
 ## Step 4: Fix
 
