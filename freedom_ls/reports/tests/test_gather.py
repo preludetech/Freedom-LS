@@ -10,6 +10,7 @@ import pytest
 import time_machine
 
 from django.contrib.sites.models import Site
+from django.db.models import Prefetch
 from django.test import override_settings
 from django.utils import timezone
 
@@ -85,6 +86,7 @@ from freedom_ls.reports.gather import (
     cohort_figures,
     gather_cohort_progress,
     gather_cohort_report_data,
+    gather_course_details_for_learners,
     gather_learner_course_details,
     score_attempt,
     tally_quiz_answers,
@@ -3129,3 +3131,78 @@ class TestCompletionFiguresSkipRetiredItems:
         completed = _completed_items([gone], LEARNER_ID, progress, frozenset({gone.id}))
 
         assert [(item.title, item.retired) for item in completed] == [("Gone", True)]
+
+
+def _learners_as_the_table_loads_them(learners: list[Learner]) -> list[Learner]:
+    """The learners with the relations the learners table prefetches."""
+    return list(
+        Learner.objects.filter(pk__in=[learner.pk for learner in learners])
+        .prefetch_related(
+            Prefetch(
+                "learnercourseregistration_set",
+                queryset=LearnerCourseRegistration.objects.filter(
+                    is_active=True
+                ).select_related("course"),
+            ),
+            "cohortmembership_set__cohort",
+            Prefetch(
+                "cohortmembership_set__cohort__course_registrations",
+                queryset=CohortCourseRegistration.objects.filter(
+                    is_active=True
+                ).select_related("course"),
+            ),
+            "course_progress_records",
+        )
+        .order_by("pk")
+    )
+
+
+@pytest.mark.django_db
+class TestGatherCourseDetailsForLearners:
+    def test_each_learner_has_one_detail_per_registration(
+        self, mock_site_context: Site
+    ) -> None:
+        course, _topic, _quiz = _quiz_course()
+        cohort_registration, cohort_record = _cohort_member(course)
+        own_registration, _own_record = _own_registration(cohort_record)
+        other_course: Course = CourseFactory(title="Physics")
+        ContentCollectionItemFactory(
+            collection_object=other_course, child_object=TopicFactory(), order=0
+        )
+        other_registration, other_record = _cohort_member(other_course)
+
+        details = gather_course_details_for_learners(
+            _learners_as_the_table_loads_them(
+                [cohort_record.learner, other_record.learner]
+            ),
+            mock_site_context.pk,
+        )
+
+        assert {
+            learner_id: [d.course_title for d in entries]
+            for learner_id, entries in details.items()
+        } == {
+            cohort_record.learner.pk: ["Maths", "Maths"],
+            other_record.learner.pk: ["Physics"],
+        }
+        assert own_registration.learner_id == cohort_record.learner.pk
+        assert cohort_registration.course_id == course.pk
+        assert other_registration.course_id == other_course.pk
+
+    def test_a_course_held_through_a_cohort_and_individually_reads_each_registrations_own_record(
+        self, mock_site_context: Site
+    ) -> None:
+        course, topic, _quiz = _quiz_course()
+        _cohort_registration, cohort_record = _cohort_member(course)
+        _own_registration(cohort_record)
+        topic_progress(cohort_record, topic, complete_time=timezone.now())
+
+        details = gather_course_details_for_learners(
+            _learners_as_the_table_loads_them([cohort_record.learner]),
+            mock_site_context.pk,
+        )
+
+        entries = details[cohort_record.learner.pk]
+        assert sorted(
+            (d.cohort_name is not None, d.completion_percentage) for d in entries
+        ) == [(False, 0), (True, 50)]

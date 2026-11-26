@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 import lxml.html
@@ -25,10 +25,17 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+    TopicFactory,
+)
+from freedom_ls.content_engine.models import Course, Topic
 from freedom_ls.educator_interface.panels.learner.data_tables import (
     LearnerDataTable,
     _last_active_cell,
+    learner_course_cell,
+    learner_course_summaries,
 )
 from freedom_ls.educator_interface.tests.helpers import (
     RoleHolderClient,
@@ -50,8 +57,10 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_progress.factories import CourseProgressFactory
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.reports.tests.helpers import topic_progress
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
@@ -405,21 +414,27 @@ class TestLearnerDataTableQueryCost:
     @staticmethod
     def _seed_learners(organisation: Organisation, count: int) -> None:
         """One learner per iteration, in two cohorts that each register a
-        course, holding two registrations of their own, with a progress record
-        for one -- every cell the prefetches feed."""
+        course, holding two registrations of their own, each course placing topics,
+        with a progress record for one -- every cell the prefetches feed."""
         for _ in range(count):
             learner = LearnerFactory(user=UserFactory(), organisation=organisation)
             for _ in range(2):
                 cohort = _make_cohort(organisation=organisation)
                 CohortMembershipFactory(learner=learner, cohort=cohort)
                 CohortCourseRegistrationFactory(
-                    cohort=cohort, course=CourseFactory(), is_active=True
+                    cohort=cohort,
+                    course=_course_with_topics(f"Course {uuid.uuid4()}", 2)[0],
+                    is_active=True,
                 )
             registration = LearnerCourseRegistrationFactory(
-                learner=learner, course=CourseFactory(), is_active=True
+                learner=learner,
+                course=_course_with_topics(f"Course {uuid.uuid4()}", 2)[0],
+                is_active=True,
             )
             LearnerCourseRegistrationFactory(
-                learner=learner, course=CourseFactory(), is_active=True
+                learner=learner,
+                course=_course_with_topics(f"Course {uuid.uuid4()}", 2)[0],
+                is_active=True,
             )
             CourseProgressFactory(
                 learner=learner,
@@ -704,21 +719,79 @@ def _row_cells(response, header: str):
     return document.cssselect(f"tbody tr td:nth-child({position})")
 
 
+def _course_with_topics(title: str, topic_count: int) -> tuple[Course, list[Topic]]:
+    """A course placing `topic_count` topics, so its completion is recomputed
+    from them."""
+    course: Course = CourseFactory(title=title)
+    topics: list[Topic] = []
+    for order in range(topic_count):
+        topic: Topic = TopicFactory()
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=order
+        )
+        topics.append(topic)
+    return course, topics
+
+
+def _complete_topics(
+    record: CourseProgress,
+    topics: list[Topic],
+    count: int,
+    *,
+    completed_days_ago: int = 0,
+) -> None:
+    for topic in topics[:count]:
+        topic_progress(
+            record,
+            topic,
+            complete_time=timezone.now() - timedelta(days=completed_days_ago),
+        )
+
+
+def _set_last_accessed(record: CourseProgress, days_ago: int) -> None:
+    """Write `last_accessed_time` past its auto_now."""
+    CourseProgress.objects.filter(pk=record.pk).update(
+        last_accessed_time=timezone.now() - timedelta(days=days_ago)
+    )
+
+
+def _course_titles(response) -> list[str]:
+    (cell,) = _row_cells(response, "Courses")
+    return [
+        " ".join(title.text_content().split())
+        for title in cell.cssselect("li span.truncate")
+    ]
+
+
+def _registered_with_progress(
+    learner: Learner,
+    title: str,
+    *,
+    topic_count: int,
+    completed: int,
+    completed_days_ago: int = 0,
+    accessed_days_ago: int | None = None,
+) -> CourseProgress:
+    course, topics = _course_with_topics(title, topic_count)
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=course, is_active=True
+    )
+    record: CourseProgress = CourseProgressFactory(
+        learner=learner, course=course, learner_registration=registration
+    )
+    _complete_topics(record, topics, completed, completed_days_ago=completed_days_ago)
+    if accessed_days_ago is not None:
+        _set_last_accessed(record, accessed_days_ago)
+    return record
+
+
 @pytest.mark.django_db
 def test_learners_list_courses_cell_shows_each_active_course_with_its_percentage(
     role_holder_client,
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
-    registration = LearnerCourseRegistrationFactory(
-        learner=learner, course=CourseFactory(title="Intro to Freedom"), is_active=True
-    )
-    CourseProgressFactory(
-        learner=learner,
-        course=registration.course,
-        learner_registration=registration,
-        progress_percentage=40,
-    )
+    _registered_with_progress(learner, "Intro to Freedom", topic_count=5, completed=2)
 
     response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
@@ -790,7 +863,7 @@ def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_cour
 ):
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
-    course = CourseFactory(title="Shared Course")
+    course, topics = _course_with_topics("Shared Course", 10)
     individual = LearnerCourseRegistrationFactory(
         learner=learner, course=course, is_active=True
     )
@@ -799,25 +872,173 @@ def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_cour
     cohort_registration = CohortCourseRegistrationFactory(
         cohort=cohort, course=course, is_active=True
     )
-    CourseProgressFactory(
-        learner=learner,
-        course=course,
-        learner_registration=individual,
-        progress_percentage=20,
+    individual_record = CourseProgressFactory(
+        learner=learner, course=course, learner_registration=individual
     )
-    CourseProgressFactory(
+    cohort_record = CourseProgressFactory(
         learner=learner,
         course=course,
         learner_registration=None,
         cohort_registration=cohort_registration,
-        progress_percentage=70,
     )
+    _complete_topics(individual_record, topics, 2)
+    _complete_topics(cohort_record, topics, 7)
 
     response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
     (cell,) = _row_cells(response, "Courses")
     assert "70%" in cell.text_content()
     assert "20%" not in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_puts_a_flagged_course_before_a_more_recently_active_one(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    _registered_with_progress(
+        learner, "Under way", topic_count=4, completed=1, accessed_days_ago=0
+    )
+    _registered_with_progress(
+        learner,
+        "Gone quiet",
+        topic_count=4,
+        completed=1,
+        completed_days_ago=30,
+        accessed_days_ago=20,
+    )
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    assert _course_titles(response) == ["Gone quiet", "Under way"]
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_puts_in_progress_before_complete_and_not_started(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    _registered_with_progress(learner, "A complete", topic_count=2, completed=2)
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="B not started"), is_active=True
+    )
+    _registered_with_progress(learner, "C under way", topic_count=4, completed=1)
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    assert _course_titles(response)[0] == "C under way"
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_orders_a_group_by_latest_activity_then_title(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    for title, days_ago in (
+        ("Older", 5),
+        ("Newest", 1),
+        ("Tied B", 3),
+        ("Tied A", 3),
+    ):
+        _registered_with_progress(
+            learner, title, topic_count=4, completed=1, accessed_days_ago=days_ago
+        )
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Aardvark"), is_active=True
+    )
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    assert _course_titles(response)[:3] == ["Newest", "Tied A", "Tied B"]
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_puts_a_course_with_no_activity_last_in_its_group(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Aardvark"), is_active=True
+    )
+    _registered_with_progress(
+        learner, "Zebra", topic_count=2, completed=2, accessed_days_ago=2
+    )
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    assert _course_titles(response) == ["Zebra", "Aardvark"]
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_flags_a_course_when_only_one_of_its_registrations_is_flagged(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    course, topics = _course_with_topics("Held twice", 4)
+    individual = LearnerCourseRegistrationFactory(
+        learner=learner, course=course, is_active=True
+    )
+    cohort = _make_cohort(organisation=organisation)
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    cohort_registration = CohortCourseRegistrationFactory(
+        cohort=cohort, course=course, is_active=True
+    )
+    flagged_record = CourseProgressFactory(
+        learner=learner, course=course, learner_registration=individual
+    )
+    fresh_record = CourseProgressFactory(
+        learner=learner,
+        course=course,
+        learner_registration=None,
+        cohort_registration=cohort_registration,
+    )
+    _complete_topics(flagged_record, topics, 1, completed_days_ago=30)
+    _complete_topics(fresh_record, topics, 3)
+    _registered_with_progress(
+        learner, "Aardvark recent", topic_count=4, completed=1, accessed_days_ago=0
+    )
+    _set_last_accessed(fresh_record, 0)
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    assert _course_titles(response)[0] == "Held twice"
+
+
+@pytest.mark.django_db
+def test_learners_export_courses_column_keeps_the_order_found(site_aware_request):
+    """The on-screen cell ranks Zebra (in progress) above Aardvark (not
+    started) once the page's details are attached; the export lists the courses
+    as the registrations were found."""
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Aardvark"), is_active=True
+    )
+    _registered_with_progress(learner, "Zebra", topic_count=4, completed=1)
+    request = site_aware_request.get("/")
+    request.user = organisation_admin_viewer(organisation)
+    request.organisation = organisation
+    (row,) = LearnerDataTable.get_queryset(request)
+    found_order = ", ".join(s.course.title for s in learner_course_summaries(row))
+    page = LearnerDataTable.get_rows(
+        request,
+        [row],
+        LearnerDataTable.parse_query(request, "learners"),
+    )
+    (courses_column,) = [
+        c for c in LearnerDataTable.get_export_columns() if c.header == "Courses"
+    ]
+
+    assert [s.course.title for s in learner_course_cell(page.object_list[0]).shown] == [
+        "Zebra",
+        "Aardvark",
+    ]
+    assert courses_column.cell(page.object_list[0]) == found_order
 
 
 def _learner_on_courses(organisation: Organisation, count: int) -> Learner:

@@ -14,7 +14,7 @@ from __future__ import annotations
 import dataclasses
 import statistics
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -962,6 +962,47 @@ class CourseRiskInput:
     quiz_results: list[QuizResult]
 
 
+def active_registrations(
+    learner: Learner,
+) -> list[LearnerCourseRegistration | CohortCourseRegistration]:
+    """The learner's active individual registrations, then the active
+    registrations of their active cohorts, read from prefetched relations only."""
+    registrations: list[LearnerCourseRegistration | CohortCourseRegistration] = list(
+        learner.learnercourseregistration_set.all()
+    )
+    for membership in learner.cohortmembership_set.all():
+        if membership.cohort.is_active:
+            registrations.extend(membership.cohort.course_registrations.all())
+    return registrations
+
+
+def _record_id_by_registration(
+    rows: Iterable[tuple[UUID, UUID | None, UUID | None]],
+) -> dict[UUID, UUID]:
+    """Each registration's course progress record id, from
+    (record id, cohort registration id, learner registration id) rows."""
+    record_ids: dict[UUID, UUID] = {}
+    for record_id, cohort_registration_id, learner_registration_id in rows:
+        registration_id = cohort_registration_id or learner_registration_id
+        if registration_id is not None:
+            record_ids[registration_id] = record_id
+    return record_ids
+
+
+def _load_course_inputs(
+    registrations: Sequence[LearnerCourseRegistration | CohortCourseRegistration],
+    learner_ids: list[UUID],
+    site_id: int,
+) -> tuple[CourseCatalogue, ProgressIndex]:
+    # One registration per course, so each course is traversed once.
+    one_per_course = list({r.course_id: r for r in registrations}.values())
+    catalogue = build_course_catalogue(one_per_course)
+    progress = load_progress_index(
+        site_id, registrations, learner_ids, catalogue, keyed_by="course_progress"
+    )
+    return catalogue, progress
+
+
 def gather_learner_course_details(
     learner: Learner,
     registrations: Sequence[LearnerCourseRegistration | CohortCourseRegistration],
@@ -973,19 +1014,13 @@ def gather_learner_course_details(
     records, and each registration reads only its own.
     """
     now = timezone.now()
-    catalogue = build_course_catalogue(registrations)
     ids = _registration_ids(registrations)
-    record_id_by_registration = {
-        cohort_registration_id or learner_registration_id: record_id
-        for record_id, cohort_registration_id, learner_registration_id in (
-            CourseProgress.objects.filter(
-                _registration_filter("", ids), learner=learner, site_id=site_id
-            ).values_list("id", "cohort_registration_id", "learner_registration_id")
-        )
-    }
-    progress = load_progress_index(
-        site_id, registrations, [learner.pk], catalogue, keyed_by="course_progress"
+    record_id_by_registration = _record_id_by_registration(
+        CourseProgress.objects.filter(
+            _registration_filter("", ids), learner=learner, site_id=site_id
+        ).values_list("id", "cohort_registration_id", "learner_registration_id")
     )
+    catalogue, progress = _load_course_inputs(registrations, [learner.pk], site_id)
     return [
         _build_course_detail(
             registration,
@@ -996,6 +1031,42 @@ def gather_learner_course_details(
         )
         for registration in registrations
     ]
+
+
+def gather_course_details_for_learners(
+    learners: Sequence[Learner], site_id: int
+) -> dict[UUID, list[LearnerCourseDetail]]:
+    """Each learner's course details, one per registration, for a whole page of
+    learners in a fixed number of queries.
+
+    Reads the registrations and course progress records the learners table
+    prefetches, so it adds no query per learner.
+    """
+    now = timezone.now()
+    registrations_by_learner = {
+        learner.pk: active_registrations(learner) for learner in learners
+    }
+    every_registration = [
+        registration
+        for registrations in registrations_by_learner.values()
+        for registration in registrations
+    ]
+    catalogue, progress = _load_course_inputs(
+        every_registration, [learner.pk for learner in learners], site_id
+    )
+    details: dict[UUID, list[LearnerCourseDetail]] = {}
+    for learner in learners:
+        record_ids = _record_id_by_registration(
+            (record.pk, record.cohort_registration_id, record.learner_registration_id)
+            for record in learner.course_progress_records.all()
+        )
+        details[learner.pk] = [
+            _build_course_detail(
+                registration, record_ids.get(registration.pk), catalogue, progress, now
+            )
+            for registration in registrations_by_learner[learner.pk]
+        ]
+    return details
 
 
 def _build_course_detail(

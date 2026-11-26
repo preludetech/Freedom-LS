@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import cast
 from uuid import UUID
 
-from django.db.models import Model, Prefetch, QuerySet
+from django.core.paginator import Page
+from django.db.models import Max, Model, Prefetch, QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 
@@ -41,16 +44,24 @@ from freedom_ls.panel_framework.tables import (
     Column,
     DataTable,
     ExportColumn,
+    TableQuery,
 )
+from freedom_ls.reports.gather import (
+    active_registrations,
+    gather_course_details_for_learners,
+)
+from freedom_ls.reports.report_data import LearnerCourseDetail
 
 __all__ = [
     "CohortLearnerDataTable",
     "LearnerCourseCell",
     "LearnerCourseSummary",
     "LearnerDataTable",
+    "RankedCourseSummary",
     "_last_active_cell",
     "learner_course_cell",
     "learner_course_summaries",
+    "ranked_course_summaries",
 ]
 
 #: How many of a learner's courses the learners list shows before "+N more".
@@ -73,15 +84,9 @@ def learner_course_summaries(learner: Learner) -> list[LearnerCourseSummary]:
     Reads only the caches `LearnerDataTable.get_queryset` prefetches, so a
     page of learners costs the same number of queries as one learner.
     """
-    courses: dict[UUID, Course] = {
-        registration.course_id: registration.course
-        for registration in learner.learnercourseregistration_set.all()
-    }
-    for membership in learner.cohortmembership_set.all():
-        if not membership.cohort.is_active:
-            continue
-        for registration in membership.cohort.course_registrations.all():
-            courses.setdefault(registration.course_id, registration.course)
+    courses: dict[UUID, Course] = {}
+    for registration in active_registrations(learner):
+        courses.setdefault(registration.course_id, registration.course)
 
     furthest: dict[UUID, int] = {}
     for record in learner.course_progress_records.all():
@@ -95,15 +100,104 @@ def learner_course_summaries(learner: Learner) -> list[LearnerCourseSummary]:
 
 
 @dataclass(frozen=True)
+class RankedCourseSummary:
+    """One course in a learner's Courses cell: recomputed completion, whether
+    any of its registrations is flagged, and its latest activity."""
+
+    course: Course
+    progress_percentage: int
+    flagged: bool
+    last_activity: datetime | None
+
+
+def _rank(summary: RankedCourseSummary) -> tuple[int, bool, float, str]:
+    """Flagged courses need the educator first, then the ones under way; within
+    a group the most recent activity comes first, no activity last, ties by title."""
+    percentage = summary.progress_percentage
+    group = 0 if summary.flagged else 1 if 0 < percentage < 100 else 2
+    latest = summary.last_activity
+    return (
+        group,
+        latest is None,
+        -latest.timestamp() if latest else 0.0,
+        summary.course.title,
+    )
+
+
+def ranked_course_summaries(
+    learner: Learner, details: list[LearnerCourseDetail]
+) -> list[RankedCourseSummary]:
+    """One summary per course the learner holds, ranked for the Courses cell.
+
+    A course held through a cohort and individually has one detail per
+    registration: its percentage is the highest of them, it is flagged when any
+    of them is, and its activity is the latest `last_accessed_time` across the
+    learner's course progress records for it.
+    """
+    courses = {
+        registration.course_id: registration.course
+        for registration in active_registrations(learner)
+    }
+    last_activity: dict[UUID, datetime] = {}
+    for record in learner.course_progress_records.all():
+        accessed = record.last_accessed_time
+        latest = last_activity.get(record.course_id)
+        if accessed is not None and (latest is None or accessed > latest):
+            last_activity[record.course_id] = accessed
+    percentage: dict[UUID, int] = {}
+    flagged: set[UUID] = set()
+    for detail in details:
+        percentage[detail.course_id] = max(
+            percentage.get(detail.course_id, 0), detail.completion_percentage
+        )
+        if detail.flags:
+            flagged.add(detail.course_id)
+    return sorted(
+        (
+            RankedCourseSummary(
+                course,
+                percentage.get(course_id, 0),
+                course_id in flagged,
+                last_activity.get(course_id),
+            )
+            for course_id, course in courses.items()
+        ),
+        key=_rank,
+    )
+
+
+_COURSE_DETAILS_KEY = "_page_course_details"
+
+
+def attach_course_details(learner: Learner, details: list[LearnerCourseDetail]) -> None:
+    """Hold the page-wide gather's details for `learner` on the instance, for the
+    Courses cell to read."""
+    vars(learner)[_COURSE_DETAILS_KEY] = details
+
+
+def attached_course_details(learner: Learner) -> list[LearnerCourseDetail] | None:
+    return cast(
+        "list[LearnerCourseDetail] | None", vars(learner).get(_COURSE_DETAILS_KEY)
+    )
+
+
+@dataclass(frozen=True)
 class LearnerCourseCell:
     """The courses one learner's Courses cell shows, and how many it leaves out."""
 
-    shown: list[LearnerCourseSummary]
+    shown: Sequence[RankedCourseSummary] | Sequence[LearnerCourseSummary]
     hidden_count: int
 
 
 def learner_course_cell(learner: Learner) -> LearnerCourseCell:
-    summaries = learner_course_summaries(learner)
+    """The capped courses for the cell: ranked when the page-wide gather ran,
+    otherwise in the order found."""
+    details = attached_course_details(learner)
+    summaries: Sequence[RankedCourseSummary] | Sequence[LearnerCourseSummary] = (
+        learner_course_summaries(learner)
+        if details is None
+        else ranked_course_summaries(learner, details)
+    )
     return LearnerCourseCell(
         summaries[:COURSES_SHOWN], max(0, len(summaries) - COURSES_SHOWN)
     )
@@ -115,6 +209,23 @@ class LearnerDataTable(DataTable):
     empty_no_results = "No learners match these filters."
     search_fields = ["user__first_name", "user__last_name", "user__email"]
     default_sort = "user__first_name"
+
+    @classmethod
+    def get_rows(
+        cls,
+        request: HttpRequest,
+        queryset: QuerySet | Sequence[object],
+        query: TableQuery,
+    ) -> Page:
+        """The page of learners, each carrying the page's one course gather."""
+        page = super().get_rows(request, queryset, query)
+        learners = cast("list[Learner]", list(page.object_list))
+        if learners:
+            details = gather_course_details_for_learners(learners, learners[0].site_id)
+            for learner in learners:
+                attach_course_details(learner, details[learner.pk])
+        page.object_list = learners
+        return page
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
