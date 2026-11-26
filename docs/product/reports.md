@@ -1,11 +1,11 @@
 # Cohort Reports
 
-_Last updated: 2026-11-24_
+_Last updated: 2026-11-26_
 
 ## Summary
 
 - FLS generates a single A4 PDF progress report for a cohort, covering every course that cohort is registered for — including courses whose registration has since been deactivated, which are included and marked rather than dropped.
-- The report holds a cover, a cohort-at-a-glance page, a contents and definitions page, a landscape summary table per course, a detail section per learner, and a cohort-wide analysis of which quiz questions caused the most trouble.
+- The report holds a cover, a cohort-at-a-glance page, a contents and definitions page, a landscape summary table per course, and a detail section per learner. It carries no question-level detail; the cohort's quiz confusions are on screen only.
 - Three at-risk rules — no recorded activity, a failed latest quiz attempt, and inactivity beyond a threshold — flag learners identically on the at-a-glance page and in their own section.
 - The same report is shown on screen in the cohort's Report tab in the [educator interface](./educator-interface.md#reporting). The PDF is generated on demand from that tab or the Django admin and runs in the background; the finished PDF is downloaded through a permission-checked link, never a public media URL.
 - The report leads with the **organisation's** own name and logo; the platform appears only as a small "Powered by" mark naming the site, which cannot be switched off.
@@ -25,15 +25,13 @@ The audience is internal educators and staff, so the report uses learners' real 
 
 **Cohort at a glance** — headline numbers (cohort size, median completion, how many have not started, how many have completed everything) and a "learners needing attention" list drawn from the at-risk rules, worst-first, each pointing at that learner's own page. The list is capped, and the cap is disclosed — "18 learners flagged, 12 shown" — rather than silently truncated.
 
-**Contents and definitions** — a table of contents with real page numbers and PDF bookmarks, followed by a plain-language methodology block: what "complete" means, that a quiz score is the latest attempt, what counts as an attempt, why the cohort-wide analysis uses first attempts only, that multi-select quiz scoring changed so a score stored before that change can disagree with the wrong-answer detail beside it, and what is excluded.
+**Contents and definitions** — a table of contents with real page numbers and PDF bookmarks, followed by a plain-language methodology block: what "complete" means, that a quiz score is the latest attempt, what counts as an attempt, that multi-select quiz scoring changed so a score stored before that change can disagree with how the same answer would score now, and what is excluded.
 
 **Summary of learner progress** — one landscape table per course, listing each learner's completion percentage and count, the last item they completed and when, and a column per quiz carrying their latest score and attempt count. Header rows repeat on every page a table spans. A course with more quizzes than fit across an A4 landscape page splits into continued tables rather than shrinking the type to illegibility; the column budget is configurable, since it depends on the page size and typeface a deployment uses.
 
 ![](screenshots/cohort_report_summary_table.png)
 
-**Details per learner** — one section per learner, alphabetical by surname, starting on a fresh page and carrying their name in the running header. It shows every at-risk flag they tripped, every item they completed and when, every quiz attempt with its score, and which questions and options they got wrong, counted per attempt so a mistake repeated across three attempts reads as the persistent misconception it is. A learner with nothing recorded gets an explicit "No activity recorded" line, and a learner with no flags is told so — silent omission reads as a data bug.
-
-**Quiz confusions across the cohort** — covered below.
+**Details per learner** — one section per learner, alphabetical by surname, starting on a fresh page and carrying their name in the running header. It shows every at-risk flag they tripped, every item they completed and when, and every quiz attempt with its score. The PDF does not list which questions or options a learner got wrong. A learner with nothing recorded gets an explicit "No activity recorded" line, and a learner with no flags is told so — silent omission reads as a data bug.
 
 ## At-Risk Flags
 
@@ -45,13 +43,13 @@ The rules are a fixed list in code. There is no setting to add, remove, or retun
 
 ## Quiz Confusions
 
-This section asks, cohort-wide, which questions people got wrong — using each learner's **first** completed attempt only. Retakes let a learner remember an answer they have already seen, which would make a genuinely hard question look easy.
+The Report tab's quiz confusions ask, cohort-wide, which questions people got wrong — using each learner's **first** completed attempt only. Retakes let a learner remember an answer they have already seen, which would make a genuinely hard question look easy.
 
-![](screenshots/cohort_report_quiz_confusions.png)
-
-Questions are ranked worst-first and the list is capped per quiz with the cap disclosed ("showing worst 10 of 23 questions with at least one incorrect answer"). The correct option is always shown beside the incorrect ones the question attracted, so a table stands on its own without turning back to the course. Below a small-group threshold the report gives a plain count — "7 of 9 learners got this wrong" — rather than a percentage, which would imply a precision that is not there. The section carries a standing caution that a high error rate can mean a hard-but-fair question rather than a broken one.
+Questions are ranked worst-first and the list is capped per quiz with the cap disclosed ("showing worst 10 of 23 questions with at least one incorrect answer"). The correct option is always shown beside the incorrect ones the question attracted, so a table stands on its own without turning back to the course. Below a small-group threshold the report gives a plain count — "7 of 9 learners got this wrong" — rather than a percentage, which would imply a precision that is not there. The analysis carries a standing caution that a high error rate can mean a hard-but-fair question rather than a broken one.
 
 Free-text questions have no notion of a correct answer in FLS and are excluded from this analysis entirely.
+
+**This analysis is on screen only.** The PDF contains no quiz confusions and no per-learner wrong answers. On screen, the confusions need the Question bank viewer role in the cohort's organisation (see [Staff and roles](./educator-interface.md#staff-and-roles)). A staff member without it sees a note in their place, and the rest of the Report tab is unchanged. Each time a holder of the role is shown the confusions, it is recorded in the audit log; see [security and data handling](./security-and-data-handling.md).
 
 ## Generating and Downloading
 
@@ -59,7 +57,7 @@ A report is requested from the cohort's Report tab in the educator interface, or
 
 The Report tab also shows the report's figures on screen, so an educator can check a cohort without generating a PDF. Those figures are recalculated every few minutes, so they can lag very recent progress; a PDF is always built from current data. See the [educator interface](./educator-interface.md#reporting).
 
-See [admin interface](./admin-interface.md#cohort-progress-reports) for the admin flow, and [security and data handling](./security-and-data-handling.md) for the access and privacy posture — a generated report holds learner names, scores and individual answers, and is served through a permission-checked download rather than a media URL.
+See [admin interface](./admin-interface.md#cohort-progress-reports) for the admin flow, and [security and data handling](./security-and-data-handling.md) for the access and privacy posture — a generated report holds learner names and scores, but no individual answers, and is served through a permission-checked download rather than a media URL.
 
 ## Limits
 
