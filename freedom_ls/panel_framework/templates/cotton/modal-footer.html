@@ -11,8 +11,9 @@ dirty-form guard, since pressing Cancel is a deliberate choice to drop the
 input; `keepEditing` serves the discard prompt. `cancel_click` is always a
 literal in a template, never filled from context, and `cancel_href` only
 ever receives a URL the server built. The Cancel button binds `disabled` to the host's `running`, which is
-true while a confirm that runs in the request is under way; a host without
-that property leaves it enabled, and the link form has no binding.
+true while a confirm that runs in the request is under way. Every host declares
+`running`, because the CSP Alpine build throws on an undeclared name; a host
+with no in-request run keeps it false. The link form has no binding.
 `focus_cancel` makes the button take
 initial focus and `cancel_describedby` names the element describing it. The default slot holds the actions, right aligned with the
 primary last, and wraps onto its own row below sm when it does not fit.

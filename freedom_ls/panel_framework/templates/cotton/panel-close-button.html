@@ -5,7 +5,8 @@ The close control every sheet and dialog header carries: a 44px target with
 the Close name. With `href` it is a link back to that page, for a dialog the
 server renders open because JavaScript is off; otherwise a button asking the
 host's Alpine component to close, which runs the dirty-form guard. The button is disabled while the host's
-`running` is true (a host without that property leaves it enabled), and
+`running` is true. Every host declares `running`, because the CSP Alpine build
+throws on an undeclared name; a host with no in-request run keeps it false.
 `describedby` names the element that describes it.
 {% endcomment %}
 {% if href %}

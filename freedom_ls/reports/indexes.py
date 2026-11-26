@@ -267,6 +267,10 @@ def build_course_catalogue(
     by learner or question counts. viewable_items() only excludes CoursePart
     sentinels, so Activities are filtered out here, taking them out of the
     completion denominator too (no ActivityProgress model exists).
+
+    Each registration's ``course`` is rebound to one shared instance per
+    course, so the caller's registrations come back holding the prefetched
+    instances.
     """
     course_items: dict[UUID, list[Topic | Form]] = {}
     forms_by_id: dict[UUID, Form] = {}

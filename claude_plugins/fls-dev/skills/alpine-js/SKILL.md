@@ -59,6 +59,8 @@ Reuse these registered components before writing a new one. Each app registers i
 | `audioClip` | `content_engine` | `cotton/audio-clip.html` | Player card for one longer recording: a play button, seek bar with elapsed and total time, and an optional transcript toggle. Each clip owns its own audio element, created on first play, so clips keep separate positions. Shows loading, playing and failed states (retry on failure), applies a seek made before metadata loads, and seeks by five seconds on the arrow keys |
 | `claimLinkNotice` | `course_applications` | `course_applications/partials/claim_link_notice.html` | Reveals the change-address form in place, reopening it with the field focused after a failed change |
 
+A component that hosts a shared cotton component declares every name that component binds, even one it never sets: the CSP build throws on an undeclared name instead of reading it as `undefined`. `quickView` and `sidePanel` declare `running: false` for `<c-modal-footer>` and `<c-panel-close-button>`.
+
 `audioFile`, `audioReveal` and `audioClip` share one page-level active audio handle: starting any of them pauses whichever is playing or loading, so one recording plays at a time across all three.
 
 ### Stores (`Alpine.store`)
