@@ -13,7 +13,7 @@ from unfold.enums import ActionVariant
 from unfold.widgets import UnfoldAdminTextareaWidget
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.admin import ModelAdmin
 from django.contrib.admin.sites import AdminSite
 from django.core.exceptions import PermissionDenied
@@ -42,6 +42,8 @@ from freedom_ls.site_aware_models.admin import admin_page_context, ids_from
 ActionEntry = tuple[Callable[..., str], str, str]
 PlanBuilder = Callable[[Sequence[Model], HttpRequest, AdminSite], ForceDeletePlan]
 
+FORCE_DELETE_MAX_SELECTION = 500
+
 
 class ForceDeleter(Protocol):
     def __call__(
@@ -65,8 +67,14 @@ class ForceDeleteTarget:
     delete: ForceDeleter
     # The name a row goes by on the confirmation page.
     label: Callable[[Model], str]
+    # Where a single row is deactivated instead of deleted.
+    deactivate_url: Callable[[Model], str]
     # A sentence naming what a force delete of this model leaves in place.
     stays: str = ""
+    # A sentence naming what deactivating this model does not stop.
+    deactivate_note: str = ""
+    # Relations the confirmation page reads for every row.
+    select_related: tuple[str, ...] = ()
 
 
 class ForceDeleteForm(forms.Form):
@@ -149,7 +157,16 @@ class ForceDeleteAdminMixin:
     @admin.action(description="Force delete selected", permissions=["force_delete"])
     def force_delete_selected(
         self, request: HttpRequest, queryset: QuerySet[Model]
-    ) -> HttpResponseRedirect:
+    ) -> HttpResponseRedirect | None:
+        # The ids travel in the confirmation page's URL, so the selection is capped.
+        if queryset.count() > FORCE_DELETE_MAX_SELECTION:
+            cast(ModelAdmin, self).message_user(
+                request,
+                f"Select at most {FORCE_DELETE_MAX_SELECTION} "
+                f"{self.force_delete_target.noun_plural} to force delete at once.",
+                level=messages.ERROR,
+            )
+            return None
         return redirect(
             _force_delete_url(queryset.model, queryset.values_list("pk", flat=True))
         )
@@ -168,7 +185,9 @@ def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpR
     # The admin queryset is filtered to the host's site, so another site's
     # row is a 404 whichever way its id arrives.
     targets = list(
-        model_admin.get_queryset(request).filter(pk__in=ids_from(request, model))
+        model_admin.get_queryset(request)
+        .filter(pk__in=ids_from(request, model))
+        .select_related(*target.select_related)
     )
     if not targets:
         raise Http404
@@ -209,6 +228,10 @@ def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpR
         "noun": target.noun,
         "noun_plural": target.noun_plural,
         "stays": target.stays,
+        "deactivate_note": target.deactivate_note,
+        "deactivate_url": target.deactivate_url(targets[0])
+        if len(targets) == 1
+        else "",
         "plan": plan,
         "form": form,
         "ids": ",".join(str(row.pk) for row in targets),
@@ -287,12 +310,25 @@ def _delete_learners(
     )
 
 
+def _learner_page_url(row: Model) -> str:
+    # Learners are deactivated in the educator interface; their admin is read-only.
+    learner = cast(Learner, row)
+    return reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": learner.organisation.slug,
+            "path_string": f"learners/{learner.pk}",
+        },
+    )
+
+
 USER_TARGET = ForceDeleteTarget(
     noun="user",
     noun_plural="users",
     plan=user_plan,
     delete=_delete_users,
     label=lambda row: cast(User, row).display_name,
+    deactivate_url=lambda row: reverse(_admin_url_name(User, "change"), args=[row.pk]),
 )
 LEARNER_TARGET = ForceDeleteTarget(
     noun="learner",
@@ -300,7 +336,13 @@ LEARNER_TARGET = ForceDeleteTarget(
     plan=learner_plan,
     delete=_delete_learners,
     label=lambda row: cast(Learner, row).user.display_name,
+    deactivate_url=_learner_page_url,
     stays="The user account and their learner records in other organisations stay.",
+    deactivate_note=(
+        "Deactivating stops them using this organisation; "
+        "their user account can still sign in."
+    ),
+    select_related=("user", "organisation"),
 )
 
 

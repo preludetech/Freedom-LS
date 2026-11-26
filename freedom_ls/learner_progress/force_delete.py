@@ -145,7 +145,7 @@ def build_plan(
     `unlinked_for` names the users whose unlinked rows are counted; rows no
     foreign key reaches are not in `objects`, and a learner force delete has none.
     """
-    # The view returns 404 before this for an empty selection.
+    # The view returns 404, and _run_force_delete returns 0, for no targets.
     using = router.db_for_write(type(targets[0]))
     progress = _collect(progress_roots, using)
     target = _collect(targets, using)
@@ -232,8 +232,10 @@ def _run_force_delete(
 
     The plan is built here, not read from the confirmation page, so a row added
     since that page was shown is counted and a model that now blocks stops the
-    delete.
+    delete. Nothing is locked when another request deleted every target first.
     """
+    if not locked:
+        return 0
     plan = build_plan(
         targets=locked,
         progress_roots=progress_roots,

@@ -6,6 +6,7 @@ from typing import cast
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -70,8 +71,8 @@ def test_erasing_a_claimed_applicant_is_refused(mock_site_context):
 
 
 def test_unclaimed_applicants_with_address_matches_regardless_of_case(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     user = UserFactory(email="Ada@Example.com")
     unverified = unverified_application_with_file()
     unverified.applicant.email = "ada@example.com"
@@ -83,8 +84,8 @@ def test_unclaimed_applicants_with_address_matches_regardless_of_case(
 
 
 def test_unclaimed_applicants_with_address_leaves_out_a_claimed_applicant(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     user = UserFactory(email="ada@example.com")
     unverified = unverified_application_with_file()
     unverified.applicant.email = "ada@example.com"

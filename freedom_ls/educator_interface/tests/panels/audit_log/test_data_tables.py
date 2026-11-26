@@ -786,7 +786,7 @@ def test_an_export_entry_shows_on_the_audit_log_and_not_on_the_learner_history(
 @pytest.mark.django_db
 def test_a_force_deleted_learner_appears_in_their_own_organisations_audit_log(
     staff_client: Client,
-):
+) -> None:
     user = cast(User, UserFactory())
     organisation = OrganisationFactory()
     other = OrganisationFactory()

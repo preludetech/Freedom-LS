@@ -10,9 +10,9 @@
 {% block content %}
     {% component "unfold/components/card.html" %}
         {% component "unfold/components/text.html" %}
-            SACAA requires records to be kept for five years. To stop someone signing in,
-            {% if change_urls|length == 1 %}{% for label, change_url in change_urls %}<a href="{{ change_url }}" class="underline">deactivate the {{ noun }}</a>{% endfor %}{% else %}deactivate the {{ noun }}{% endif %}
-            instead.
+            To keep their records,
+            {% if deactivate_url %}<a href="{{ deactivate_url }}" class="underline">deactivate the {{ noun }}</a>{% else %}deactivate the {{ noun }}{% endif %}
+            instead.{% if deactivate_note %} {{ deactivate_note }}{% endif %}
         {% endcomponent %}
 
         {% if stays %}<p class="mt-4" id="stays">{{ stays }}</p>{% endif %}

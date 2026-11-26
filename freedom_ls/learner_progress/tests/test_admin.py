@@ -21,6 +21,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.models import Learner
@@ -379,7 +380,7 @@ def test_the_changelist_refuses_a_learner_filter(
 LEARNER_CHANGELIST = "admin:freedom_ls_learner_management_learner_changelist"
 
 
-def test_learner_admin_offers_no_add_change_or_delete(superuser_client) -> None:
+def test_learner_admin_offers_no_add_change_or_delete(superuser_client: Client) -> None:
     learner = LearnerFactory()
 
     add = superuser_client.get(
@@ -401,7 +402,7 @@ def test_learner_admin_offers_no_add_change_or_delete(superuser_client) -> None:
     assert Learner.objects.get(pk=learner.pk).is_active is True
 
 
-def test_learner_changelist_searches_by_email(superuser_client) -> None:
+def test_learner_changelist_searches_by_email(superuser_client: Client) -> None:
     wanted = LearnerFactory(user=UserFactory(email="wanted@example.com"))
     LearnerFactory(user=UserFactory(email="other@example.com"))
 
@@ -411,7 +412,7 @@ def test_learner_changelist_searches_by_email(superuser_client) -> None:
 
 
 def test_learner_changelist_filters_by_organisation_and_status(
-    superuser_client,
+    superuser_client: Client,
 ) -> None:
     active = LearnerFactory()
     inactive = LearnerFactory(is_active=False)
@@ -428,7 +429,7 @@ def test_learner_changelist_filters_by_organisation_and_status(
 
 
 def test_learner_changelist_offers_force_delete_to_a_superuser(
-    superuser_client,
+    superuser_client: Client,
 ) -> None:
     LearnerFactory()
 
@@ -438,7 +439,7 @@ def test_learner_changelist_offers_force_delete_to_a_superuser(
 
 
 def test_learner_change_page_offers_force_delete_to_a_superuser(
-    superuser_client,
+    superuser_client: Client,
 ) -> None:
     learner = LearnerFactory()
 
@@ -451,7 +452,7 @@ def test_learner_change_page_offers_force_delete_to_a_superuser(
 
 
 def test_learner_admin_hides_force_delete_from_staff(
-    mock_site_context, logged_in_client
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
 ) -> None:
     # Staff holding every learner permission: the admin still shows no action.
     user = UserFactory(staff=True)

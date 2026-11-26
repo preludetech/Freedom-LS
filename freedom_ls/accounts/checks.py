@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core.checks import Error, Tags, Warning, register
 
 LAST_ACTIVE_MIDDLEWARE = "freedom_ls.accounts.middleware.LastActiveMiddleware"
+AUTHENTICATION_MIDDLEWARE = "django.contrib.auth.middleware.AuthenticationMiddleware"
 
 
 @register(Tags.compatibility)
@@ -150,20 +151,27 @@ def check_trusted_proxy_ip_header_is_not_a_meta_key(
 
 @register()
 def check_last_active_middleware(**kwargs: object) -> list[Error]:
-    """E004: Error when LastActiveMiddleware is missing from MIDDLEWARE.
+    """E004: Error when LastActiveMiddleware is missing from MIDDLEWARE, or
+    comes before AuthenticationMiddleware.
 
     Without it User.last_active is never written, and the educator-facing
-    last active column stays empty with nothing to say why.
+    last active column stays empty with nothing to say why. Before
+    AuthenticationMiddleware it finds no request.user, with the same result.
     """
-    if LAST_ACTIVE_MIDDLEWARE in settings.MIDDLEWARE:
-        return []
-    return [
-        Error(
-            f"{LAST_ACTIVE_MIDDLEWARE!r} is not registered in MIDDLEWARE.",
-            hint=(
-                f"Add {LAST_ACTIVE_MIDDLEWARE!r} to MIDDLEWARE, after "
-                "'django.contrib.auth.middleware.AuthenticationMiddleware'."
-            ),
-            id="freedom_ls_accounts.E004",
+    middleware = list(settings.MIDDLEWARE)
+    hint = (
+        f"Add {LAST_ACTIVE_MIDDLEWARE!r} to MIDDLEWARE, after "
+        f"{AUTHENTICATION_MIDDLEWARE!r}."
+    )
+    if LAST_ACTIVE_MIDDLEWARE not in middleware:
+        message = f"{LAST_ACTIVE_MIDDLEWARE!r} is not registered in MIDDLEWARE."
+    elif AUTHENTICATION_MIDDLEWARE in middleware and middleware.index(
+        LAST_ACTIVE_MIDDLEWARE
+    ) < middleware.index(AUTHENTICATION_MIDDLEWARE):
+        message = (
+            f"{LAST_ACTIVE_MIDDLEWARE!r} must come after "
+            f"{AUTHENTICATION_MIDDLEWARE!r} in MIDDLEWARE."
         )
-    ]
+    else:
+        return []
+    return [Error(message, hint=hint, id="freedom_ls_accounts.E004")]

@@ -31,6 +31,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: in `freedom_ls/audit_log/README.md`, add `user.deleted` and `learner.removed` to the action table with label, group, target, subjects and details (spec "Audit log" and "Documentation and downstream")
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`, add the two codes under "Changes" and define "force delete" and "last active" (spec "Terminology" and "Documentation and downstream")
 - [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Fix PR 296 review: a force delete whose targets another request already deleted returns 0 instead of a 500
+- [x] (cmd) Fix PR 296 review: the learner "deactivate" link goes to the educator learner page, the SACAA sentence is gone, and the learner note says the user account can still sign in
+- [x] (cmd) Fix PR 296 review: product docs say the quick view's last active covers the whole site
+- [x] (cmd) Fix PR 296 review: check E004 also fires when LastActiveMiddleware comes before AuthenticationMiddleware
+- [x] (cmd) Fix PR 296 review: the learner force delete page loads user and organisation with the learners (no per-row query)
+- [x] (cmd) Fix PR 296 review: Force delete selected refuses more than 500 rows with a message
+- [x] (cmd) Fix PR 296 review: type hints on the PR's new test functions
 
 ## 5. Cleanup
 

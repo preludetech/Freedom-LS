@@ -59,7 +59,7 @@ Cohort admins manage membership and course registrations within their own cohort
 
 ![Learners list with a learner's quick view open on the right, showing status, cohorts, course registrations and a message box](screenshots/educator_learner_quick_view.png)
 
-Selecting a learner's or cohort's preview control opens a summary beside the list, with a link through to the full page. On a wide screen it sits beside the list; on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active. Last active is the last time the learner used the site while signed in, not their latest course activity, and reads "Never" for a learner who has not been active. For a cohort it shows status, learner count and courses. It shows only what the educator could already see on the full page. Courses have no quick view.
+Selecting a learner's or cohort's preview control opens a summary beside the list, with a link through to the full page. On a wide screen it sits beside the list; on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active. Last active is the last time the learner used the site while signed in, not their latest course activity, and reads "Never" for a learner who has not been active. For a cohort it shows status, learner count and courses. Apart from last active, it shows only what the educator could already see on the full page. Last active covers the whole site, so it moves when the learner uses another organisation too. Courses have no quick view.
 
 ### Messaging from a learner
 

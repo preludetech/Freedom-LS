@@ -19,6 +19,8 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
+from freedom_ls.educator_interface.tests.helpers import RoleHolderClient
+
 if TYPE_CHECKING:
     # Stub-only: the test client's response carries `templates`, which a plain
     # HttpResponse does not.
@@ -235,8 +237,8 @@ class TestLearnerQuickView:
         assert "Never" in response.content.decode()
 
     def test_last_active_is_the_users_not_the_latest_course_activity(
-        self, role_holder_client
-    ):
+        self, role_holder_client: RoleHolderClient
+    ) -> None:
         organisation = OrganisationFactory()
         learner = LearnerFactory(
             organisation=organisation,

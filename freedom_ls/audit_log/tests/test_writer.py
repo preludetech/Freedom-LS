@@ -232,7 +232,7 @@ def test_a_run_summary_with_a_non_summary_action_raises(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_acting_user_is_the_signed_in_user(mock_site_context):
+def test_acting_user_is_the_signed_in_user(mock_site_context: Site) -> None:
     user = UserFactory()
     request = RequestFactory().get("/")
     request.user = user
@@ -240,7 +240,7 @@ def test_acting_user_is_the_signed_in_user(mock_site_context):
     assert acting_user(request) == user
 
 
-def test_acting_user_refuses_an_anonymous_request():
+def test_acting_user_refuses_an_anonymous_request() -> None:
     request = RequestFactory().get("/")
     request.user = AnonymousUser()
 

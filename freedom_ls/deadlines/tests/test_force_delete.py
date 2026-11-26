@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from django.contrib import admin
+from django.contrib.sites.models import Site
 from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
@@ -21,7 +22,7 @@ pytestmark = pytest.mark.django_db
 
 
 def test_force_delete_counts_and_removes_a_pause_and_an_extension(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     progress = CourseProgressFactory()
     user = progress.learner.user

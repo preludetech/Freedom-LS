@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 import time_machine
+from pytest_django.fixtures import DjangoAssertNumQueries
 
+from django.contrib.sites.models import Site
 from django.db.models.signals import post_save
 from django.http import HttpRequest, HttpResponse
 from django.test import Client, override_settings
@@ -362,12 +364,12 @@ def _run_last_active(user: User | None) -> HttpRequest:
     return request
 
 
-def _stored_last_active(user: User):
+def _stored_last_active(user: User) -> datetime | None:
     return User._base_manager.values_list("last_active", flat=True).get(pk=user.pk)
 
 
 @pytest.mark.django_db
-def test_last_active_null_value_is_written(mock_site_context):
+def test_last_active_null_value_is_written(mock_site_context: Site) -> None:
     user = UserFactory(last_active=None)
 
     _run_last_active(user)
@@ -377,20 +379,23 @@ def test_last_active_null_value_is_written(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_last_active_stale_value_is_moved(mock_site_context):
+def test_last_active_stale_value_is_moved(mock_site_context: Site) -> None:
     user = UserFactory(last_active=timezone.now() - timedelta(hours=1))
     stale = _stored_last_active(user)
+    assert stale is not None
 
     with time_machine.travel(timezone.now() + timedelta(seconds=10)):
         _run_last_active(user)
 
-    assert _stored_last_active(user) > stale + timedelta(minutes=59)
+    moved = _stored_last_active(user)
+    assert moved is not None
+    assert moved > stale + timedelta(minutes=59)
 
 
 @pytest.mark.django_db
 def test_last_active_fresh_value_costs_no_query(
-    mock_site_context, django_assert_num_queries
-):
+    mock_site_context: Site, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
     user = UserFactory(last_active=timezone.now())
 
     with django_assert_num_queries(0):
@@ -399,14 +404,14 @@ def test_last_active_fresh_value_costs_no_query(
 
 @pytest.mark.django_db
 def test_last_active_anonymous_request_writes_nothing(
-    mock_site_context, django_assert_num_queries
-):
+    mock_site_context: Site, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
     with django_assert_num_queries(0):
         _run_last_active(None)
 
 
 @pytest.mark.django_db
-def test_last_active_api_key_request_leaves_it_null(mock_site_context):
+def test_last_active_api_key_request_leaves_it_null(mock_site_context: Site) -> None:
     user = UserFactory(last_active=None)
 
     response = Client().get(
@@ -418,7 +423,9 @@ def test_last_active_api_key_request_leaves_it_null(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_last_active_write_leaves_updated_at_and_last_login_alone(mock_site_context):
+def test_last_active_write_leaves_updated_at_and_last_login_alone(
+    mock_site_context: Site,
+) -> None:
     user = UserFactory(last_active=None)
     before = User._base_manager.values_list("updated_at", "last_login").get(pk=user.pk)
 
@@ -429,7 +436,7 @@ def test_last_active_write_leaves_updated_at_and_last_login_alone(mock_site_cont
 
 
 @pytest.mark.django_db
-def test_last_active_write_sends_no_post_save(mock_site_context):
+def test_last_active_write_sends_no_post_save(mock_site_context: Site) -> None:
     user = UserFactory(last_active=None)
     received: list[object] = []
 
@@ -446,18 +453,25 @@ def test_last_active_write_sends_no_post_save(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_last_active_write_seconds_override_is_honoured(mock_site_context):
+def test_last_active_write_seconds_override_is_honoured(
+    mock_site_context: Site,
+) -> None:
     user = UserFactory(last_active=timezone.now() - timedelta(seconds=30))
     before = _stored_last_active(user)
+    assert before is not None
 
     with override_settings(LAST_ACTIVE_WRITE_SECONDS=10):
         _run_last_active(user)
 
-    assert _stored_last_active(user) > before
+    after = _stored_last_active(user)
+    assert after is not None
+    assert after > before
 
 
 @pytest.mark.django_db
-def test_last_active_is_written_through_the_middleware_stack(mock_site_context):
+def test_last_active_is_written_through_the_middleware_stack(
+    mock_site_context: Site,
+) -> None:
     user = UserFactory(last_active=None)
     client = Client()
     client.force_login(user)

@@ -6,9 +6,11 @@ from dataclasses import dataclass
 from typing import cast
 
 import pytest
+from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.sites.models import Site
 from django.core.files.base import ContentFile
 from django.db.models import Model
 from django.db.models.signals import pre_delete
@@ -47,6 +49,7 @@ from freedom_ls.learner_progress.factories import (
 )
 from freedom_ls.learner_progress.force_delete import (
     ForceDeleteBlockedError,
+    ForceDeletePlan,
     build_plan,
     force_delete_learners,
     force_delete_users,
@@ -76,13 +79,15 @@ def request_for(actor: User) -> HttpRequest:
     return request
 
 
-def _plan(user: User, request: HttpRequest):
+def _plan(user: User, request: HttpRequest) -> ForceDeletePlan:
     return build_plan(
         targets=[user], progress_roots=[], request=request, admin_site=admin.site
     )
 
 
-def test_plan_counts_each_model_once(mock_site_context, request_for) -> None:
+def test_plan_counts_each_model_once(
+    mock_site_context: Site, request_for: HttpRequest
+) -> None:
     user: User = UserFactory()
     LegalConsentFactory(user=user)
     LegalConsentFactory(user=user, document_type="privacy")
@@ -94,7 +99,7 @@ def test_plan_counts_each_model_once(mock_site_context, request_for) -> None:
 
 
 def test_plan_can_run_for_a_user_whose_rows_are_all_allowed(
-    mock_site_context, request_for
+    mock_site_context: Site, request_for: HttpRequest
 ) -> None:
     user: User = UserFactory()
     LegalConsentFactory(user=user)
@@ -106,7 +111,7 @@ def test_plan_can_run_for_a_user_whose_rows_are_all_allowed(
 
 
 def test_plan_names_a_model_whose_admin_refuses_delete_and_is_not_allowed(
-    mock_site_context, request_for, monkeypatch
+    mock_site_context: Site, request_for: HttpRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     user: User = UserFactory()
     LegalConsentFactory(user=user)
@@ -119,7 +124,7 @@ def test_plan_names_a_model_whose_admin_refuses_delete_and_is_not_allowed(
 
 
 def test_force_delete_removes_the_user_and_their_rows(
-    mock_site_context, request_for, actor
+    mock_site_context: Site, request_for: HttpRequest, actor: User
 ) -> None:
     user: User = UserFactory()
     LegalConsentFactory(user=user)
@@ -138,7 +143,7 @@ def test_force_delete_removes_the_user_and_their_rows(
 
 
 def test_force_delete_writes_one_entry_that_outlives_the_user(
-    mock_site_context, request_for, actor
+    mock_site_context: Site, request_for: HttpRequest, actor: User
 ) -> None:
     user: User = UserFactory(first_name="Ada", last_name="Lovelace")
     user_pk = user.pk
@@ -163,7 +168,10 @@ def test_force_delete_writes_one_entry_that_outlives_the_user(
 
 
 def test_force_delete_of_a_blocked_user_raises_and_deletes_nothing(
-    mock_site_context, request_for, actor, monkeypatch
+    mock_site_context: Site,
+    request_for: HttpRequest,
+    actor: User,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     user: User = UserFactory()
     LegalConsentFactory(user=user)
@@ -193,7 +201,7 @@ class LoadedUser:
 
 
 @pytest.fixture
-def loaded_user(mock_site_context) -> LoadedUser:
+def loaded_user(mock_site_context: Site) -> LoadedUser:
     """A user with a learner in each of two organisations, each holding a
     cohort membership, course progress and topic progress; the first learner
     also sat a form whose answer has a file. The user holds a form progress
@@ -243,7 +251,7 @@ def _delete(loaded: LoadedUser, request: HttpRequest, actor: User) -> int:
 
 
 def test_plan_counts_each_object_once_across_both_collections(
-    loaded_user, request_for
+    loaded_user: LoadedUser, request_for: HttpRequest
 ) -> None:
     plan = build_plan(
         targets=[loaded_user.user],
@@ -264,7 +272,7 @@ def test_plan_counts_each_object_once_across_both_collections(
 
 
 def test_a_protected_row_outside_the_progress_collection_blocks(
-    loaded_user, request_for
+    loaded_user: LoadedUser, request_for: HttpRequest
 ) -> None:
     plan = build_plan(
         targets=[loaded_user.user],
@@ -278,7 +286,7 @@ def test_a_protected_row_outside_the_progress_collection_blocks(
 
 
 def test_plan_leaves_auto_created_join_rows_out_of_counts_and_listing(
-    mock_site_context, request_for, actor
+    mock_site_context: Site, request_for: HttpRequest, actor: User
 ) -> None:
     """The join table behind a many-to-many field used to be listed and counted
     as "questionanswer-questionoption relationships", a row nobody can recognise.
@@ -313,7 +321,7 @@ def test_plan_leaves_auto_created_join_rows_out_of_counts_and_listing(
 
 
 def test_force_delete_leaves_no_row_pointing_at_the_user(
-    loaded_user, request_for, actor
+    loaded_user: LoadedUser, request_for: HttpRequest, actor: User
 ) -> None:
     user_pk = loaded_user.user.pk
 
@@ -330,7 +338,10 @@ def test_force_delete_leaves_no_row_pointing_at_the_user(
 
 
 def test_force_delete_removes_the_answer_file_and_profile_picture_on_commit(
-    loaded_user, request_for, actor, django_capture_on_commit_callbacks
+    loaded_user: LoadedUser,
+    request_for: HttpRequest,
+    actor: User,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     answer_storage = loaded_user.answer_file.file.storage
     answer_name = loaded_user.answer_file.file.name
@@ -344,7 +355,7 @@ def test_force_delete_removes_the_answer_file_and_profile_picture_on_commit(
 
 
 def test_force_delete_writes_a_user_entry_and_a_learner_entry_per_organisation(
-    loaded_user, request_for, actor
+    loaded_user: LoadedUser, request_for: HttpRequest, actor: User
 ) -> None:
     _delete(loaded_user, request_for, actor)
 
@@ -368,7 +379,7 @@ class _SecondDeleteFailedError(Exception):
 
 
 def test_a_failure_part_way_rolls_back_every_row_and_entry(
-    mock_site_context, request_for, actor
+    mock_site_context: Site, request_for: HttpRequest, actor: User
 ) -> None:
     first: User = UserFactory()
     second: User = UserFactory()
@@ -399,7 +410,7 @@ def test_a_failure_part_way_rolls_back_every_row_and_entry(
 
 
 def test_plan_counts_unlinked_rows_for_the_users_it_is_given(
-    mock_site_context, request_for, monkeypatch
+    mock_site_context: Site, request_for: HttpRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     user: User = UserFactory()
     calls = stub_unlinked(monkeypatch, 3)
@@ -417,7 +428,7 @@ def test_plan_counts_unlinked_rows_for_the_users_it_is_given(
 
 
 def test_plan_drops_an_unlinked_model_with_a_zero_count(
-    mock_site_context, request_for, monkeypatch
+    mock_site_context: Site, request_for: HttpRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     user: User = UserFactory()
     stub_unlinked(monkeypatch, 0)
@@ -434,7 +445,7 @@ def test_plan_drops_an_unlinked_model_with_a_zero_count(
 
 
 def test_plan_without_unlinked_users_calls_no_collector(
-    mock_site_context, request_for, monkeypatch
+    mock_site_context: Site, request_for: HttpRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     user: User = UserFactory()
     calls = stub_unlinked(monkeypatch, 3)
@@ -446,7 +457,10 @@ def test_plan_without_unlinked_users_calls_no_collector(
 
 
 def test_force_delete_records_unlinked_counts_in_the_entry(
-    mock_site_context, request_for, actor, monkeypatch
+    mock_site_context: Site,
+    request_for: HttpRequest,
+    actor: User,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     user: User = UserFactory()
     stub_unlinked(monkeypatch, 2)
@@ -473,7 +487,7 @@ def _delete_learners(learners: list[Learner], request: HttpRequest, actor: User)
 
 
 def test_force_delete_learners_removes_that_learners_rows_and_keeps_the_rest(
-    loaded_user, request_for, actor
+    loaded_user: LoadedUser, request_for: HttpRequest, actor: User
 ) -> None:
     gone, kept = loaded_user.learners
 
@@ -498,7 +512,7 @@ def test_force_delete_learners_removes_that_learners_rows_and_keeps_the_rest(
 
 
 def test_force_delete_learners_writes_one_entry_per_learner_in_its_organisation(
-    loaded_user, request_for, actor
+    loaded_user: LoadedUser, request_for: HttpRequest, actor: User
 ) -> None:
     first, second = loaded_user.learners
 
@@ -515,7 +529,10 @@ def test_force_delete_learners_writes_one_entry_per_learner_in_its_organisation(
 
 
 def test_force_delete_learners_names_the_models_that_block(
-    loaded_user, request_for, actor, monkeypatch
+    loaded_user: LoadedUser,
+    request_for: HttpRequest,
+    actor: User,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(accounts_admin, "USER_ERASURE_CASCADE_MODELS", set())
 
@@ -527,7 +544,7 @@ def test_force_delete_learners_names_the_models_that_block(
 
 
 def test_learner_progress_roots_hold_the_linked_form_progress(
-    loaded_user,
+    loaded_user: LoadedUser,
 ) -> None:
     roots = learner_progress_roots(loaded_user.learners[:1])
 
@@ -535,7 +552,7 @@ def test_learner_progress_roots_hold_the_linked_form_progress(
 
 
 def test_a_failure_part_way_through_several_learners_rolls_back_every_row_and_entry(
-    mock_site_context, request_for, actor
+    mock_site_context: Site, request_for: HttpRequest, actor: User
 ) -> None:
     first: Learner = LearnerFactory()
     second: Learner = LearnerFactory()
@@ -558,4 +575,33 @@ def test_a_failure_part_way_through_several_learners_rolls_back_every_row_and_en
 
     assert Learner._base_manager.filter(pk__in=[first.pk, second.pk]).count() == 2
     assert CourseProgress._base_manager.filter(learner=first).exists()
+    assert not AuditLogEntry.unscoped.exists()
+
+
+def test_force_delete_of_users_already_deleted_returns_zero(
+    mock_site_context: object, request_for: HttpRequest, actor: User
+) -> None:
+    user: User = UserFactory()
+    User._base_manager.filter(pk=user.pk).delete()
+
+    count = force_delete_users(
+        [user],
+        actor=actor,
+        reason="Erasure requested",
+        request=request_for,
+        admin_site=admin.site,
+    )
+
+    assert count == 0
+    assert not AuditLogEntry.unscoped.exists()
+
+
+def test_force_delete_of_learners_already_deleted_returns_zero(
+    loaded_user: LoadedUser, request_for: HttpRequest, actor: User
+) -> None:
+    gone, _kept = loaded_user.learners
+    CourseProgress._base_manager.filter(learner=gone).delete()
+    Learner._base_manager.filter(pk=gone.pk).delete()
+
+    assert _delete_learners([gone], request_for, actor) == 0
     assert not AuditLogEntry.unscoped.exists()

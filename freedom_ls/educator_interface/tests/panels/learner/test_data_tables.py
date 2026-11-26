@@ -31,6 +31,7 @@ from freedom_ls.educator_interface.panels.learner.data_tables import (
     _last_active_cell,
 )
 from freedom_ls.educator_interface.tests.helpers import (
+    RoleHolderClient,
     _get_document,
     _interface_url,
     _notes_for,
@@ -821,8 +822,8 @@ def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_cour
 
 @pytest.mark.django_db
 def test_learners_list_last_active_reads_never_for_a_user_never_active(
-    role_holder_client,
-):
+    role_holder_client: RoleHolderClient,
+) -> None:
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation, last_active=None)
 
@@ -834,8 +835,8 @@ def test_learners_list_last_active_reads_never_for_a_user_never_active(
 
 @pytest.mark.django_db
 def test_learners_list_last_active_shows_the_users_date_not_course_activity(
-    role_holder_client,
-):
+    role_holder_client: RoleHolderClient,
+) -> None:
     organisation = OrganisationFactory()
     learner = _make_learner(
         organisation=organisation,
@@ -851,8 +852,8 @@ def test_learners_list_last_active_shows_the_users_date_not_course_activity(
 
 @pytest.mark.django_db
 def test_learners_list_sorted_by_last_active_orders_by_the_most_recent_request(
-    role_holder_client,
-):
+    role_holder_client: RoleHolderClient,
+) -> None:
     organisation = OrganisationFactory()
     for first_name, active in (
         ("Early", datetime(2024, 1, 1, 10, 0, tzinfo=UTC)),
@@ -874,7 +875,7 @@ def test_learners_list_sorted_by_last_active_orders_by_the_most_recent_request(
 
 
 @pytest.mark.django_db
-def test_learners_export_last_active_cell_is_the_users_local_date():
+def test_learners_export_last_active_cell_is_the_users_local_date() -> None:
     learner = LearnerFactory(
         user=UserFactory(last_active=datetime(2026, 3, 4, 15, 30, tzinfo=UTC))
     )
@@ -883,7 +884,7 @@ def test_learners_export_last_active_cell_is_the_users_local_date():
 
 
 @pytest.mark.django_db
-def test_learners_export_last_active_cell_is_empty_for_a_user_never_active():
+def test_learners_export_last_active_cell_is_empty_for_a_user_never_active() -> None:
     learner = LearnerFactory(user=UserFactory(last_active=None))
 
     assert _last_active_cell(learner) == ""

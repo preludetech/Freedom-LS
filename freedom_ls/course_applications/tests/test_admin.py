@@ -29,6 +29,7 @@ from freedom_ls.course_applications.models import (
     CourseApplication,
 )
 from freedom_ls.course_applications.tests.helpers import (
+    UnverifiedApplication,
     gated_course_with_form,
     unverified_application_with_file,
 )
@@ -874,7 +875,7 @@ def test_applicant_course_filter_returns_only_that_courses_applicants(
 FORCE_DELETE_USERS = "admin:freedom_ls_accounts_user_force_delete"
 
 
-def _unclaimed_for(email: str):
+def _unclaimed_for(email: str) -> UnverifiedApplication:
     unverified = unverified_application_with_file()
     unverified.applicant.email = email
     unverified.applicant.save()
@@ -885,7 +886,9 @@ def _force_delete_url(user: User) -> str:
     return f"{reverse(FORCE_DELETE_USERS)}?ids={user.pk}"
 
 
-def test_force_delete_page_lists_the_unclaimed_applicant_with_its_count(staff_client):
+def test_force_delete_page_lists_the_unclaimed_applicant_with_its_count(
+    staff_client: Client,
+) -> None:
     user = UserFactory(email="ada@example.com")
     _unclaimed_for("ada@example.com")
 
@@ -897,8 +900,8 @@ def test_force_delete_page_lists_the_unclaimed_applicant_with_its_count(staff_cl
 
 
 def test_force_delete_erases_the_unclaimed_applicant_application_and_sitting(
-    staff_client,
-):
+    staff_client: Client,
+) -> None:
     user = UserFactory(email="ada@example.com")
     unverified = _unclaimed_for("ada@example.com")
 
@@ -912,8 +915,8 @@ def test_force_delete_erases_the_unclaimed_applicant_application_and_sitting(
 
 
 def test_force_delete_counts_a_claimed_applicant_of_the_address_through_the_cascade(
-    staff_client,
-):
+    staff_client: Client,
+) -> None:
     user = UserFactory(email="ada@example.com")
     claimed = _claimed(unverified_application_with_file())
     claimed.applicant.user = user
@@ -929,8 +932,8 @@ def test_force_delete_counts_a_claimed_applicant_of_the_address_through_the_casc
 
 
 def test_claimed_applicant_delete_confirmation_says_a_superuser_can_force_delete_the_user(
-    staff_client,
-):
+    staff_client: Client,
+) -> None:
     claimed = _claimed(unverified_application_with_file())
 
     response = staff_client.post(

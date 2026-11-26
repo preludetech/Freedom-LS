@@ -209,3 +209,16 @@ def test_last_active_middleware_check_errors_when_missing() -> None:
         errors = check_last_active_middleware()
 
     assert [error.id for error in errors] == ["freedom_ls_accounts.E004"]
+
+
+def test_last_active_middleware_check_errors_when_before_authentication() -> None:
+    last_active = "freedom_ls.accounts.middleware.LastActiveMiddleware"
+    middleware = [last_active] + [
+        entry for entry in settings.MIDDLEWARE if entry != last_active
+    ]
+
+    with override_settings(MIDDLEWARE=middleware):
+        errors = check_last_active_middleware()
+
+    assert [error.id for error in errors] == ["freedom_ls_accounts.E004"]
+    assert "after" in errors[0].msg

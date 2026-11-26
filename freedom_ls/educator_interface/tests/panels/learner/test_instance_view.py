@@ -254,7 +254,7 @@ def test_the_learner_header_carries_the_email_subtitle_and_no_active_badge(
 @pytest.mark.django_db
 def test_the_learner_overview_details_card_lists_name_email_status_date_added_and_last_active(
     staff_client: Client,
-):
+) -> None:
     learner = LearnerFactory(organisation=OrganisationFactory())
 
     document = _learner_page(staff_client, learner, "overview")
@@ -264,7 +264,9 @@ def test_the_learner_overview_details_card_lists_name_email_status_date_added_an
 
 
 @pytest.mark.django_db
-def test_the_learner_overview_last_active_row_shows_the_date(staff_client: Client):
+def test_the_learner_overview_last_active_row_shows_the_date(
+    staff_client: Client,
+) -> None:
     learner = LearnerFactory(
         organisation=OrganisationFactory(),
         user=UserFactory(last_active=datetime(2026, 3, 4, 15, 30, tzinfo=UTC)),
@@ -281,7 +283,7 @@ def test_the_learner_overview_last_active_row_shows_the_date(staff_client: Clien
 @pytest.mark.django_db
 def test_the_learner_overview_last_active_row_reads_never_without_activity(
     staff_client: Client,
-):
+) -> None:
     learner = LearnerFactory(
         organisation=OrganisationFactory(), user=UserFactory(last_active=None)
     )

@@ -6,6 +6,7 @@ from __future__ import annotations
 import pytest
 
 from django.contrib import admin
+from django.contrib.sites.models import Site
 from django.db.models import CASCADE, Model
 from django.test import RequestFactory
 
@@ -45,7 +46,7 @@ def _models_missing_from_the_allow_list(request: object) -> list[str]:
 
 
 def test_every_refusing_model_a_user_force_delete_reaches_is_allowed(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     request = RequestFactory().post("/")
     request.user = UserFactory(superuser=True)

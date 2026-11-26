@@ -75,7 +75,9 @@ def test_legal_consent_admin_delete_keeps_row(staff_client, mock_site_context):
 
 
 @pytest.mark.django_db
-def test_user_admin_stock_delete_url_answers_403_for_a_superuser(staff_client):
+def test_user_admin_stock_delete_url_answers_403_for_a_superuser(
+    staff_client: Client,
+) -> None:
     user = UserFactory()
     url = reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk])
 
@@ -86,7 +88,7 @@ def test_user_admin_stock_delete_url_answers_403_for_a_superuser(staff_client):
 
 
 @pytest.mark.django_db
-def test_user_changelist_has_no_delete_selected_action(staff_client):
+def test_user_changelist_has_no_delete_selected_action(staff_client: Client) -> None:
     UserFactory()
 
     response = staff_client.get(reverse("admin:freedom_ls_accounts_user_changelist"))
@@ -96,7 +98,7 @@ def test_user_changelist_has_no_delete_selected_action(staff_client):
 
 
 @pytest.mark.django_db
-def test_user_change_form_context_refuses_delete(staff_client):
+def test_user_change_form_context_refuses_delete(staff_client: Client) -> None:
     user = UserFactory()
 
     response = staff_client.get(
@@ -221,7 +223,7 @@ def test_user_admin_change_form_post_leaves_the_stored_picture_unchanged(staff_c
 
 
 @pytest.mark.django_db
-def test_user_changelist_sorts_on_last_active(staff_client):
+def test_user_changelist_sorts_on_last_active(staff_client: Client) -> None:
     older = UserFactory(last_active=datetime(2020, 1, 1, tzinfo=UTC))
     newer = UserFactory(last_active=datetime(2025, 1, 1, tzinfo=UTC))
     column = UserAdmin.list_display.index("last_active")
@@ -235,7 +237,9 @@ def test_user_changelist_sorts_on_last_active(staff_client):
 
 
 @pytest.mark.django_db
-def test_user_change_form_post_leaves_last_active_unchanged(staff_client):
+def test_user_change_form_post_leaves_last_active_unchanged(
+    staff_client: Client,
+) -> None:
     stamp = datetime(2020, 1, 1, tzinfo=UTC)
     user = UserFactory(last_active=stamp)
     url = reverse("admin:freedom_ls_accounts_user_change", args=[user.pk])

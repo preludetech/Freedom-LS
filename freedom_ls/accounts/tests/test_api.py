@@ -9,7 +9,7 @@ from allauth.account.models import EmailAddress
 
 from django.conf import settings
 from django.core.cache import cache
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -324,7 +324,9 @@ def test_the_project_settings_carry_no_rest_framework_setting():
     assert not hasattr(settings, "REST_FRAMEWORK")
 
 
-def test_an_api_request_moves_neither_updated_at_nor_last_active(client, auth):
+def test_an_api_request_moves_neither_updated_at_nor_last_active(
+    client: Client, auth: dict[str, str]
+) -> None:
     stamp = datetime(2020, 1, 1, tzinfo=UTC)
     user = UserFactory(last_active=stamp)
     User._base_manager.filter(pk=user.pk).update(updated_at=stamp)

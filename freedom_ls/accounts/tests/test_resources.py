@@ -175,7 +175,9 @@ def test_last_login_is_empty_for_a_user_who_never_logged_in(staff_client):
 
 
 @pytest.mark.django_db
-def test_last_active_is_empty_for_a_user_never_seen_signed_in(staff_client):
+def test_last_active_is_empty_for_a_user_never_seen_signed_in(
+    staff_client: Client,
+) -> None:
     user = UserFactory(last_active=None)
 
     response = _export_user(staff_client, user)
@@ -183,7 +185,7 @@ def test_last_active_is_empty_for_a_user_never_seen_signed_in(staff_client):
     assert _cell(response, user, "last_active") == ""
 
 
-def test_last_active_follows_last_login_in_the_export_fields():
+def test_last_active_follows_last_login_in_the_export_fields() -> None:
     assert USER_EXPORT_FIELDS.index("last_active") == (
         USER_EXPORT_FIELDS.index("last_login") + 1
     )
