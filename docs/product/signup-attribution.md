@@ -1,6 +1,6 @@
 # Signup Attribution
 
-_Last updated: 2026-11-17_
+_Last updated: 2026-11-26_
 
 ## Summary
 
@@ -9,6 +9,7 @@ _Last updated: 2026-11-17_
 - **A per-account timeline of tracked landings, and a conversion record for each key learner action.** Later tracked landings are kept rather than discarded, so signing up, applying to a course, registering interest in a course and self-registering each record which referral codes were first and last in play. Built.
 - **Read-only admin lists and a CSV export, plus a read-only API for scripts.** An integrator can pull signup attributions, the daily tally of first-time arrivals, the timeline of tracked landings and the conversions into their own reporting instead of exporting from the admin. A dashboard or conversion-rate view is not built.
 - **A signup with no tracked landing records as "direct" / "none"** rather than a blank, so an untracked signup still counts as a channel.
+- **A signup's first touch can be sorted into a marketing channel** (Paid search, Organic social, Email and so on) from the fields already recorded, for a project's own reports. The channel is computed when asked for and never stored. Built; no admin, export or API surface shows it.
 - **This page is the operator's privacy-assessment starting point, not a finished one.** Four questions need answering before running this in the EU or UK; see [privacy obligations](#privacy-obligations). FLS ships no consent gate for the tracking cookie. Not built.
 
 ## How It Works
@@ -26,6 +27,18 @@ From the first tracked landing: the advert code, the [referral code](./referral-
 From the signup request itself: the Google Analytics and Meta cookies present in the browser, if any, the request's IP address and browser user agent, and when the signup happened.
 
 Where no tracked landing preceded the signup, the record reads "direct" / "none" with everything else blank.
+
+## Marketing Channels
+
+FLS can sort a signup's first touch into one of nine channels: Direct, Organic search, Paid search, Organic social, Paid social, Email, Referral, Other and Unknown (no first touch at all). With the channel it gives the platform where it can tell, such as Google or Facebook, and the basis for the call: UTM tags, Google click ID, Referring site, Referral code, Meta click ID only, or No signal.
+
+The channel is computed from the recorded fields each time a project's own code asks for it, so a change to the rules reclassifies past signups too. The admin lists, exports and API do not show it.
+
+Read the result with these limits in mind:
+
+- **Direct means no recorded signal, not that the visitor typed the address.** Until a landing with no tracking parameters also records its referring page, organic search and plain referrals mostly read as Direct.
+- **A click identifier on its own is an inference.** A Google click identifier with no UTM tags reads as Paid search, though it may have come from Display or YouTube. A Meta click identifier on its own reads as Organic social, though it may be paid.
+- **Visits from the site's own pages are not filtered out.** A report that should exclude self-referrals filters them itself.
 
 ## Reviewing and Exporting
 
@@ -57,3 +70,4 @@ Five settings govern capture, and a sixth governs retention. `REFERRAL_TRACKING_
 - A dashboard or conversion-rate view. The admin lists, their export and the read-only API are the whole interface.
 - Scheduled deletion. Pruning touches is a command an operator runs; nothing runs it automatically.
 - A consent gate for the tracking cookie.
+- A marketing channel in the admin lists, exports or API. Only a project's own code can ask for it.
