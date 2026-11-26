@@ -7,10 +7,13 @@ run beside, the decisions already taken and the assumptions every idea in the ef
 ## What
 
 The panel framework leaves FLS and becomes `django-panel-framework`, a public GitHub repo owned by
-Prelude Technologies, all rights reserved for now, checked out at
-`/home/sheena/workspace/lms/django_apps/panel_framework`, released as the tag
-`v0.1.0`. FLS then depends on that tag, edits it live in worktrees, and carries the change to
-First-Class and the concrete template through its normal upgrade-notes flow.
+Prelude Technologies under the MIT licence, first released as the tag `v0.1.0`. FLS then depends on
+that tag, edits it live in worktrees, and carries the change to First-Class and the concrete template
+through its normal upgrade-notes flow.
+
+Locally the package is a bare repo with worktrees, laid out like FLS:
+`/home/sheena/workspace/software_factory/django-panel-framework.git`, with `main` checked out at
+`/home/sheena/workspace/software_factory/django-panel-framework.git/main`.
 
 Repo exists on Github at: https://github.com/preludetech/django-panel-framework.git
 
@@ -19,13 +22,13 @@ The package repo:
   data, and so does `templates/panel_framework/icons/HEROICONS_LICENSE.txt`. A test builds the wheel
   and asserts the template, static, migration and licence-notice files are in it, because an editable
   install hides a missing file.
-- A `LICENSE` file that reads, in substance: "Copyright (c) 2026 Prelude Technologies. All rights
-  reserved. No licence is granted to use, copy, modify or distribute this software. Licensing terms
-  are to be decided." It then lists each bundled third-party asset, its licence and where its notice
+- A `LICENSE` file holding the standard MIT licence text with "Copyright (c) 2026 Prelude
+  Technologies". It then lists each bundled third-party asset, its licence and where its notice
   file sits. Prelude's notice covers only Prelude's own code; the third-party assets keep their own
-  licences.
-- The README says the package is not open source yet and that outside contributions (pull requests,
-  patches) are not accepted. No `CONTRIBUTING.md`.
+  licences. `pyproject.toml` declares `license = "MIT"` and `license-files = ["LICENSE"]`, and the
+  wheel test asserts `LICENSE` is in the wheel.
+- The README says the package is MIT licensed and that outside contributions (pull requests,
+  patches) are not accepted for now. No `CONTRIBUTING.md`.
 - The app moves from `freedom_ls/panel_framework`. Its app label becomes `panel_framework` and its
   migrations are regenerated as one clean `0001`. The `BulkActionRun` FK to `django.contrib.sites` is
   kept.
@@ -51,7 +54,7 @@ FLS:
   ContentType rows are removed.
 - Live editing: `claude_plugins/fls-dev/scripts/rebuild_after_rebase.sh` (which `install_dev.sh`
   calls) runs `uv pip install --no-deps -e "$PANEL_FRAMEWORK_DIR"` right after `uv sync`.
-  `PANEL_FRAMEWORK_DIR` is absolute and defaults to the repo path above; the step is skipped with a
+  `PANEL_FRAMEWORK_DIR` is absolute and defaults to the `main` checkout above (not the bare repo); the step is skipped with a
   message when the directory is missing. `UV_NO_SYNC=1` keeps `uv run` from reverting the link
   (developer shell, and the per-machine Claude Code settings `env` block for agents). This lives in
   `fls-dev`, never in `sdd` or `ds`.
@@ -85,11 +88,10 @@ of its own; the editable layer gives live edits across every worktree without ch
 - Public GitHub repo at `preludetech/django-panel-framework`, owned by Prelude Technologies.
   Distribution name `django-panel-framework`, import name and app label `panel_framework`, first
   release `v0.1.0`. No PyPI, no submodule.
-- Licence: none chosen yet. The repo is public but all rights reserved, so the choice stays open:
-  any licence can be granted later, while a version released under an open licence could not be
-  taken back. No tag or file in this spec states an open-source licence.
-- No outside contributions while the licence is undecided. Prelude Technologies stays the only
-  copyright holder of its code, so it can license the package however it chooses later.
+- Licence: MIT, from `v0.1.0` on. A released MIT version stays MIT for good; any later change of
+  licence applies only to later versions.
+- No outside contributions for now. Prelude Technologies stays the only copyright holder of its
+  code, so it can still license future versions however it chooses.
 - Third-party licences are respected: the Heroicons bodies stay under MIT with their notice file
   shipped beside them, and `LICENSE` names them.
 - The label change drops data, not migrates it: the deployed table holds nothing worth keeping.
@@ -132,9 +134,6 @@ of its own; the editable layer gives live edits across every worktree without ch
   "no raw SQL" convention before it lands; if the review refuses it, the fallback is a
   documented manual step in the upgrade notes. The spec confirms the host app and the migration
   order against the new package's `0001`.
-- Whether First-Class needs written permission from Prelude Technologies to use the package while
-  it is all rights reserved. Not needed if First-Class is Prelude's own project; a short written
-  grant if it belongs to someone else. This must be settled before First-Class installs the tag.
 - Whether CI needs a `pre-merge` job or a pre-commit hook for the locked-rev check, and where the
   check lives.
 - Whether the Python stage added to the concrete template's Dockerfile needs `git` installed
@@ -147,7 +146,7 @@ of its own; the editable layer gives live edits across every worktree without ch
   developer doc (spec 6).
 - Any change to the framework's behaviour or its host contract (specs 1 to 4).
 - PyPI publishing, a private repo, a git submodule, a shared core package.
-- Choosing an open-source licence, and accepting outside contributions.
+- Accepting outside contributions.
 - Migrating data from the old table.
 - Tidying `/home/sheena/workspace/lms/django_apps/content_engine` and `site_aware_models`.
 - Re-auditing the framework's tests in `test-organisation-and-hygene-15-educator-interface`.

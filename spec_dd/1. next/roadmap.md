@@ -13,13 +13,13 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
+- 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🟠 Medium · `referral-tracking-marketing-channels` (Referral tracking and marketing)
 - 🟡 Low · `educator-interface-page-polish` (Educator interface)
 
 ### Ready to start
 
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
-- 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
@@ -120,7 +120,7 @@ Priority: 🔴 High
 
 The panel framework moves into its own installable package, because another Django project needs it. Parent: `extract_panels_framework`.
 
-- `extract_panels_framework-5-package-and-install` — **ready** — The public `django-panel-framework` repo, tagged `v0.1.0`. FLS installs it by git tag and drops the old table.
+- `extract_panels_framework-5-package-and-install` — **in progress** — The public `django-panel-framework` repo, tagged `v0.1.0`. FLS installs it by git tag and drops the old table.
 - `extract_panels_framework-6-claude-plugin` — **blocked** by `extract_panels_framework-5-package-and-install` — A generic `panel-framework` Claude Code plugin and developer doc in the package repo. `fls-dev` keeps only a pointer.
 
 ![Panel framework extraction](roadmap_diagrams/panel-framework-extraction.svg)
@@ -128,7 +128,7 @@ The panel framework moves into its own installable package, because another Djan
 **Notes**
 - Specs touching `educator_interface`, `comms`, `reports` or `learner_management` rebase onto `extract_panels_framework-5-package-and-install` once it changes the import prefix.
 - Decided: a public repo at `preludetech/django-panel-framework`, owned by Prelude Technologies, released by git tag; no PyPI and no submodule.
-- Decided: no licence yet. The repo is all rights reserved until Prelude Technologies chooses one, takes no outside contributions, and keeps bundled third-party licence notices (Heroicons, MIT).
+- Decided: MIT licence, copyright Prelude Technologies. The repo takes no outside contributions for now and keeps bundled third-party licence notices (Heroicons, MIT).
 - Decided: app label `panel_framework` starting from a clean `0001`, and no data is migrated. FLS pins it with a PEP 508 git URL in `[project].dependencies`.
 - Decided: multi-site stays. A settings-declared site resolver defaults to `get_current_site`.
 - Assumed: there is no shared core package. If one turns out to be needed, stop and say so. The package ships overridable primitives, and the host schedules the bulk-run sweep.

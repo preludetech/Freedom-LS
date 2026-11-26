@@ -6,7 +6,8 @@ run beside, the decisions already taken and the assumptions every idea in the ef
 
 ## What
 
-The package repo (`/home/sheena/workspace/lms/django_apps/panel_framework`, created by spec 5) gains
+The package repo (bare repo `/home/sheena/workspace/software_factory/django-panel-framework.git`, `main` checked out at
+`/home/sheena/workspace/software_factory/django-panel-framework.git/main`, created by spec 5) gains
 a generic Claude Code plugin, a developer doc and a release-check script. FLS loads the plugin and
 shrinks its own panel guidance to a pointer.
 
