@@ -9,7 +9,7 @@ from typing import cast
 from uuid import UUID
 
 from django.core.paginator import Page
-from django.db.models import Max, Model, Prefetch, QuerySet
+from django.db.models import Model, Prefetch, QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 
