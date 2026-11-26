@@ -69,6 +69,17 @@ def column_badge(obj: object, column: object) -> object:
 
 
 @register.simple_tag
+def column_has_no_badge(obj: object, column: object) -> bool:
+    """True for a `BadgeColumn` whose badge is `None` for this row.
+
+    Usage: {% column_has_no_badge object column as no_badge %}
+    """
+    return callable(getattr(column, "badge", None)) and (
+        column_badge(obj, column) is None
+    )
+
+
+@register.simple_tag
 def pagination_suffix(
     sort_by: str = "",
     sort_order: str = "",

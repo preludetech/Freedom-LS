@@ -1,3 +1,4 @@
+{% load data_table_tags %}
 <c-vars row="" primary_column="" secondary_columns="" action_columns="" selectable="" card_template_name="" row_detail_template_name="" detail_id="" has_child_rows="" />
 
 {% comment %}
@@ -9,7 +10,8 @@ open-page icon ends the primary line, in line with the name and its
 quick-view trigger. Every other value is labelled with its
 column header, since the table headings aren't on screen to explain it; a
 long header wraps at 7rem so the value beside it keeps the room it needs.
-A column with no header holds the row's buttons; it renders as an item footer
+A badge column with no badge for the row is left out of the card, so no label
+stands alone. A column with no header holds the row's buttons; it renders as an item footer
 under the values, left edge on the title's left edge, never inside the label and
 value grid.
 Cards only exist below md; a button in one keeps its small look, and the shared
@@ -84,7 +86,10 @@ checkbox's slot but not the checkbox.
             {% if secondary_columns %}
                 <c-panel-definition-list layout="inline" class="mt-3">
                     {% for column in secondary_columns %}
-                        <c-panel-definition-row :label="column.header">{% include column.template_name with object=row.object column=column in_secondary_line=True %}</c-panel-definition-row>
+                        {% column_has_no_badge row.object column as no_badge %}
+                        {% if not no_badge %}
+                            <c-panel-definition-row :label="column.header">{% include column.template_name with object=row.object column=column in_secondary_line=True %}</c-panel-definition-row>
+                        {% endif %}
                     {% endfor %}
                 </c-panel-definition-list>
             {% endif %}

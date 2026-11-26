@@ -332,3 +332,28 @@ def test_course_table_shows_no_badge_for_a_live_course(
     )
 
     assert _badge_labels(page, course) == []
+
+
+@pytest.mark.django_db
+def test_course_cards_leave_out_the_status_label_for_a_live_course(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    """A live course's card showed a bare "Status" label with no value beside it."""
+    organisation = OrganisationFactory()
+    live = CourseFactory(title="Live Safety")
+    live.organisations.add(organisation)
+    gone = retire(cast(Course, CourseFactory(title="Gone Safety")))
+    gone.organisations.add(organisation)
+    client = logged_in_client(organisation_admin_viewer(organisation))
+
+    document = _get_document(client, _interface_url(organisation.slug, "courses"))
+
+    status_labels_by_card = {
+        "Gone Safety" in card.text_content(): [
+            dt.text_content().strip()
+            for dt in card.cssselect("dt")
+            if dt.text_content().strip() == "Status"
+        ]
+        for card in document.cssselect("li.panel-data-table-card")
+    }
+    assert status_labels_by_card == {True: ["Status"], False: []}
