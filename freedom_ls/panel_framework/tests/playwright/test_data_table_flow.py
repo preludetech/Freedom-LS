@@ -359,6 +359,30 @@ def test_data_table_flow(
         "Reload the list to see which, then run it again."
     )
     expect(modal.get_by_role("alert")).to_be_visible()
+    # The message sits outside the footer's button row: Cancel and the confirm
+    # button share a row and the confirm button stays at the footer's right edge.
+    cancel_box = modal.get_by_role("button", name="Cancel").bounding_box()
+    confirm_box = modal.get_by_role("button", name="Mark processed").bounding_box()
+    footer_box = (
+        modal.locator("[data-modal-footer]").filter(has_text="Cancel").bounding_box()
+    )
+    assert cancel_box
+    assert confirm_box
+    assert footer_box
+    assert (
+        abs(
+            (cancel_box["y"] + cancel_box["height"] / 2)
+            - (confirm_box["y"] + confirm_box["height"] / 2)
+        )
+        <= 3
+    )
+    assert (
+        abs(
+            (confirm_box["x"] + confirm_box["width"])
+            - (footer_box["x"] + footer_box["width"] - 24)
+        )
+        <= 3
+    )
     expect(modal.get_by_role("button", name="Cancel")).to_be_enabled()
     expect(modal.get_by_role("button", name="Close", exact=True).first).to_be_enabled()
     page.keyboard.press("Escape")

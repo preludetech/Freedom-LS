@@ -1924,7 +1924,10 @@ def test_registering_a_table_and_name_twice_overwrites(
 def test_a_bulk_confirmation_form_holds_a_request_error_holder_with_the_run_message(
     mock_site_context: Site,
 ) -> None:
-    """A failed confirm request used to show nothing: the form had no error holder."""
+    """A failed confirm request used to show nothing: the form had no error holder.
+
+    The holder sits in the dialog body, not the footer, so a shown message
+    cannot push the buttons out of their row."""
     stub = make_stub(name="row-0")
 
     response = fetch(
@@ -1935,7 +1938,10 @@ def test_a_bulk_confirmation_form_holds_a_request_error_holder_with_the_run_mess
     )
 
     document = lxml.html.fromstring(response.content.decode())
-    (holder,) = document.cssselect("form [data-request-error]")
+    (holder,) = document.cssselect("[data-request-error]")
+    # Outside the footer's button row, so a shown message never reflows the buttons.
+    assert not document.cssselect("footer [data-request-error]")
+    assert not document.cssselect("form [data-request-error]")
     assert holder.get("hidden") is not None
     assert holder.get("tabindex") == "-1"
     assert holder.get("data-request-error-message") == (

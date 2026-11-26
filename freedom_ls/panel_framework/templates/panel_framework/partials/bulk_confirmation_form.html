@@ -7,9 +7,6 @@
           {% if runs_in_request %}data-runs-in-request{% endif %}
           hx-disabled-elt="find button[type='submit']">
         {% csrf_token %}
-        <div data-request-error tabindex="-1" hidden
-             data-request-error-message="This did not finish. Some changes may not have been made. Reload the list to see which, then run it again."
-             class="mb-2 text-sm [&_p]:text-error"></div>
         {% include "panel_framework/partials/bulk_selection_inputs.html" %}
         {% if form.is_bound and not form.errors %}
             {% for field in form %}

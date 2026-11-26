@@ -47,7 +47,12 @@ function showRequestError(event) {
     const config = event.detail.requestConfig;
     const form = config && config.elt;
     if (!(form instanceof HTMLFormElement)) return;
-    const holder = form.querySelector("[data-request-error]");
+    // A bulk confirm's holder sits in the dialog body, outside the footer's
+    // button row, so it is found through the dialog when the form has none.
+    const holder =
+        form.querySelector("[data-request-error]") ||
+        (form.closest("dialog") &&
+            form.closest("dialog").querySelector("[data-request-error]"));
     if (!holder) return;
     const xhr = event.detail.xhr;
     const status = xhr ? xhr.status : 0;

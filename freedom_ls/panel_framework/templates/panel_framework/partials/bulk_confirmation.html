@@ -18,6 +18,9 @@ and passes page_url: Cancel and the close control are then links back to it.
 {% include "panel_framework/partials/bulk_confirmation_message.html" %}
 {% if confirm_disabled_reason %}<p id="bulk-confirm-reason" class="text-muted">{{ confirm_disabled_reason }}</p>{% endif %}
 {% if runs_in_request %}<p id="bulk-run-status" role="status" x-text="runningMessage"></p>{% endif %}
+<div data-request-error tabindex="-1" hidden
+     data-request-error-message="This did not finish. Some changes may not have been made. Reload the list to see which, then run it again."
+     class="mt-3 text-sm [&_p]:text-error"></div>
 </c-modal-body>
 
 <c-modal-footer cancel_href="{% if page_url %}{{ page_url }}{{ qs }}{% endif %}" focus_cancel="{% if not page_url %}true{% endif %}" cancel_describedby="{% if runs_in_request %}bulk-run-status{% endif %}">
