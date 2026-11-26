@@ -42,7 +42,9 @@ The FLS module classifies differently from that copy in these ways:
   Organic search, Google, rather than Referral.
 - **`EMAIL_HOSTS` adds `outlook.office.com`, `outlook.office365.com`, `mail.proton.me` and
   `icloud.com`.** A shared iCloud Drive link therefore reads as Email.
-- **`advert_code` is ignored by `classify`**, but `has_signal` counts it.
+- **`advert_code` is ignored by `classify`**, but `has_signal` counts it, and counts a lone
+  `utm_campaign`, `utm_content` or `utm_term` too. A whitespace-only value in any field is blank to
+  both functions, and `FirstTouch.from_record` reads a None field as blank.
 
 The channel tables are module constants. A project that needs extra rules wraps `classify` rather
 than editing them. The classifier does not drop self-referrals or payment-gateway referers; filter

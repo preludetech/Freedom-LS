@@ -36,7 +36,7 @@ The channel is computed from the recorded fields each time a project's own code 
 
 Read the result with these limits in mind:
 
-- **Direct means no recorded signal, not that the visitor typed the address.** Until a landing with no tracking parameters also records its referring page, organic search and plain referrals mostly read as Direct.
+- **Direct means nothing recorded names a channel, not that the visitor typed the address.** An advert code or a campaign name on its own still reads as Direct. Until a landing with no tracking parameters also records its referring page, organic search and plain referrals mostly read as Direct.
 - **A click identifier on its own is an inference.** A Google click identifier with no UTM tags reads as Paid search, though it may have come from Display or YouTube. A Meta click identifier on its own reads as Organic social, though it may be paid.
 - **Visits from the site's own pages are not filtered out.** A report that should exclude self-referrals filters them itself.
 

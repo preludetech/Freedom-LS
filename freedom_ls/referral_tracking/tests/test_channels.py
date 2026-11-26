@@ -1,10 +1,14 @@
 from dataclasses import fields
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
+from django.contrib.sites.models import Site
+
 from freedom_ls.referral_tracking.channels import (
     EMAIL_HOSTS,
+    FIRST_TOUCH_FIELD_NAMES,
     SEARCH_HOSTS,
     SOCIAL_HOSTS,
     VIDEO_HOSTS,
@@ -12,7 +16,6 @@ from freedom_ls.referral_tracking.channels import (
     ChannelBasis,
     ChannelResult,
     FirstTouch,
-    FirstTouchFields,
     classify,
     has_signal,
     is_direct_pair,
@@ -21,26 +24,9 @@ from freedom_ls.referral_tracking.models import SignupAttribution
 
 _FIRST_SEEN = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
 
-_FIELD_NAMES = [
-    "advert_code",
-    "referral_code",
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "utm_content",
-    "utm_term",
-    "gclid",
-    "gbraid",
-    "wbraid",
-    "fbclid",
-    "landing_path",
-    "referer",
-    "raw_query",
-]
-
 
 def _touch(**overrides: str) -> FirstTouch:
-    values = dict.fromkeys(_FIELD_NAMES, "")
+    values = dict.fromkeys(FIRST_TOUCH_FIELD_NAMES, "")
     values.update(overrides)
     return FirstTouch(**values, first_seen=_FIRST_SEEN)
 
@@ -70,22 +56,35 @@ def test_channel_basis_choices_are_in_display_order() -> None:
     ]
 
 
-def test_first_touch_fields_are_the_fourteen_names_and_first_seen() -> None:
-    assert [f.name for f in fields(FirstTouch)] == [*_FIELD_NAMES, "first_seen"]
-
-
-def test_first_touch_fields_protocol_matches_first_touch_fields() -> None:
-    assert [*FirstTouchFields.__annotations__, "first_seen"] == [
-        f.name for f in fields(FirstTouch)
+def test_first_touch_dataclass_fields_match_the_protocol() -> None:
+    assert [f.name for f in fields(FirstTouch)] == [
+        *FIRST_TOUCH_FIELD_NAMES,
+        "first_seen",
     ]
 
 
-def test_from_record_copies_every_field_of_a_signup_attribution() -> None:
-    values = {name: f"value-{name}" for name in _FIELD_NAMES}
+@pytest.mark.django_db
+def test_from_record_copies_every_field_of_a_signup_attribution(
+    mock_site_context: Site,
+) -> None:
+    values = {name: f"value-{name}" for name in FIRST_TOUCH_FIELD_NAMES}
     record = SignupAttribution(**values)
 
     assert FirstTouch.from_record(record, _FIRST_SEEN) == FirstTouch(
         **values, first_seen=_FIRST_SEEN
+    )
+
+
+def test_from_record_reads_none_as_blank() -> None:
+    values: dict[str, str | None] = dict.fromkeys(FIRST_TOUCH_FIELD_NAMES)
+    values["utm_source"] = "google"
+    record = SimpleNamespace(**values)
+
+    first_touch = FirstTouch.from_record(record, _FIRST_SEEN)
+
+    assert first_touch.utm_medium == ""
+    assert classify(first_touch) == ChannelResult(
+        Channel.ORGANIC_SEARCH, "Google", ChannelBasis.UTM
     )
 
 
@@ -129,7 +128,10 @@ def test_classify_direct_marker_pair_is_direct() -> None:
     assert result == ChannelResult(Channel.DIRECT, "", ChannelBasis.NONE)
 
 
-def test_classify_direct_marker_from_a_signup_attribution_is_direct() -> None:
+@pytest.mark.django_db
+def test_classify_direct_marker_from_a_signup_attribution_is_direct(
+    mock_site_context: Site,
+) -> None:
     record = SignupAttribution(utm_source="direct", utm_medium="none")
 
     result = classify(FirstTouch.from_record(record, _FIRST_SEEN))
@@ -356,7 +358,32 @@ def test_classify_advert_code_alone_is_direct() -> None:
         ({"wbraid": "abc"}, True),
         ({"fbclid": "abc"}, True),
         ({"referer": "https://example.com/"}, True),
+        ({"utm_campaign": "spring"}, True),
+        ({"utm_content": "hero"}, True),
+        ({"utm_term": "courses"}, True),
+        ({"utm_source": "direct", "utm_medium": "none", "utm_campaign": "x"}, True),
     ],
 )
 def test_has_signal(overrides: dict[str, str], expected: bool) -> None:
     assert has_signal(_touch(**overrides)) is expected
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "gclid",
+        "gbraid",
+        "wbraid",
+        "fbclid",
+        "referral_code",
+        "advert_code",
+        "utm_campaign",
+        "utm_content",
+        "utm_term",
+    ],
+)
+def test_whitespace_only_value_is_no_signal(field: str) -> None:
+    first_touch = _touch(**{field: "   "})
+
+    assert has_signal(first_touch) is False
+    assert classify(first_touch) == ChannelResult(Channel.DIRECT, "", ChannelBasis.NONE)

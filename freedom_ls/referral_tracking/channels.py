@@ -5,8 +5,9 @@ change reclassifies history.
 """
 
 import re
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from typing import Protocol
 
 from django.db import models
@@ -38,7 +39,7 @@ class ChannelBasis(models.TextChoices):
 
 class FirstTouchFields(Protocol):
     """Any record with the first-touch field names, such as `SignupAttribution`
-    or a project's own lead model."""
+    or a project's own lead model. `FirstTouch.from_record` reads None as blank."""
 
     advert_code: str
     referral_code: str
@@ -54,6 +55,9 @@ class FirstTouchFields(Protocol):
     landing_path: str
     referer: str
     raw_query: str
+
+
+FIRST_TOUCH_FIELD_NAMES: tuple[str, ...] = tuple(FirstTouchFields.__annotations__)
 
 
 @dataclass(frozen=True)
@@ -78,9 +82,9 @@ class FirstTouch:
     def from_record(
         cls, record: FirstTouchFields, first_seen: datetime
     ) -> "FirstTouch":
-        names = [f.name for f in fields(cls) if f.name != "first_seen"]
         return cls(
-            **{name: getattr(record, name) for name in names}, first_seen=first_seen
+            **{name: getattr(record, name) or "" for name in FIRST_TOUCH_FIELD_NAMES},
+            first_seen=first_seen,
         )
 
 
@@ -257,6 +261,14 @@ def _lookup(host: str, table: dict[str, str]) -> str | None:
     return None
 
 
+def _present(value: str) -> bool:
+    return bool(value.strip())
+
+
+def _result(basis: ChannelBasis, channel: Channel, platform: str = "") -> ChannelResult:
+    return ChannelResult(channel, platform, basis)
+
+
 def _utm_signal(first_touch: FirstTouch) -> tuple[str, str] | None:
     """The stripped, lowercased UTM pair, or None when it says nothing.
 
@@ -270,8 +282,7 @@ def _utm_signal(first_touch: FirstTouch) -> tuple[str, str] | None:
 
 
 def _utm_result(source: str, medium: str) -> ChannelResult:
-    def result(channel: Channel, platform: str = "") -> ChannelResult:
-        return ChannelResult(channel, platform, ChannelBasis.UTM)
+    result = partial(_result, ChannelBasis.UTM)
 
     paid = PAID_MEDIUM.match(medium) is not None
     if source in SEARCH_SOURCES and paid:
@@ -296,16 +307,17 @@ def _utm_result(source: str, medium: str) -> ChannelResult:
 
 
 def _has_google_click_id(first_touch: FirstTouch) -> bool:
-    return bool(first_touch.gclid or first_touch.gbraid or first_touch.wbraid)
+    return any(
+        _present(value)
+        for value in (first_touch.gclid, first_touch.gbraid, first_touch.wbraid)
+    )
 
 
 def _referer_result(referer: str) -> ChannelResult | None:
     host = referer_host(referer)
     if not host:
         return None
-
-    def result(channel: Channel, platform: str = "") -> ChannelResult:
-        return ChannelResult(channel, platform, ChannelBasis.REFERER)
+    result = partial(_result, ChannelBasis.REFERER)
 
     # Checked on the raw string first: `referer_host` returns a bare package name,
     # which could otherwise match a web host table.
@@ -340,22 +352,31 @@ def classify(first_touch: FirstTouch | None) -> ChannelResult:
     from_referer = _referer_result(first_touch.referer)
     if from_referer is not None:
         return from_referer
-    if first_touch.referral_code:
+    if _present(first_touch.referral_code):
         # A referral code is explicit first-party intent; fbclid alone is a guess.
         return ChannelResult(Channel.REFERRAL, "", ChannelBasis.REFERRAL_CODE)
-    if first_touch.fbclid:
+    if _present(first_touch.fbclid):
         return ChannelResult(Channel.ORGANIC_SOCIAL, "Meta", ChannelBasis.FBCLID_ONLY)
     return ChannelResult(Channel.DIRECT, "", ChannelBasis.NONE)
 
 
 def has_signal(first_touch: FirstTouch) -> bool:
-    """Whether the touch carried anything, not whether it can be classified,
-    so an advert code counts."""
+    """Whether the touch carried anything, not whether it can be classified:
+    any tracked parameter capture stores counts, including the advert code and
+    the UTM campaign, content and term, as does a referer host."""
     return bool(
         _utm_signal(first_touch) is not None
-        or first_touch.advert_code
-        or first_touch.referral_code
         or _has_google_click_id(first_touch)
-        or first_touch.fbclid
+        or any(
+            _present(value)
+            for value in (
+                first_touch.advert_code,
+                first_touch.referral_code,
+                first_touch.fbclid,
+                first_touch.utm_campaign,
+                first_touch.utm_content,
+                first_touch.utm_term,
+            )
+        )
         or referer_host(first_touch.referer)
     )
