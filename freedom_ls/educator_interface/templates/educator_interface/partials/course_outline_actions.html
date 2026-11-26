@@ -12,7 +12,7 @@ beside it, because the viewer needs to know a role would open it.
                          aria_label="Preview course details page" />
     </c-data-table-actions>
 {% elif object.preview_withheld %}
-    <c-data-table-actions>
+    <c-data-table-actions layout="line">
         <c-button size="small" variant="secondary" class="md:-my-1" disabled="true"
                   aria_label="{% if object.kind == 'page' %}Preview {{ object.form_title }}: {{ object.title }}{% else %}Preview {{ object.title }}{% endif %}"
                   aria_describedby="preview-withheld-{{ object.item_pk }}{% if object.page_pk %}-{{ object.page_pk }}{% endif %}">Preview</c-button>

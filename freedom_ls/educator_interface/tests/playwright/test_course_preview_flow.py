@@ -442,6 +442,14 @@ def test_a_non_holder_sees_quiz_previews_disabled_with_the_reason(
             )
             expect(reason).to_be_visible()
             assert_no_horizontal_overflow(page)
+            if viewport["width"] >= 1920:
+                # The reason used to wrap to five lines in a 112px Actions
+                # cell, making a withheld quiz row about three times as tall
+                # as a topic row.
+                row_height = quiz_preview.locator("visible=true").evaluate(
+                    "el => el.closest('tr').getBoundingClientRect().height"
+                )
+                assert row_height < 70, row_height
             page.get_by_role("button", name="Preview Cards").locator(
                 "visible=true"
             ).click()
