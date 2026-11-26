@@ -50,3 +50,9 @@ label > input[type="checkbox"] + span.truncate {
     overflow: visible;
     text-overflow: clip;
 }
+
+/* unfold's stylesheet is prebuilt and ships no group-open variant, so a disclosure
+   row's chevron needs its own rule to turn up when the row opens. */
+details.group[open] .group-open\:rotate-180 {
+    transform: rotate(180deg);
+}
