@@ -16,10 +16,11 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether to fix tests/test_select_tests.py::test_malformed_remote_entry_exits_2_naming_the_key: its three cases fail whenever DS_TEST_REMOTE=off is set in the environment (as local full runs set it), because the variable leaks into the test; they pass with it unset. Not caused by this branch; a fix would clear the variable in the test (monkeypatch.delenv).
+- [ ] (user) Decide whether the force delete confirmation page should hide Django's auto-created many-to-many join rows (it now lists 'Questionanswer-questionoption relationships', the links between a quiz answer and its chosen options) or show them under a readable name, then fix the page with a failing test first (QA bug B3 in qa_report.md)
 
 ## 4. Documentation and pull request
 
