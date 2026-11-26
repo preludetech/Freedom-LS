@@ -1,0 +1,90 @@
+- generic [active] [ref=f12e1]:
+  - banner [ref=f12e2]:
+    - link [ref=f12e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f12e4]
+      - heading "FirstClass" [level=1] [ref=f12e5]
+    - navigation [ref=f12e6]:
+      - generic [ref=f12e7]:
+        - generic [ref=f12e8]:
+          - button "Notifications, none new" [ref=f12e9]
+          - status:
+            - generic [ref=f12e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f12e15] [cursor=pointer]:
+          - generic [ref=f12e16]:
+            - generic [ref=f12e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f12e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f12e19]:
+    - generic [ref=f12e21]:
+      - dialog "Course outline" [ref=f12e22]:
+        - generic [ref=f12e25]:
+          - generic [ref=f12e26]:
+            - paragraph [ref=f12e27]: Course outline
+            - paragraph [ref=f12e28]: Functionality Demo - shuffled quiz
+            - generic [ref=f12e30]:
+              - progressbar "Progress for Functionality Demo - shuffled quiz" [ref=f12e31]: 100%
+              - generic [ref=f12e32]: 100% complete
+          - navigation "Course outline" [ref=f12e33]:
+            - list [ref=f12e34]:
+              - listitem [ref=f12e35]:
+                - generic [ref=f12e36]:
+                  - generic [ref=f12e37]: "1."
+                  - generic [ref=f12e38]: Completed
+                  - link "Planets and the sky" [ref=f12e43] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-shuffled-quiz/1/
+              - listitem [ref=f12e44]:
+                - generic [ref=f12e45]:
+                  - generic [ref=f12e46]: "2."
+                  - generic [ref=f12e47]: Completed
+                  - generic [ref=f12e51]: Shuffled quiz
+          - navigation "Revision" [ref=f12e52]:
+            - link "Revision 9 due" [ref=f12e53] [cursor=pointer]:
+              - /url: /courses/functionality-demo-shuffled-quiz/revision/
+              - generic [ref=f12e54]: Revision
+              - generic [ref=f12e55]: 9 due
+      - generic [ref=f12e56]:
+        - navigation "Breadcrumb" [ref=f12e61]:
+          - list [ref=f12e62]:
+            - listitem [ref=f12e63]:
+              - link "Functionality Demo - shuffled quiz" [ref=f12e64] [cursor=pointer]:
+                - /url: /courses/functionality-demo-shuffled-quiz/detail/
+            - listitem [ref=f12e65]:
+              - generic [aria-hidden] [ref=f12e66]: ">"
+              - generic "Shuffled quiz" [ref=f12e67]
+        - generic [ref=f12e69]:
+          - heading "Shuffled quiz" [level=1] [ref=f12e74]
+          - paragraph [ref=f12e76]: The pages, the questions on each page and the answer options are put in a new order for every sitting. The two questions under the picture always stay together.
+          - generic [ref=f12e77]:
+            - generic [ref=f12e78]: 9 questions
+            - generic [ref=f12e81]: 3 pages
+          - region [ref=f12e84]:
+            - heading "Previous attempts" [level=2] [ref=f12e85]
+            - generic [ref=f12e86]:
+              - generic [ref=f12e87]:
+                - time [ref=f12e89]: 24 Nov 2026
+                - generic [ref=f12e90]:
+                  - generic [ref=f12e91]: 100%
+                  - generic [ref=f12e92]: (8 / 8)
+              - generic [ref=f12e93]:
+                - time [ref=f12e95]: 24 Nov 2026
+                - generic [ref=f12e96]:
+                  - generic [ref=f12e97]: 100%
+                  - generic [ref=f12e98]: (9 / 9)
+          - generic [ref=f12e99]:
+            - link "Previous" [ref=f12e101] [cursor=pointer]:
+              - /url: /courses/functionality-demo-shuffled-quiz/1/
+            - link "Finish Course" [ref=f12e105] [cursor=pointer]:
+              - /url: /courses/functionality-demo-shuffled-quiz/finish/
+  - contentinfo [ref=f12e109]:
+    - generic [ref=f12e110]:
+      - paragraph [ref=f12e111]: © 2026 FirstClass
+      - navigation "Legal" [ref=f12e112]:
+        - link "Terms and Conditions" [ref=f12e113] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f12e114] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f12e115] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f12e117]: DJDT

@@ -1,0 +1,290 @@
+- generic [active] [ref=f9e1]:
+  - banner [ref=f9e2]:
+    - link [ref=f9e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f9e4]
+      - heading "FirstClass" [level=1] [ref=f9e5]
+    - navigation [ref=f9e6]:
+      - generic [ref=f9e7]:
+        - generic [ref=f9e8]:
+          - button "Notifications, none new" [ref=f9e9]
+          - status:
+            - generic [ref=f9e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f9e15] [cursor=pointer]:
+          - generic [ref=f9e16]:
+            - generic [ref=f9e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f9e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f9e19]:
+    - generic [ref=f9e21]:
+      - generic [ref=f9e22]:
+        - paragraph [ref=f9e23]: Thursday, November 26, 2026
+        - heading "Welcome back, demodev@email.com" [level=1] [ref=f9e24]
+      - status [ref=f9e25]
+      - generic [ref=f9e27]:
+        - generic [ref=f9e28]:
+          - heading "In progress" [level=2] [ref=f9e30]
+          - generic [ref=f9e31]:
+            - generic [ref=f9e32]:
+              - generic [ref=f9e33]: 1 to 2 of 2
+              - navigation "In progress pages" [ref=f9e35]:
+                - link "Previous page" [disabled] [ref=f9e36] [cursor=pointer]
+                - link "Next page" [disabled] [ref=f9e39] [cursor=pointer]
+            - generic [ref=f9e42]:
+              - article [ref=f9e43]:
+                - generic [ref=f9e47]:
+                  - paragraph [ref=f9e49]: In progress
+                  - heading [level=3] [ref=f9e53]:
+                    - link "Functionality Demo - Course Parts" [ref=f9e54] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-course-parts/2/
+                  - paragraph [ref=f9e55]: "Next up: Core Concepts"
+                  - generic [ref=f9e56]:
+                    - generic [ref=f9e57]:
+                      - progressbar "Progress for Functionality Demo - Course Parts" [ref=f9e58]: 17%
+                      - generic [ref=f9e59]: 17%
+                    - generic [ref=f9e60]:
+                      - generic [ref=f9e66]:
+                        - generic [ref=f9e67]: Deadline
+                        - generic [ref=f9e68]: Key Ideas
+                        - time [ref=f9e71]: 8 Dec, 19:00
+                      - link "Details for Functionality Demo - Course Parts" [ref=f9e73] [cursor=pointer]:
+                        - /url: /courses/functionality-demo-course-parts/detail/
+                        - text: Details
+                        - generic [ref=f9e74]: for Functionality Demo - Course Parts
+              - article [ref=f9e78]:
+                - generic [ref=f9e82]:
+                  - paragraph [ref=f9e84]: In progress
+                  - heading [level=3] [ref=f9e88]:
+                    - link "Functionality Demo - shuffled quiz" [ref=f9e89] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-shuffled-quiz/
+                  - generic [ref=f9e90]:
+                    - generic [ref=f9e91]:
+                      - progressbar "Progress for Functionality Demo - shuffled quiz" [ref=f9e92]: 100%
+                      - generic [ref=f9e93]: 100%
+                    - link "Details for Functionality Demo - shuffled quiz" [ref=f9e96] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-shuffled-quiz/detail/
+                      - text: Details
+                      - generic [ref=f9e97]: for Functionality Demo - shuffled quiz
+        - generic [ref=f9e101]:
+          - generic [ref=f9e102]:
+            - heading "Start here" [level=2] [ref=f9e103]
+            - paragraph [ref=f9e104]: New to the platform? Begin with these.
+          - generic [ref=f9e105]:
+            - generic [ref=f9e106]:
+              - generic [ref=f9e107]: 1 to 3 of 3
+              - generic [ref=f9e108]:
+                - navigation "Start here pages" [ref=f9e109]:
+                  - link "Previous page" [disabled] [ref=f9e110] [cursor=pointer]
+                  - link "Next page" [disabled] [ref=f9e113] [cursor=pointer]
+                - link "Browse all courses" [ref=f9e116] [cursor=pointer]:
+                  - /url: /courses/
+            - generic [ref=f9e120]:
+              - article [ref=f9e121]:
+                - paragraph [ref=f9e125]:
+                  - generic [aria-hidden] [ref=f9e127]: NL
+                  - generic "Northwind Logistics" [ref=f9e128]
+                - generic [ref=f9e129]:
+                  - paragraph [ref=f9e131]: Not registered
+                  - heading [level=3] [ref=f9e134]:
+                    - link "Forklift Safety Basics" [ref=f9e135] [cursor=pointer]:
+                      - /url: /courses/forklift-safety-basics/detail/
+                  - link "Details for Forklift Safety Basics" [ref=f9e139] [cursor=pointer]:
+                    - /url: /courses/forklift-safety-basics/detail/
+                    - text: Details
+                    - generic [ref=f9e140]: for Forklift Safety Basics
+              - article [ref=f9e144]:
+                - generic [ref=f9e148]:
+                  - paragraph [ref=f9e150]: Not registered
+                  - heading [level=3] [ref=f9e153]:
+                    - link "Standard Markdown - Demo Finance" [ref=f9e154] [cursor=pointer]:
+                      - /url: /courses/standard-markdown-demo-finance/detail/
+                  - link "Details for Standard Markdown - Demo Finance" [ref=f9e158] [cursor=pointer]:
+                    - /url: /courses/standard-markdown-demo-finance/detail/
+                    - text: Details
+                    - generic [ref=f9e159]: for Standard Markdown - Demo Finance
+              - article [ref=f9e163]:
+                - paragraph [ref=f9e167]:
+                  - generic [aria-hidden] [ref=f9e169]: NL
+                  - generic "Northwind Logistics" [ref=f9e170]
+                - generic [ref=f9e171]:
+                  - paragraph [ref=f9e173]: Not registered
+                  - heading [level=3] [ref=f9e176]:
+                    - link "Workplace Safety Essentials" [ref=f9e177] [cursor=pointer]:
+                      - /url: /courses/workplace-safety-essentials-2/detail/
+                  - link "Details for Workplace Safety Essentials" [ref=f9e181] [cursor=pointer]:
+                    - /url: /courses/workplace-safety-essentials-2/detail/
+                    - text: Details
+                    - generic [ref=f9e182]: for Workplace Safety Essentials
+        - generic [ref=f9e186]:
+          - generic [ref=f9e187]:
+            - heading "Assessment" [level=2] [ref=f9e188]
+            - paragraph [ref=f9e189]: Courses that end in a graded quiz.
+          - generic [ref=f9e190]:
+            - generic [ref=f9e191]:
+              - generic [ref=f9e192]: 1 to 3 of 3
+              - generic [ref=f9e193]:
+                - navigation "Assessment pages" [ref=f9e194]:
+                  - link "Previous page" [disabled] [ref=f9e195] [cursor=pointer]
+                  - link "Next page" [disabled] [ref=f9e198] [cursor=pointer]
+                - link "Browse all courses" [ref=f9e201] [cursor=pointer]:
+                  - /url: /courses/
+            - generic [ref=f9e205]:
+              - article [ref=f9e206]:
+                - generic [ref=f9e210]:
+                  - paragraph [ref=f9e212]: Not registered
+                  - heading [level=3] [ref=f9e215]:
+                    - link "Functionality Demo - question pools" [ref=f9e216] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-question-pools/detail/
+                  - link "Details for Functionality Demo - question pools" [ref=f9e220] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-question-pools/detail/
+                    - text: Details
+                    - generic [ref=f9e221]: for Functionality Demo - question pools
+              - article [ref=f9e225]:
+                - generic [ref=f9e229]:
+                  - paragraph [ref=f9e231]: Not registered
+                  - heading [level=3] [ref=f9e234]:
+                    - link "Functionality Demo - quiz declaration" [ref=f9e235] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-quiz-declaration/detail/
+                  - link "Details for Functionality Demo - quiz declaration" [ref=f9e239] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-quiz-declaration/detail/
+                    - text: Details
+                    - generic [ref=f9e240]: for Functionality Demo - quiz declaration
+              - article [ref=f9e244]:
+                - generic [ref=f9e248]:
+                  - paragraph [ref=f9e250]: Not registered
+                  - heading [level=3] [ref=f9e253]:
+                    - link "Functionality Demo - show end with Quiz" [ref=f9e254] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-show-end-with-quiz/detail/
+                  - link "Details for Functionality Demo - show end with Quiz" [ref=f9e258] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-show-end-with-quiz/detail/
+                    - text: Details
+                    - generic [ref=f9e259]: for Functionality Demo - show end with Quiz
+        - generic [ref=f9e263]:
+          - generic [ref=f9e264]:
+            - heading "Pricing" [level=2] [ref=f9e265]
+            - paragraph [ref=f9e266]: One small course for each way a course can be priced.
+          - generic [ref=f9e267]:
+            - generic [ref=f9e268]:
+              - generic [ref=f9e269]: 1 to 3 of 7
+              - generic [ref=f9e270]:
+                - navigation "Pricing pages" [ref=f9e271]:
+                  - link "Previous page" [disabled] [ref=f9e272] [cursor=pointer]
+                  - link "Next page" [ref=f9e275] [cursor=pointer]:
+                    - /url: /?page_pricing-demo=2
+                - link "Browse all courses" [ref=f9e278] [cursor=pointer]:
+                  - /url: /courses/
+            - generic [ref=f9e282]:
+              - article [ref=f9e283]:
+                - generic [ref=f9e287]:
+                  - paragraph [ref=f9e289]: Not registered
+                  - heading [level=3] [ref=f9e292]:
+                    - 'link "Functionality Demo - Price: currency without cents" [ref=f9e293] [cursor=pointer]':
+                      - /url: /courses/functionality-demo-price-currency-without-cents/detail/
+                  - paragraph [ref=f9e294]: ¥15,000
+                  - 'link "Details for Functionality Demo - Price: currency without cents" [ref=f9e298] [cursor=pointer]':
+                    - /url: /courses/functionality-demo-price-currency-without-cents/detail/
+                    - text: Details
+                    - generic [ref=f9e299]: "for Functionality Demo - Price: currency without cents"
+              - article [ref=f9e303]:
+                - generic [ref=f9e307]:
+                  - paragraph [ref=f9e309]: Not registered
+                  - heading [level=3] [ref=f9e312]:
+                    - 'link "Functionality Demo - Price: expired sale" [ref=f9e313] [cursor=pointer]':
+                      - /url: /courses/functionality-demo-price-expired-sale/detail/
+                  - paragraph [ref=f9e314]: ZAR800.00
+                  - 'link "Details for Functionality Demo - Price: expired sale" [ref=f9e318] [cursor=pointer]':
+                    - /url: /courses/functionality-demo-price-expired-sale/detail/
+                    - text: Details
+                    - generic [ref=f9e319]: "for Functionality Demo - Price: expired sale"
+              - article [ref=f9e323]:
+                - generic [ref=f9e327]:
+                  - paragraph [ref=f9e329]: Not registered
+                  - heading [level=3] [ref=f9e332]:
+                    - 'link "Functionality Demo - Price: fixed" [ref=f9e333] [cursor=pointer]':
+                      - /url: /courses/functionality-demo-price-fixed/detail/
+                  - paragraph [ref=f9e334]: $250.00
+                  - 'link "Details for Functionality Demo - Price: fixed" [ref=f9e338] [cursor=pointer]':
+                    - /url: /courses/functionality-demo-price-fixed/detail/
+                    - text: Details
+                    - generic [ref=f9e339]: "for Functionality Demo - Price: fixed"
+        - generic [ref=f9e343]:
+          - heading "Available courses" [level=2] [ref=f9e345]
+          - generic [ref=f9e346]:
+            - generic [ref=f9e347]:
+              - generic [ref=f9e348]: 1 to 3 of 3
+              - generic [ref=f9e349]:
+                - navigation "Available courses pages" [ref=f9e350]:
+                  - link "Previous page" [disabled] [ref=f9e351] [cursor=pointer]
+                  - link "Next page" [disabled] [ref=f9e354] [cursor=pointer]
+                - link "Browse all courses" [ref=f9e357] [cursor=pointer]:
+                  - /url: /courses/
+            - generic [ref=f9e361]:
+              - article [ref=f9e362]:
+                - generic [ref=f9e366]:
+                  - paragraph [ref=f9e368]: Not registered
+                  - heading [level=3] [ref=f9e371]:
+                    - link "Functionality Demo - Application gated course" [ref=f9e372] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-application-gated-course/detail/
+                  - paragraph [ref=f9e373]:
+                    - generic [ref=f9e374]:
+                      - generic [ref=f9e375]: "Original price:"
+                      - text: ZAR1,499.00
+                      - generic [ref=f9e376]: "Now:"
+                      - text: ZAR999.00
+                  - link "Details for Functionality Demo - Application gated course" [ref=f9e380] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-application-gated-course/detail/
+                    - text: Details
+                    - generic [ref=f9e381]: for Functionality Demo - Application gated course
+              - article [ref=f9e385]:
+                - generic [ref=f9e389]:
+                  - paragraph [ref=f9e391]: Not registered
+                  - heading [level=3] [ref=f9e394]:
+                    - link "Functionality Demo - Per-placement Due Dates" [ref=f9e395] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-per-placement-due-dates/detail/
+                  - link "Details for Functionality Demo - Per-placement Due Dates" [ref=f9e399] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-per-placement-due-dates/detail/
+                    - text: Details
+                    - generic [ref=f9e400]: for Functionality Demo - Per-placement Due Dates
+              - article [ref=f9e404]:
+                - generic [ref=f9e408]:
+                  - paragraph [ref=f9e410]: Not registered
+                  - heading [level=3] [ref=f9e413]:
+                    - link "Functionality Demo - Reference Material" [ref=f9e414] [cursor=pointer]:
+                      - /url: /courses/functionality-demo-reference-material/detail/
+                  - link "Details for Functionality Demo - Reference Material" [ref=f9e418] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-reference-material/detail/
+                    - text: Details
+                    - generic [ref=f9e419]: for Functionality Demo - Reference Material
+        - generic [ref=f9e423]:
+          - heading "Coming soon" [level=2] [ref=f9e425]
+          - generic [ref=f9e426]:
+            - generic [ref=f9e427]:
+              - generic [ref=f9e428]: 1 to 1 of 1
+              - generic [ref=f9e429]:
+                - navigation "Coming soon pages" [ref=f9e430]:
+                  - link "Previous page" [disabled] [ref=f9e431] [cursor=pointer]
+                  - link "Next page" [disabled] [ref=f9e434] [cursor=pointer]
+                - link "Browse all courses" [ref=f9e437] [cursor=pointer]:
+                  - /url: /courses/
+            - article [ref=f9e442]:
+              - generic [ref=f9e446]:
+                - paragraph [ref=f9e448]: Coming soon
+                - heading [level=3] [ref=f9e452]:
+                  - link "Content Widgets - Demo Reference" [ref=f9e453] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/detail/
+                - link "Details for Content Widgets - Demo Reference" [ref=f9e457] [cursor=pointer]:
+                  - /url: /courses/content-widgets-demo-reference/detail/
+                  - text: Details
+                  - generic [ref=f9e458]: for Content Widgets - Demo Reference
+  - contentinfo [ref=f9e462]:
+    - generic [ref=f9e463]:
+      - paragraph [ref=f9e464]: © 2026 FirstClass
+      - navigation "Legal" [ref=f9e465]:
+        - link "Terms and Conditions" [ref=f9e466] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f9e467] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f9e468] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f9e470]: DJDT

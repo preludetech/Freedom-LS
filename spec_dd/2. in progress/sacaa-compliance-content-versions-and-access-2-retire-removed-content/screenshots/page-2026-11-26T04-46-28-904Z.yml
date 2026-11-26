@@ -1,0 +1,106 @@
+- generic [active] [ref=f10e1]:
+  - banner [ref=f10e2]:
+    - link [ref=f10e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f10e4]
+    - navigation [ref=f10e5]:
+      - generic [ref=f10e6]:
+        - generic [ref=f10e7]:
+          - button "Notifications, none new" [ref=f10e8]
+          - status:
+            - generic [ref=f10e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f10e14] [cursor=pointer]:
+          - generic [ref=f10e15]:
+            - generic [ref=f10e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f10e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f10e18]:
+    - generic [ref=f10e21]:
+      - navigation "Back" [ref=f10e23]:
+        - link "Cohorts" [ref=f10e24] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/cohorts
+      - generic [ref=f10e28]:
+        - generic [ref=f10e30]:
+          - generic [ref=f10e33]:
+            - button "Open navigation panel" [ref=f10e34] [cursor=pointer]
+            - heading "QA Retire Cohort" [level=1] [ref=f10e38]
+          - navigation "Cohort sections" [ref=f10e39]:
+            - list [ref=f10e40]:
+              - listitem [ref=f10e41]:
+                - link "Overview" [ref=f10e42] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/__tabs/overview
+              - listitem [ref=f10e43]:
+                - link "Learners 2" [ref=f10e44] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/__tabs/learners
+                  - text: Learners
+                  - generic [ref=f10e45]: "2"
+              - listitem [ref=f10e46]:
+                - link "Courses 2" [ref=f10e47] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/__tabs/courses
+                  - text: Courses
+                  - generic [ref=f10e48]: "2"
+              - listitem [ref=f10e49]:
+                - link "Report" [ref=f10e50] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/__tabs/report
+              - listitem [ref=f10e51]:
+                - link "Settings" [ref=f10e52] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/__tabs/settings
+              - listitem [ref=f10e53]:
+                - link "History" [ref=f10e54] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/__tabs/history
+        - generic [ref=f10e58]:
+          - generic [ref=f10e60]:
+            - generic [ref=f10e61]:
+              - heading "Downloads" [level=2] [ref=f10e63]
+              - button "Generate report" [ref=f10e66] [cursor=pointer]
+            - region "Generated reports" [ref=f10e70]:
+              - table [ref=f10e71]:
+                - caption [ref=f10e72]: Generated reports
+                - rowgroup [ref=f10e73]:
+                  - row [ref=f10e74]:
+                    - columnheader "Generated" [ref=f10e75]
+                    - columnheader "Download" [ref=f10e76]
+                - rowgroup [ref=f10e78]:
+                  - row [ref=f10e79]:
+                    - cell "26 Nov 2026, 04:35 demodev@email.com" [ref=f10e80]:
+                      - time [ref=f10e81]:
+                        - generic [ref=f10e82]: 26 Nov 2026,
+                        - generic [ref=f10e83]: 04:35
+                      - generic [ref=f10e84]: demodev@email.com
+                    - cell [ref=f10e85]:
+                      - link "Download the report generated 26 Nov 2026, 04:35" [ref=f10e86] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/reports/19dc5f76-a340-44ab-885e-76d267e2d647/download/
+                        - text: Download
+                  - row [ref=f10e90]:
+                    - cell "26 Nov 2026, 04:04 demodev@email.com" [ref=f10e91]:
+                      - time [ref=f10e92]:
+                        - generic [ref=f10e93]: 26 Nov 2026,
+                        - generic [ref=f10e94]: 04:04
+                      - generic [ref=f10e95]: demodev@email.com
+                    - cell [ref=f10e96]:
+                      - link "Download the report generated 26 Nov 2026, 04:04" [ref=f10e97] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/reports/304c2490-48cb-44a2-b5de-22f52df1ed7c/download/
+                        - text: Download
+                  - row [ref=f10e101]:
+                    - cell "24 Nov 2026, 12:50 demodev@email.com" [ref=f10e102]:
+                      - time [ref=f10e103]:
+                        - generic [ref=f10e104]: 24 Nov 2026,
+                        - generic [ref=f10e105]: 12:50
+                      - generic [ref=f10e106]: demodev@email.com
+                    - cell [ref=f10e107]:
+                      - link "Download the report generated 24 Nov 2026, 12:50" [ref=f10e108] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396/reports/df610b58-9412-4187-ae20-2ee086f87840/download/
+                        - text: Download
+          - heading "Cohort report" [level=2] [ref=f10e116]
+  - contentinfo [ref=f10e131]:
+    - generic [ref=f10e132]:
+      - paragraph [ref=f10e133]: © 2026 FirstClass
+      - navigation "Legal" [ref=f10e134]:
+        - link "Terms and Conditions" [ref=f10e135] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f10e136] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f10e137] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f10e139]: DJDT

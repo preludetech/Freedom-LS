@@ -1,0 +1,98 @@
+- generic [ref=f16e1]:
+  - generic:
+    - status
+    - alert
+  - main [ref=f16e2]:
+    - generic [ref=f16e3]:
+      - generic [ref=f16e4]:
+        - generic [ref=f16e5]:
+          - button "Exit test" [ref=f16e7]
+          - heading "Shuffled quiz" [level=2] [ref=f16e10]
+          - generic [ref=f16e11]: 0 of 9 answered
+        - generic [ref=f16e12]:
+          - generic [ref=f16e13]: Page 1 of 3
+          - navigation "Form pages" [ref=f16e17]:
+            - link "Page 1 (current)" [ref=f16e18] [cursor=pointer]:
+              - /url: /courses/functionality-demo-shuffled-quiz/2/fill_form/2
+            - generic "Page 2 (not yet accessible)" [ref=f16e19]
+            - generic "Page 3 (not yet accessible)" [ref=f16e20]
+      - generic [ref=f16e22]:
+        - generic [ref=f16e23]:
+          - heading "Shuffled quiz — Page 1 of 3" [level=1] [ref=f16e24]
+          - generic [ref=f16e25]: Page 1 of 3
+          - heading "The sky" [active] [level=2] [ref=f16e27]
+        - generic [ref=f16e28]:
+          - group "1. What colour is the sky at midday? (required)" [ref=f16e29]:
+            - generic [ref=f16e30]:
+              - generic [ref=f16e31]: "1."
+              - paragraph [ref=f16e32]: What colour is the sky at midday?
+              - text: "*"
+              - generic [ref=f16e33]: (required)
+            - generic [ref=f16e34]:
+              - generic [ref=f16e35] [cursor=pointer]:
+                - radio "Blue" [ref=f16e36]
+                - generic [ref=f16e39]: Blue
+              - generic [ref=f16e40] [cursor=pointer]:
+                - radio "Purple" [ref=f16e41]
+                - generic [ref=f16e44]: Purple
+              - generic [ref=f16e45] [cursor=pointer]:
+                - radio "Green" [ref=f16e46]
+                - generic [ref=f16e49]: Green
+          - generic [ref=f16e50]:
+            - paragraph [ref=f16e51]: Look at the picture, then answer the next two questions.
+            - figure [ref=f16e53]:
+              - img "A blue sky over a dark horizon with a yellow sun in the upper right" [ref=f16e54]
+              - generic [ref=f16e56]:
+                - paragraph
+                - button "Expand" [ref=f16e57] [cursor=pointer]
+          - group "2. What is the yellow shape in the picture? (required)" [ref=f16e61]:
+            - generic [ref=f16e62]:
+              - generic [ref=f16e63]: "2."
+              - paragraph [ref=f16e64]: What is the yellow shape in the picture?
+              - text: "*"
+              - generic [ref=f16e65]: (required)
+            - generic [ref=f16e66]:
+              - generic [ref=f16e67] [cursor=pointer]:
+                - radio "The Sun" [ref=f16e68]
+                - generic [ref=f16e71]: The Sun
+              - generic [ref=f16e72] [cursor=pointer]:
+                - radio "The Moon" [ref=f16e73]
+                - generic [ref=f16e76]: The Moon
+              - generic [ref=f16e77] [cursor=pointer]:
+                - radio "A planet" [ref=f16e78]
+                - generic [ref=f16e81]: A planet
+          - group "3. Where is the yellow shape in the picture? (required)" [ref=f16e82]:
+            - generic [ref=f16e83]:
+              - generic [ref=f16e84]: "3."
+              - paragraph [ref=f16e85]: Where is the yellow shape in the picture?
+              - text: "*"
+              - generic [ref=f16e86]: (required)
+            - generic [ref=f16e87]:
+              - generic [ref=f16e88] [cursor=pointer]:
+                - radio "Lower left" [ref=f16e89]
+                - generic [ref=f16e92]: Lower left
+              - generic [ref=f16e93] [cursor=pointer]:
+                - radio "Centre" [ref=f16e94]
+                - generic [ref=f16e97]: Centre
+              - generic [ref=f16e98] [cursor=pointer]:
+                - radio "Upper right" [ref=f16e99]
+                - generic [ref=f16e102]: Upper right
+          - group "4. What does the Moon orbit? (required)" [ref=f16e103]:
+            - generic [ref=f16e104]:
+              - generic [ref=f16e105]: "4."
+              - paragraph [ref=f16e106]: What does the Moon orbit?
+              - text: "*"
+              - generic [ref=f16e107]: (required)
+            - generic [ref=f16e108]:
+              - generic [ref=f16e109] [cursor=pointer]:
+                - radio "Mars" [ref=f16e110]
+                - generic [ref=f16e113]: Mars
+              - generic [ref=f16e114] [cursor=pointer]:
+                - radio "The Earth" [ref=f16e115]
+                - generic [ref=f16e118]: The Earth
+              - generic [ref=f16e119] [cursor=pointer]:
+                - radio "The Sun" [ref=f16e120]
+                - generic [ref=f16e123]: The Sun
+      - button "Next" [ref=f16e128] [cursor=pointer]
+  - generic [ref=f16e131] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f16e133]: DJDT

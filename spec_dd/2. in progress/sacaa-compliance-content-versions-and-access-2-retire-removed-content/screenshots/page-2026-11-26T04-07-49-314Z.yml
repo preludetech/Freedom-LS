@@ -1,0 +1,40 @@
+- generic [active] [ref=f54e1]:
+  - banner [ref=f54e2]:
+    - link [ref=f54e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f54e4]
+      - heading "FirstClass" [level=1] [ref=f54e5]
+    - navigation [ref=f54e6]:
+      - generic [ref=f54e7]:
+        - generic [ref=f54e8]:
+          - button "Notifications, none new" [ref=f54e9]
+          - status:
+            - generic [ref=f54e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f54e15] [cursor=pointer]:
+          - generic [ref=f54e16]:
+            - generic [ref=f54e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f54e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f54e19]:
+    - generic [ref=f54e21]:
+      - heading "Apply to Functionality Demo - Application gated course" [level=1] [ref=f54e22]
+      - paragraph [ref=f54e23]:
+        - text: You are about to submit an application for
+        - strong [ref=f54e24]: Functionality Demo - Application gated course
+        - text: . A reviewer will consider your application and you will be notified of the outcome.
+      - generic [ref=f54e26]:
+        - button "Submit application" [ref=f54e27] [cursor=pointer]
+        - link "Cancel" [ref=f54e28] [cursor=pointer]:
+          - /url: /courses/functionality-demo-application-gated-course/detail/
+  - contentinfo [ref=f54e29]:
+    - generic [ref=f54e30]:
+      - paragraph [ref=f54e31]: © 2026 FirstClass
+      - navigation "Legal" [ref=f54e32]:
+        - link "Terms and Conditions" [ref=f54e33] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f54e34] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f54e35] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f54e37]: DJDT

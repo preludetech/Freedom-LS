@@ -38,6 +38,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (claude) PR 293 review: the course-retire refusal reads its courses once
 - [x] (user) PR 293 review: decide how the cohort report shows a retired correct option. It lists every correct option, retired ones included, even for a sitting never offered it. Dropping retired ones would hide a correct option from sittings that were served it, so the choice is between a Retired badge on the chip (three templates) or leaving it as is
 - [x] (user) Code review: decide whether a `content_save` run that names only some source repos should be refused before it retires articles, categories and files. Only a course retire is refused today, as the spec says
+- [ ] (user) Fix the tests the test run after the QA fixes left failing: freedom_ls/form_engine/tests/test_models.py::test_not_retired_returns_the_live_form_rows_and_leaves_out_a_retired_one (4 params; the test has no @pytest.mark.django_db) and freedom_ls/educator_interface/tests/playwright/test_course_preview_flow.py::test_course_outline_shows_a_retired_badge_beside_a_retired_topic_at_every_viewport (both fail at bdf1b7175, before the QA fixes)
 
 ## 4. Documentation and pull request
 

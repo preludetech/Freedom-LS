@@ -1,0 +1,49 @@
+- generic [active] [ref=f47e1]:
+  - banner [ref=f47e2]:
+    - link [ref=f47e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f47e4]
+      - heading "FirstClass" [level=1] [ref=f47e5]
+    - navigation [ref=f47e6]:
+      - generic [ref=f47e7]:
+        - generic [ref=f47e8]:
+          - button "Notifications, none new" [ref=f47e9]
+          - status:
+            - generic [ref=f47e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f47e15] [cursor=pointer]:
+          - generic [ref=f47e16]:
+            - generic [ref=f47e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f47e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f47e19]:
+    - generic [ref=f47e21]:
+      - heading "Articles" [level=1] [ref=f47e23]
+      - generic [ref=f47e24]:
+        - article [ref=f47e25]:
+          - img "A yellow sun over a blue sky above a dark band of ground." [ref=f47e26]
+          - generic [ref=f47e27]:
+            - heading [level=3] [ref=f47e28]:
+              - link "Unsigned update" [ref=f47e29] [cursor=pointer]:
+                - /url: /articles/unsigned-update/
+            - paragraph [ref=f47e30]: An article with no author, so its byline shows only the date.
+            - paragraph [ref=f47e31]:
+              - time [ref=f47e32]: Aug. 20, 2026
+        - article [ref=f47e33]:
+          - generic [ref=f47e34]:
+            - heading [level=3] [ref=f47e35]:
+              - link "Undated notes" [ref=f47e36] [cursor=pointer]:
+                - /url: /articles/undated-notes/
+            - paragraph [ref=f47e37]: An article that hides its publication date and still shows its author.
+            - paragraph [ref=f47e38]: Demo Author
+  - contentinfo [ref=f47e39]:
+    - generic [ref=f47e40]:
+      - paragraph [ref=f47e41]: © 2026 FirstClass
+      - navigation "Legal" [ref=f47e42]:
+        - link "Terms and Conditions" [ref=f47e43] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f47e44] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f47e45] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f47e47]: DJDT

@@ -1,0 +1,60 @@
+- generic [active] [ref=f59e1]:
+  - banner [ref=f59e2]:
+    - link [ref=f59e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f59e4]
+    - navigation [ref=f59e5]:
+      - generic [ref=f59e6]:
+        - generic [ref=f59e7]:
+          - button "Notifications, none new" [ref=f59e8]
+          - status:
+            - generic [ref=f59e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f59e14] [cursor=pointer]:
+          - generic [ref=f59e15]:
+            - generic [ref=f59e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f59e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f59e18]:
+    - generic [ref=f59e21]:
+      - generic [ref=f59e23]:
+        - generic [ref=f59e24]:
+          - button "Open course outline" [ref=f59e25] [cursor=pointer]
+          - navigation "Breadcrumb" [ref=f59e29]:
+            - list [ref=f59e30]:
+              - listitem [ref=f59e31]:
+                - link "Functionality Demo - Course Parts" [ref=f59e32] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f59e33]:
+                - generic [aria-hidden] [ref=f59e34]: ">"
+                - link "Core Concepts" [ref=f59e35] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/2/
+              - listitem [ref=f59e36]:
+                - generic [aria-hidden] [ref=f59e37]: ">"
+                - generic "Key Ideas" [ref=f59e38]
+        - generic [ref=f59e40]:
+          - progressbar "Progress for Functionality Demo - Course Parts" [ref=f59e41]: 17%
+          - generic [ref=f59e42]: 17%
+        - paragraph [ref=f59e44]:
+          - text: Deadline
+          - time [ref=f59e50]: 8 Dec 2026, 19:00
+        - heading "Key Ideas" [level=1] [ref=f59e53]
+      - generic [ref=f59e55]:
+        - generic [ref=f59e56]:
+          - paragraph [ref=f59e57]: "This topic is inside Part 2: \"Core Concepts\". Parts can contain a mix of topics and forms."
+          - paragraph [ref=f59e58]: After reading through the topics in this part, you will encounter a quiz that tests your understanding.
+        - generic [ref=f59e59]:
+          - link "Previous" [ref=f59e61] [cursor=pointer]:
+            - /url: /courses/functionality-demo-course-parts/1/
+          - button "Next" [ref=f59e66] [cursor=pointer]
+  - contentinfo [ref=f59e70]:
+    - generic [ref=f59e71]:
+      - paragraph [ref=f59e72]: © 2026 FirstClass
+      - navigation "Legal" [ref=f59e73]:
+        - link "Terms and Conditions" [ref=f59e74] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f59e75] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f59e76] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f59e78]: DJDT

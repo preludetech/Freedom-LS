@@ -1,0 +1,99 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - button "Notifications, none new" [ref=f4e9]
+          - status:
+            - generic [ref=f4e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e15] [cursor=pointer]:
+          - generic [ref=f4e16]:
+            - generic [ref=f4e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f4e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e19]:
+    - generic [ref=f4e21]:
+      - dialog "Course outline" [ref=f4e22]:
+        - generic [ref=f4e25]:
+          - generic [ref=f4e26]:
+            - paragraph [ref=f4e27]: Course outline
+            - paragraph [ref=f4e28]: Functionality Demo - Course Parts
+            - generic [ref=f4e30]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f4e31]: 14%
+              - generic [ref=f4e32]: 14% complete
+            - generic [ref=f4e38]:
+              - generic [ref=f4e39]: Deadline
+              - generic [ref=f4e40]: What to Expect
+              - time [ref=f4e43]: 2 Dec 2026, 01:59
+          - navigation "Course outline" [ref=f4e44]:
+            - list [ref=f4e45]:
+              - listitem [ref=f4e46]:
+                - button "1. In progress Getting Started" [expanded] [ref=f4e47] [cursor=pointer]:
+                  - generic [ref=f4e48]:
+                    - generic [ref=f4e49]: "1."
+                    - generic [ref=f4e50]: In progress
+                    - generic [ref=f4e54]: Getting Started
+                - list [ref=f4e60]:
+                  - listitem [ref=f4e61]:
+                    - generic [ref=f4e62]:
+                      - generic [ref=f4e63]: "1.1"
+                      - generic [ref=f4e64]: Completed
+                      - generic [ref=f4e68]: Welcome
+                  - listitem [ref=f4e69]:
+                    - generic [ref=f4e70]:
+                      - generic [ref=f4e71]: "1.2"
+                      - generic [ref=f4e72]: In progress
+                      - link "What to Expect" [ref=f4e77] [cursor=pointer]:
+                        - /url: /courses/functionality-demo-course-parts/2/
+                      - generic [ref=f4e79]:
+                        - generic [ref=f4e83]: Deadline
+                        - time [ref=f4e85]: 2 Dec
+              - listitem [ref=f4e86]:
+                - button "2. In progress Core Concepts" [ref=f4e87] [cursor=pointer]:
+                  - generic [ref=f4e88]:
+                    - generic [ref=f4e89]: "2."
+                    - generic [ref=f4e90]: In progress
+                    - generic [ref=f4e94]: Core Concepts
+              - listitem [ref=f4e100]:
+                - button "3. Locked Wrapping Up" [ref=f4e101] [cursor=pointer]:
+                  - generic [ref=f4e102]:
+                    - generic [ref=f4e103]: "3."
+                    - generic [ref=f4e104]: Locked
+                    - generic [ref=f4e108]: Wrapping Up
+      - generic [ref=f4e114]:
+        - generic [ref=f4e116]:
+          - navigation "Breadcrumb" [ref=f4e119]:
+            - list [ref=f4e120]:
+              - listitem [ref=f4e121]:
+                - link "Functionality Demo - Course Parts" [ref=f4e122] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f4e123]:
+                - generic [aria-hidden] [ref=f4e124]: ">"
+                - link "Getting Started" [ref=f4e125] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/1/
+              - listitem [ref=f4e126]:
+                - generic [aria-hidden] [ref=f4e127]: ">"
+                - generic "Welcome" [ref=f4e128]
+          - heading "Welcome" [level=1] [ref=f4e131]
+        - generic [ref=f4e133]:
+          - generic [ref=f4e134]:
+            - paragraph [ref=f4e135]: "Welcome to the Course Parts demo course. This topic is inside Part 1: \"Getting Started\"."
+            - paragraph [ref=f4e136]: This course demonstrates how content can be organised into parts, which act as chapters or modules within a course. Each part groups related topics and forms together.
+          - link "Next" [ref=f4e138] [cursor=pointer]:
+            - /url: /courses/functionality-demo-course-parts/2/
+  - contentinfo [ref=f4e142]:
+    - generic [ref=f4e143]:
+      - paragraph [ref=f4e144]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e145]:
+        - link "Terms and Conditions" [ref=f4e146] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e147] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e148] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f4e203]: DJDT

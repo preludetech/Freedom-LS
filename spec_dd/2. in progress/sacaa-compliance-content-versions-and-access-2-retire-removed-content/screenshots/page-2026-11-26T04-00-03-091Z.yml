@@ -1,0 +1,168 @@
+- generic [active] [ref=f35e1]:
+  - banner [ref=f35e2]:
+    - link [ref=f35e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f35e4]
+      - heading "FirstClass" [level=1] [ref=f35e5]
+    - navigation [ref=f35e6]:
+      - generic [ref=f35e7]:
+        - generic [ref=f35e8]:
+          - button "Notifications, none new" [ref=f35e9]
+          - status:
+            - generic [ref=f35e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f35e15] [cursor=pointer]:
+          - generic [ref=f35e16]:
+            - generic [ref=f35e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f35e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f35e19]:
+    - generic [ref=f35e21]:
+      - dialog "Navigation" [ref=f35e22]:
+        - generic [ref=f35e24]:
+          - generic [ref=f35e25]:
+            - paragraph [ref=f35e26]: Organisation
+            - button "Switch organisation" [ref=f35e28] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f35e29]: D
+              - generic "DemoDev" [ref=f35e30]
+          - navigation "Sections" [ref=f35e33]:
+            - heading "Teaching" [level=2] [ref=f35e34]
+            - list [ref=f35e35]:
+              - listitem [ref=f35e36]:
+                - link "Dashboard" [ref=f35e37] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f35e42]:
+                - link "Cohorts" [ref=f35e43] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f35e48]:
+                - link "Learners" [ref=f35e49] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f35e54]:
+                - link "Courses" [ref=f35e55] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f35e60]
+            - list [ref=f35e61]:
+              - listitem [ref=f35e62]:
+                - link "Staff" [ref=f35e63] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f35e68]:
+                - link "Audit log" [ref=f35e69] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f35e74]:
+            - generic [ref=f35e76]:
+              - generic [aria-hidden] [ref=f35e77]: DE
+              - generic [ref=f35e78]: demodev@email.com
+            - link "Account settings" [ref=f35e80] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f35e85]:
+        - navigation "Back" [ref=f35e87]:
+          - link "Courses" [ref=f35e88] [cursor=pointer]:
+            - /url: /educator/organisations/demodev/courses
+        - generic [ref=f35e92]:
+          - generic [ref=f35e94]:
+            - generic [ref=f35e98]:
+              - heading "Functionality Demo - show end with Topic" [level=1] [ref=f35e99]
+              - generic [ref=f35e100]: Retired
+            - navigation "Course sections" [ref=f35e101]:
+              - list [ref=f35e102]:
+                - listitem [ref=f35e103]:
+                  - link "Overview" [ref=f35e104] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/3ff21a03-9d76-4700-bac9-46401a4429d2/__tabs/overview
+                - listitem [ref=f35e105]:
+                  - link "Content" [ref=f35e106] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/3ff21a03-9d76-4700-bac9-46401a4429d2/__tabs/content
+          - generic [ref=f35e110]:
+            - generic [ref=f35e112]:
+              - heading "Details" [level=2] [ref=f35e115]
+              - generic [ref=f35e117]:
+                - generic [ref=f35e118]:
+                  - term [ref=f35e119]: Title
+                  - definition [ref=f35e120]: Functionality Demo - show end with Topic
+                - generic [ref=f35e121]:
+                  - term [ref=f35e122]: Subtitle
+                  - definition [ref=f35e123]: A tour of the content system
+                - generic [ref=f35e124]:
+                  - term [ref=f35e125]: Category
+                  - definition [ref=f35e126]: Start here
+                - generic [ref=f35e127]:
+                  - term [ref=f35e128]: Visibility
+                  - definition [ref=f35e129]: Published
+                - generic [ref=f35e130]:
+                  - term [ref=f35e131]: Lessons
+                  - definition [ref=f35e132]: "0"
+                - generic [ref=f35e133]:
+                  - term [ref=f35e134]: Retired on
+                  - definition [ref=f35e135]:
+                    - time [ref=f35e136]: 26 Nov 2026
+            - generic [ref=f35e138]:
+              - heading "Cohort registrations" [level=2] [ref=f35e141]
+              - generic [ref=f35e143]:
+                - region "Cohort course registrations" [ref=f35e145]:
+                  - table [ref=f35e146]:
+                    - caption [ref=f35e147]: Cohort course registrations
+                    - rowgroup [ref=f35e148]:
+                      - row [ref=f35e149]:
+                        - columnheader "Cohort" [ref=f35e150]
+                        - columnheader "Cohort status" [ref=f35e151]
+                        - columnheader "Status" [ref=f35e152]
+                        - columnheader "Registered" [ref=f35e153]
+                        - columnheader [ref=f35e154]
+                    - rowgroup [ref=f35e155]:
+                      - row [ref=f35e156]:
+                        - cell [ref=f35e157]:
+                          - link "QA Retire Cohort" [ref=f35e158] [cursor=pointer]:
+                            - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396
+                        - cell "Active" [ref=f35e159]
+                        - cell "Inactive" [ref=f35e161]
+                        - cell "24 Nov 2026, 12:49" [ref=f35e163]:
+                          - time [ref=f35e164]:
+                            - generic [ref=f35e165]: 24 Nov 2026,
+                            - generic [ref=f35e166]: 12:49
+                        - cell [ref=f35e167]
+                - paragraph [ref=f35e169]: 1 cohort course registration
+              - button "Register" [ref=f35e172] [cursor=pointer]
+            - generic [ref=f35e174]:
+              - heading "Direct registrations" [level=2] [ref=f35e177]
+              - generic [ref=f35e179]:
+                - region "Learner course registrations" [ref=f35e181]:
+                  - table [ref=f35e182]:
+                    - caption [ref=f35e183]: Learner course registrations
+                    - rowgroup [ref=f35e184]:
+                      - row [ref=f35e185]:
+                        - columnheader [ref=f35e186]:
+                          - link "Learner" [ref=f35e187] [cursor=pointer]:
+                            - /url: /educator/organisations/demodev/courses/3ff21a03-9d76-4700-bac9-46401a4429d2/__tabs/overview?learner_registrations-sort=-learner__user__first_name
+                        - columnheader "Status" [ref=f35e191]
+                        - columnheader "Registered" [ref=f35e192]
+                        - columnheader [ref=f35e193]
+                    - rowgroup [ref=f35e194]:
+                      - row [ref=f35e195]:
+                        - cell [ref=f35e196]:
+                          - generic [ref=f35e197]:
+                            - link "demodev@email.com" [ref=f35e199] [cursor=pointer]:
+                              - /url: /educator/organisations/demodev/learners/81b69a97-2ccd-4af0-94df-7673193f8b95
+                              - generic [ref=f35e200]:
+                                - generic [aria-hidden] [ref=f35e201]: D
+                                - generic [ref=f35e202]: demodev@email.com
+                            - 'link "Quick view: demodev@email.com" [ref=f35e204] [cursor=pointer]':
+                              - /url: /educator/organisations/demodev/learners/81b69a97-2ccd-4af0-94df-7673193f8b95
+                        - cell "Active" [ref=f35e209]
+                        - cell "24 Nov 2026, 12:40" [ref=f35e211]:
+                          - time [ref=f35e212]:
+                            - generic [ref=f35e213]: 24 Nov 2026,
+                            - generic [ref=f35e214]: 12:40
+                        - cell [ref=f35e215]:
+                          - button "Deactivate demodev@email.com" [ref=f35e217] [cursor=pointer]: Deactivate
+                - paragraph [ref=f35e219]: 1 learner course registration
+              - button "Register" [ref=f35e222] [cursor=pointer]
+  - contentinfo [ref=f35e225]:
+    - generic [ref=f35e226]:
+      - paragraph [ref=f35e227]: © 2026 FirstClass
+      - navigation "Legal" [ref=f35e228]:
+        - link "Terms and Conditions" [ref=f35e229] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f35e230] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f35e231] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f35e233]: DJDT

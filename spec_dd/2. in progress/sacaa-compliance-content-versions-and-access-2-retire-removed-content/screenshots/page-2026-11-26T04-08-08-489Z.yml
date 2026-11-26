@@ -1,0 +1,189 @@
+- generic [active] [ref=f55e1]:
+  - banner [ref=f55e2]:
+    - link [ref=f55e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f55e4]
+    - navigation [ref=f55e5]:
+      - generic [ref=f55e6]:
+        - generic [ref=f55e7]:
+          - button "Notifications, none new" [ref=f55e8]
+          - status:
+            - generic [ref=f55e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f55e14] [cursor=pointer]:
+          - generic [ref=f55e15]:
+            - generic [ref=f55e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f55e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f55e18]:
+    - generic [ref=f55e22]:
+      - generic [ref=f55e26]:
+        - button "Open navigation panel" [ref=f55e27] [cursor=pointer]
+        - heading "Courses" [level=1] [ref=f55e31]
+      - generic [ref=f55e36]:
+        - list [ref=f55e38]:
+          - listitem [ref=f55e39]:
+            - generic [ref=f55e40]:
+              - 'link "Functionality Demo - Price: sale with an end date" [ref=f55e43] [cursor=pointer]':
+                - /url: /educator/organisations/demodev/courses/b84611bc-091d-410d-b70a-df3382969eec
+              - generic [ref=f55e47]:
+                - generic [ref=f55e48]:
+                  - term [ref=f55e49]: Status
+                  - definition
+                - generic [ref=f55e50]:
+                  - term [ref=f55e51]: Visibility
+                  - definition [ref=f55e52]: Published
+                - generic [ref=f55e53]:
+                  - term [ref=f55e54]: Active Learners
+                  - definition [ref=f55e55]: "0"
+                - generic [ref=f55e56]:
+                  - term [ref=f55e57]: Cohorts
+                  - definition [ref=f55e58]:
+                    - img "None" [ref=f55e59]: —
+          - listitem [ref=f55e60]:
+            - generic [ref=f55e61]:
+              - link "Functionality Demo - question pools" [ref=f55e64] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/43941e28-39ff-4745-a30f-dce3caa700de
+              - generic [ref=f55e68]:
+                - generic [ref=f55e69]:
+                  - term [ref=f55e70]: Status
+                  - definition
+                - generic [ref=f55e71]:
+                  - term [ref=f55e72]: Visibility
+                  - definition [ref=f55e73]: Published
+                - generic [ref=f55e74]:
+                  - term [ref=f55e75]: Active Learners
+                  - definition [ref=f55e76]: "0"
+                - generic [ref=f55e77]:
+                  - term [ref=f55e78]: Cohorts
+                  - definition [ref=f55e79]:
+                    - img "None" [ref=f55e80]: —
+          - listitem [ref=f55e81]:
+            - generic [ref=f55e82]:
+              - link "Functionality Demo - quiz declaration" [ref=f55e85] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/a0869250-7bec-459f-be3b-7c9c4bae36d6
+              - generic [ref=f55e89]:
+                - generic [ref=f55e90]:
+                  - term [ref=f55e91]: Status
+                  - definition
+                - generic [ref=f55e92]:
+                  - term [ref=f55e93]: Visibility
+                  - definition [ref=f55e94]: Published
+                - generic [ref=f55e95]:
+                  - term [ref=f55e96]: Active Learners
+                  - definition [ref=f55e97]: "0"
+                - generic [ref=f55e98]:
+                  - term [ref=f55e99]: Cohorts
+                  - definition [ref=f55e100]:
+                    - img "None" [ref=f55e101]: —
+          - listitem [ref=f55e102]:
+            - generic [ref=f55e103]:
+              - link "Functionality Demo - Reference Material" [ref=f55e106] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/1144be70-d209-4fde-98f8-3fb2459fdccb
+              - generic [ref=f55e110]:
+                - generic [ref=f55e111]:
+                  - term [ref=f55e112]: Status
+                  - definition
+                - generic [ref=f55e113]:
+                  - term [ref=f55e114]: Visibility
+                  - definition [ref=f55e115]: Published
+                - generic [ref=f55e116]:
+                  - term [ref=f55e117]: Active Learners
+                  - definition [ref=f55e118]: "0"
+                - generic [ref=f55e119]:
+                  - term [ref=f55e120]: Cohorts
+                  - definition [ref=f55e121]:
+                    - img "None" [ref=f55e122]: —
+          - listitem [ref=f55e123]:
+            - generic [ref=f55e124]:
+              - link "Functionality Demo - show end with Quiz" [ref=f55e127] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/812a4ab3-0833-4923-be2f-c4412fecd99b
+              - generic [ref=f55e131]:
+                - generic [ref=f55e132]:
+                  - term [ref=f55e133]: Status
+                  - definition
+                - generic [ref=f55e134]:
+                  - term [ref=f55e135]: Visibility
+                  - definition [ref=f55e136]: Published
+                - generic [ref=f55e137]:
+                  - term [ref=f55e138]: Active Learners
+                  - definition [ref=f55e139]: "0"
+                - generic [ref=f55e140]:
+                  - term [ref=f55e141]: Cohorts
+                  - definition [ref=f55e142]:
+                    - img "None" [ref=f55e143]: —
+          - listitem [ref=f55e144]:
+            - generic [ref=f55e145]:
+              - link "Functionality Demo - show end with Topic" [ref=f55e148] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/3ff21a03-9d76-4700-bac9-46401a4429d2
+              - generic [ref=f55e152]:
+                - generic [ref=f55e153]:
+                  - term [ref=f55e154]: Status
+                  - definition [ref=f55e155]:
+                    - generic [ref=f55e156]: Retired
+                - generic [ref=f55e157]:
+                  - term [ref=f55e158]: Visibility
+                  - definition [ref=f55e159]: Published
+                - generic [ref=f55e160]:
+                  - term [ref=f55e161]: Active Learners
+                  - definition [ref=f55e162]: "1"
+                - generic [ref=f55e163]:
+                  - term [ref=f55e164]: Cohorts
+                  - definition [ref=f55e165]:
+                    - link "QA Retire Cohort" [ref=f55e166] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396
+          - listitem [ref=f55e167]:
+            - generic [ref=f55e168]:
+              - link "Functionality Demo - shuffled quiz" [ref=f55e171] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/7021dd5c-7e0b-4c90-a107-87f3632b9118
+              - generic [ref=f55e175]:
+                - generic [ref=f55e176]:
+                  - term [ref=f55e177]: Status
+                  - definition
+                - generic [ref=f55e178]:
+                  - term [ref=f55e179]: Visibility
+                  - definition [ref=f55e180]: Published
+                - generic [ref=f55e181]:
+                  - term [ref=f55e182]: Active Learners
+                  - definition [ref=f55e183]: "5"
+                - generic [ref=f55e184]:
+                  - term [ref=f55e185]: Cohorts
+                  - definition [ref=f55e186]:
+                    - link "QA Retire Cohort" [ref=f55e187] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/7d1f92a3-4ced-4128-bd36-776086632396
+          - listitem [ref=f55e188]:
+            - generic [ref=f55e189]:
+              - link "Standard Markdown - Demo Finance" [ref=f55e192] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/courses/7e724756-a349-4ef1-924b-ec9c26dcba45
+              - generic [ref=f55e196]:
+                - generic [ref=f55e197]:
+                  - term [ref=f55e198]: Status
+                  - definition
+                - generic [ref=f55e199]:
+                  - term [ref=f55e200]: Visibility
+                  - definition [ref=f55e201]: Published
+                - generic [ref=f55e202]:
+                  - term [ref=f55e203]: Active Learners
+                  - definition [ref=f55e204]: "0"
+                - generic [ref=f55e205]:
+                  - term [ref=f55e206]: Cohorts
+                  - definition [ref=f55e207]:
+                    - img "None" [ref=f55e208]: —
+        - generic [ref=f55e209]:
+          - paragraph [ref=f55e210]: Showing 11–18 of 18 courses
+          - generic [ref=f55e211]:
+            - link "Previous" [ref=f55e212] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/courses?courses-page=1
+            - generic [ref=f55e216]: Page 2 of 2
+            - button "Next" [disabled] [ref=f55e217]
+  - contentinfo [ref=f55e223]:
+    - generic [ref=f55e224]:
+      - paragraph [ref=f55e225]: © 2026 FirstClass
+      - navigation "Legal" [ref=f55e226]:
+        - link "Terms and Conditions" [ref=f55e227] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f55e228] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f55e229] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f55e231]: DJDT

@@ -1,0 +1,125 @@
+- generic [active] [ref=f6e1]:
+  - banner [ref=f6e2]:
+    - link [ref=f6e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f6e4]
+      - heading "FirstClass" [level=1] [ref=f6e5]
+    - navigation [ref=f6e6]:
+      - generic [ref=f6e7]:
+        - generic [ref=f6e8]:
+          - button "Notifications, none new" [ref=f6e9]
+          - status:
+            - generic [ref=f6e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f6e15] [cursor=pointer]:
+          - generic [ref=f6e16]:
+            - generic [ref=f6e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f6e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f6e19]:
+    - generic [ref=f6e21]:
+      - dialog "Course outline" [ref=f6e22]:
+        - generic [ref=f6e25]:
+          - generic [ref=f6e26]:
+            - paragraph [ref=f6e27]: Course outline
+            - paragraph [ref=f6e28]: Functionality Demo - Course Parts
+            - generic [ref=f6e30]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f6e31]: 17%
+              - generic [ref=f6e32]: 17% complete
+            - generic [ref=f6e38]:
+              - generic [ref=f6e39]: Deadline
+              - generic [ref=f6e40]: Key Ideas
+              - time [ref=f6e43]: 8 Dec 2026, 19:00
+          - navigation "Course outline" [ref=f6e44]:
+            - list [ref=f6e45]:
+              - listitem [ref=f6e46]:
+                - button "1. Completed Getting Started" [ref=f6e47] [cursor=pointer]:
+                  - generic [ref=f6e48]:
+                    - generic [ref=f6e49]: "1."
+                    - generic [ref=f6e50]: Completed
+                    - generic [ref=f6e54]: Getting Started
+              - listitem [ref=f6e60]:
+                - button "2. In progress Core Concepts" [expanded] [ref=f6e61] [cursor=pointer]:
+                  - generic [ref=f6e62]:
+                    - generic [ref=f6e63]: "2."
+                    - generic [ref=f6e64]: In progress
+                    - generic [ref=f6e68]: Core Concepts
+                - list [ref=f6e74]:
+                  - listitem [ref=f6e75]:
+                    - generic [ref=f6e76]:
+                      - generic [ref=f6e77]: "2.1"
+                      - generic [ref=f6e78]: In progress
+                      - generic [ref=f6e82]: Key Ideas
+                      - generic [ref=f6e84]:
+                        - generic [ref=f6e88]: Deadline
+                        - time [ref=f6e90]: 8 Dec, 19:00
+                  - listitem [ref=f6e91]:
+                    - generic [ref=f6e92]:
+                      - generic [ref=f6e93]: "2.2"
+                      - generic [ref=f6e94]: Locked
+                      - generic [ref=f6e98]: Going Deeper
+                  - listitem [ref=f6e99]:
+                    - generic [ref=f6e100]:
+                      - generic [ref=f6e101]: "2.3"
+                      - generic [ref=f6e102]: Locked
+                      - generic [ref=f6e106]: Knowledge Check
+                      - generic [ref=f6e108]:
+                        - generic [ref=f6e112]: Deadline
+                        - time [ref=f6e114]: 16 Dec
+              - listitem [ref=f6e115]:
+                - button "3. Locked Wrapping Up" [expanded] [ref=f6e116] [cursor=pointer]:
+                  - generic [ref=f6e117]:
+                    - generic [ref=f6e118]: "3."
+                    - generic [ref=f6e119]: Locked
+                    - generic [ref=f6e123]: Wrapping Up
+                - list [ref=f6e129]:
+                  - listitem [ref=f6e130]:
+                    - generic [ref=f6e131]:
+                      - generic [ref=f6e132]: "3.1"
+                      - generic [ref=f6e133]: Locked
+                      - generic [ref=f6e137]: Summary
+                  - listitem [ref=f6e138]:
+                    - generic [ref=f6e139]:
+                      - generic [ref=f6e140]: "3.2"
+                      - generic [ref=f6e141]: Locked
+                      - generic [ref=f6e145]: Course Feedback
+                      - generic [ref=f6e147]:
+                        - generic [ref=f6e151]: Deadline
+                        - time [ref=f6e153]: 25 Dec
+      - generic [ref=f6e154]:
+        - generic [ref=f6e156]:
+          - navigation "Breadcrumb" [ref=f6e159]:
+            - list [ref=f6e160]:
+              - listitem [ref=f6e161]:
+                - link "Functionality Demo - Course Parts" [ref=f6e162] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f6e163]:
+                - generic [aria-hidden] [ref=f6e164]: ">"
+                - link "Core Concepts" [ref=f6e165] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/2/
+              - listitem [ref=f6e166]:
+                - generic [aria-hidden] [ref=f6e167]: ">"
+                - generic "Key Ideas" [ref=f6e168]
+          - paragraph [ref=f6e170]:
+            - text: Deadline
+            - time [ref=f6e176]: 8 Dec 2026, 19:00
+          - heading "Key Ideas" [level=1] [ref=f6e179]
+        - generic [ref=f6e181]:
+          - generic [ref=f6e182]:
+            - paragraph [ref=f6e183]: "This topic is inside Part 2: \"Core Concepts\". Parts can contain a mix of topics and forms."
+            - paragraph [ref=f6e184]: After reading through the topics in this part, you will encounter a quiz that tests your understanding.
+          - generic [ref=f6e185]:
+            - link "Previous" [ref=f6e187] [cursor=pointer]:
+              - /url: /courses/functionality-demo-course-parts/1/
+            - button "Next" [ref=f6e192] [cursor=pointer]
+  - contentinfo [ref=f6e196]:
+    - generic [ref=f6e197]:
+      - paragraph [ref=f6e198]: © 2026 FirstClass
+      - navigation "Legal" [ref=f6e199]:
+        - link "Terms and Conditions" [ref=f6e200] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f6e201] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f6e202] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f6e204]: DJDT

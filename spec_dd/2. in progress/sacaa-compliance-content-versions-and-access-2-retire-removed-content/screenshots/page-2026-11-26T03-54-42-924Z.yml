@@ -1,0 +1,90 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link [ref=f5e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f5e4]
+      - heading "FirstClass" [level=1] [ref=f5e5]
+    - navigation [ref=f5e6]:
+      - generic [ref=f5e7]:
+        - generic [ref=f5e8]:
+          - button "Notifications, none new" [ref=f5e9]
+          - status:
+            - generic [ref=f5e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f5e15] [cursor=pointer]:
+          - generic [ref=f5e16]:
+            - generic [ref=f5e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f5e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f5e19]:
+    - generic [ref=f5e21]:
+      - dialog "Course outline" [ref=f5e22]:
+        - generic [ref=f5e25]:
+          - generic [ref=f5e26]:
+            - paragraph [ref=f5e27]: Course outline
+            - paragraph [ref=f5e28]: Functionality Demo - Course Parts
+            - generic [ref=f5e30]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f5e31]: 17%
+              - generic [ref=f5e32]: 17% complete
+            - generic [ref=f5e38]:
+              - generic [ref=f5e39]: Deadline
+              - generic [ref=f5e40]: Key Ideas
+              - time [ref=f5e43]: 8 Dec 2026, 19:00
+          - navigation "Course outline" [ref=f5e44]:
+            - list [ref=f5e45]:
+              - listitem [ref=f5e46]:
+                - button "1. Completed Getting Started" [expanded] [ref=f5e47] [cursor=pointer]:
+                  - generic [ref=f5e48]:
+                    - generic [ref=f5e49]: "1."
+                    - generic [ref=f5e50]: Completed
+                    - generic [ref=f5e54]: Getting Started
+                - list [ref=f5e60]:
+                  - listitem [ref=f5e61]:
+                    - generic [ref=f5e62]:
+                      - generic [ref=f5e63]: "1.1"
+                      - generic [ref=f5e64]: Completed
+                      - generic [ref=f5e68]: Welcome
+              - listitem [ref=f5e69]:
+                - button "2. In progress Core Concepts" [ref=f5e70] [cursor=pointer]:
+                  - generic [ref=f5e71]:
+                    - generic [ref=f5e72]: "2."
+                    - generic [ref=f5e73]: In progress
+                    - generic [ref=f5e77]: Core Concepts
+              - listitem [ref=f5e83]:
+                - button "3. Locked Wrapping Up" [ref=f5e84] [cursor=pointer]:
+                  - generic [ref=f5e85]:
+                    - generic [ref=f5e86]: "3."
+                    - generic [ref=f5e87]: Locked
+                    - generic [ref=f5e91]: Wrapping Up
+      - generic [ref=f5e97]:
+        - generic [ref=f5e99]:
+          - navigation "Breadcrumb" [ref=f5e102]:
+            - list [ref=f5e103]:
+              - listitem [ref=f5e104]:
+                - link "Functionality Demo - Course Parts" [ref=f5e105] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f5e106]:
+                - generic [aria-hidden] [ref=f5e107]: ">"
+                - link "Getting Started" [ref=f5e108] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/1/
+              - listitem [ref=f5e109]:
+                - generic [aria-hidden] [ref=f5e110]: ">"
+                - generic "Welcome" [ref=f5e111]
+          - heading "Welcome" [level=1] [ref=f5e114]
+        - generic [ref=f5e116]:
+          - generic [ref=f5e117]:
+            - paragraph [ref=f5e118]: "Welcome to the Course Parts demo course. This topic is inside Part 1: \"Getting Started\"."
+            - paragraph [ref=f5e119]: This course demonstrates how content can be organised into parts, which act as chapters or modules within a course. Each part groups related topics and forms together.
+          - link "Next" [ref=f5e121] [cursor=pointer]:
+            - /url: /courses/functionality-demo-course-parts/2/
+  - contentinfo [ref=f5e125]:
+    - generic [ref=f5e126]:
+      - paragraph [ref=f5e127]: © 2026 FirstClass
+      - navigation "Legal" [ref=f5e128]:
+        - link "Terms and Conditions" [ref=f5e129] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f5e130] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f5e131] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f5e133]: DJDT

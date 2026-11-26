@@ -1,0 +1,90 @@
+- generic [active] [ref=f23e1]:
+  - banner [ref=f23e2]:
+    - link [ref=f23e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f23e4]
+      - heading "FirstClass" [level=1] [ref=f23e5]
+    - navigation [ref=f23e6]:
+      - generic [ref=f23e7]:
+        - generic [ref=f23e8]:
+          - button "Notifications, none new" [ref=f23e9]
+          - status:
+            - generic [ref=f23e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f23e15] [cursor=pointer]:
+          - generic [ref=f23e16]:
+            - generic [ref=f23e17]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f23e18]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f23e19]:
+    - generic [ref=f23e21]:
+      - link "Back" [ref=f23e22] [cursor=pointer]:
+        - /url: /
+      - generic [ref=f23e27]:
+        - heading "Content Widgets - Demo Reference" [level=1] [ref=f23e28]
+        - paragraph [ref=f23e29]: A working reference for content authors
+        - generic [ref=f23e31]:
+          - generic [ref=f23e35]:
+            - paragraph [ref=f23e36]: Lessons
+            - paragraph [ref=f23e37]: 5 lessons
+          - generic [ref=f23e41]:
+            - paragraph [ref=f23e42]: Enrolment
+            - paragraph [ref=f23e43]: Coming soon
+      - generic [ref=f23e44]:
+        - complementary [ref=f23e45]:
+          - generic [ref=f23e47]:
+            - generic [ref=f23e48]:
+              - paragraph [ref=f23e49]: Coming soon
+              - paragraph [ref=f23e50]: Register your interest and we'll let you know when the course is ready.
+            - button "I'm interested" [ref=f23e53] [cursor=pointer]
+            - generic [ref=f23e54]:
+              - heading "This course includes" [level=3] [ref=f23e55]
+              - list [ref=f23e56]:
+                - listitem [ref=f23e57]: 5 lessons
+        - generic [ref=f23e58]:
+          - generic [ref=f23e59]:
+            - heading "About this course" [level=2] [ref=f23e60]
+            - generic [ref=f23e61]:
+              - paragraph [ref=f23e62]: "This course is two things at once: living documentation and a set of QA fixtures."
+              - paragraph [ref=f23e63]: Every widget the content system ships with appears here, with every option exercised at least once. If you are authoring content, read it as a reference — each topic explains what a widget is for, then shows the exact markdown that produces it. If you are testing a rendering change, load this course and check that nothing breaks.
+              - paragraph [ref=f23e64]: "Three topics, grouped by what the widgets do: annotation and emphasis, media, and structured content."
+          - generic [ref=f23e65]:
+            - heading "Course content" [level=2] [ref=f23e66]
+            - navigation "Course outline" [ref=f23e68]:
+              - list [ref=f23e69]:
+                - listitem [ref=f23e70]:
+                  - generic [ref=f23e71]:
+                    - generic [ref=f23e72]: "1."
+                    - generic [ref=f23e73]: Locked
+                    - generic [ref=f23e77]: Annotation and Emphasis
+                - listitem [ref=f23e78]:
+                  - generic [ref=f23e79]:
+                    - generic [ref=f23e80]: "2."
+                    - generic [ref=f23e81]: Locked
+                    - generic [ref=f23e85]: Media
+                - listitem [ref=f23e86]:
+                  - generic [ref=f23e87]:
+                    - generic [ref=f23e88]: "3."
+                    - generic [ref=f23e89]: Locked
+                    - generic [ref=f23e93]: Structured Content
+                - listitem [ref=f23e94]:
+                  - generic [ref=f23e95]:
+                    - generic [ref=f23e96]: "4."
+                    - generic [ref=f23e97]: Locked
+                    - generic [ref=f23e101]: Interactive Widgets
+                - listitem [ref=f23e102]:
+                  - generic [ref=f23e103]:
+                    - generic [ref=f23e104]: "5."
+                    - generic [ref=f23e105]: Locked
+                    - generic [ref=f23e109]: Cards
+  - contentinfo [ref=f23e110]:
+    - generic [ref=f23e111]:
+      - paragraph [ref=f23e112]: © 2026 FirstClass
+      - navigation "Legal" [ref=f23e113]:
+        - link "Terms and Conditions" [ref=f23e114] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f23e115] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f23e116] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f23e118]: DJDT

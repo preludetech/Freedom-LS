@@ -1,0 +1,100 @@
+- generic [active] [ref=f18e1]:
+  - banner [ref=f18e2]:
+    - heading "Page not found (404)" [level=1] [ref=f18e3]
+    - table [ref=f18e4]:
+      - rowgroup [ref=f18e5]:
+        - row [ref=f18e6]:
+          - rowheader "Request Method:" [ref=f18e7]
+          - cell "GET" [ref=f18e8]
+        - row [ref=f18e9]:
+          - rowheader "Request URL:" [ref=f18e10]
+          - cell "http://127.0.0.1:8104/courses/functionality-demo-show-end-with-topic/1/" [ref=f18e11]
+        - row [ref=f18e12]:
+          - rowheader "Raised by:" [ref=f18e13]
+          - cell "freedom_ls.learner_interface.views.view_course_item" [ref=f18e14]
+  - main [ref=f18e15]:
+    - paragraph [ref=f18e16]:
+      - text: Using the URLconf defined in
+      - code [ref=f18e17]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f18e18]:
+      - listitem [ref=f18e19]:
+        - code [ref=f18e20]: health/
+      - listitem [ref=f18e21]:
+        - code [ref=f18e22]: admin/
+      - listitem [ref=f18e23]:
+        - code [ref=f18e24]: robots.txt [name='robots_txt']
+      - listitem [ref=f18e25]:
+        - code [ref=f18e26]: sitemap.xml [name='sitemap']
+      - listitem [ref=f18e27]:
+        - code
+        - code [ref=f18e28]: "^[gG][oO]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_go']"
+      - listitem [ref=f18e29]:
+        - code
+        - code [ref=f18e30]: "^[dD]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_d']"
+      - listitem [ref=f18e31]:
+        - code [ref=f18e32]: educator/
+      - listitem [ref=f18e33]:
+        - code
+        - code [ref=f18e34]: sentry-debug/ [name='trigger_error']
+      - listitem [ref=f18e35]:
+        - code [ref=f18e36]: accounts/
+      - listitem [ref=f18e37]:
+        - code [ref=f18e38]: accounts/
+      - listitem [ref=f18e39]:
+        - code [ref=f18e40]: articles/
+      - listitem [ref=f18e41]:
+        - code [ref=f18e42]: api/v1/
+      - listitem [ref=f18e43]:
+        - code [ref=f18e44]: content/
+      - listitem [ref=f18e45]:
+        - code
+        - code [ref=f18e46]: "[name='dashboard']"
+      - listitem [ref=f18e47]:
+        - code
+        - code [ref=f18e48]: courses/ [name='courses']
+      - listitem [ref=f18e49]:
+        - code
+        - code [ref=f18e50]: courses/<slug:course_slug>/detail/ [name='course_detail']
+      - listitem [ref=f18e51]:
+        - code
+        - code [ref=f18e52]: courses/<slug:course_slug>/ [name='course_home']
+      - listitem [ref=f18e53]:
+        - code
+        - code [ref=f18e54]: courses/<slug:course_slug>/access/ [name='initiate_course_access']
+      - listitem [ref=f18e55]:
+        - code
+        - code [ref=f18e56]: courses/<slug:course_slug>/reference/ [name='course_reference']
+      - listitem [ref=f18e57]:
+        - code
+        - code [ref=f18e58]: courses/<slug:course_slug>/reference/<slug:part_slug>/<slug:topic_slug>/ [name='course_reference_topic']
+      - listitem [ref=f18e59]:
+        - code
+        - code [ref=f18e60]: courses/<slug:course_slug>/revision/ [name='course_revision']
+      - listitem [ref=f18e61]:
+        - code
+        - code [ref=f18e62]: courses/<slug:course_slug>/revision/start/ [name='course_revision_start']
+      - listitem [ref=f18e63]:
+        - code
+        - code [ref=f18e64]: courses/<slug:course_slug>/revision/answer/ [name='course_revision_answer']
+      - listitem [ref=f18e65]:
+        - code
+        - code [ref=f18e66]: courses/<slug:course_slug>/revision/next/ [name='course_revision_next']
+      - listitem [ref=f18e67]:
+        - code
+        - code [ref=f18e68]: courses/<slug:course_slug>/revision/guessed/ [name='course_revision_guessed']
+      - listitem [ref=f18e69]:
+        - code
+        - code [ref=f18e70]: courses/<slug:course_slug>/<int:index>/ [name='view_course_item']
+    - paragraph [ref=f18e71]:
+      - text: The current path,
+      - code [ref=f18e72]: courses/functionality-demo-show-end-with-topic/1/
+      - text: ", matched the last one."
+  - contentinfo [ref=f18e73]:
+    - paragraph [ref=f18e74]:
+      - text: You’re seeing this error because you have
+      - code [ref=f18e75]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f18e76]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - generic "Show toolbar" [ref=f18e78]: DJDT

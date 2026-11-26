@@ -1,0 +1,70 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - heading "Page not found (404)" [level=1] [ref=f8e3]
+    - table [ref=f8e4]:
+      - rowgroup [ref=f8e5]:
+        - row [ref=f8e6]:
+          - rowheader "Request Method:" [ref=f8e7]
+          - cell "GET" [ref=f8e8]
+        - row [ref=f8e9]:
+          - rowheader "Request URL:" [ref=f8e10]
+          - cell "http://127.0.0.1:8482/courses/functionality-demo-show-end-with-topic/detail/" [ref=f8e11]
+        - row [ref=f8e12]:
+          - rowheader "Raised by:" [ref=f8e13]
+          - cell "freedom_ls.learner_interface.views.course_detail" [ref=f8e14]
+  - main [ref=f8e15]:
+    - paragraph [ref=f8e16]:
+      - text: Using the URLconf defined in
+      - code [ref=f8e17]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f8e18]:
+      - listitem [ref=f8e19]:
+        - code [ref=f8e20]: health/
+      - listitem [ref=f8e21]:
+        - code [ref=f8e22]: admin/
+      - listitem [ref=f8e23]:
+        - code [ref=f8e24]: robots.txt [name='robots_txt']
+      - listitem [ref=f8e25]:
+        - code [ref=f8e26]: sitemap.xml [name='sitemap']
+      - listitem [ref=f8e27]:
+        - code
+        - code [ref=f8e28]: "^[gG][oO]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_go']"
+      - listitem [ref=f8e29]:
+        - code
+        - code [ref=f8e30]: "^[dD]/(?P<code>[A-Za-z0-9-]{1,64})/?$ [name='follow_d']"
+      - listitem [ref=f8e31]:
+        - code [ref=f8e32]: educator/
+      - listitem [ref=f8e33]:
+        - code
+        - code [ref=f8e34]: sentry-debug/ [name='trigger_error']
+      - listitem [ref=f8e35]:
+        - code [ref=f8e36]: accounts/
+      - listitem [ref=f8e37]:
+        - code [ref=f8e38]: accounts/
+      - listitem [ref=f8e39]:
+        - code [ref=f8e40]: articles/
+      - listitem [ref=f8e41]:
+        - code [ref=f8e42]: api/v1/
+      - listitem [ref=f8e43]:
+        - code [ref=f8e44]: content/
+      - listitem [ref=f8e45]:
+        - code
+        - code [ref=f8e46]: "[name='dashboard']"
+      - listitem [ref=f8e47]:
+        - code
+        - code [ref=f8e48]: courses/ [name='courses']
+      - listitem [ref=f8e49]:
+        - code
+        - code [ref=f8e50]: courses/<slug:course_slug>/detail/ [name='course_detail']
+    - paragraph [ref=f8e51]:
+      - text: The current path,
+      - code [ref=f8e52]: courses/functionality-demo-show-end-with-topic/detail/
+      - text: ", matched the last one."
+  - contentinfo [ref=f8e53]:
+    - paragraph [ref=f8e54]:
+      - text: You’re seeing this error because you have
+      - code [ref=f8e55]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f8e56]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - generic "Show toolbar" [ref=f8e58]: DJDT

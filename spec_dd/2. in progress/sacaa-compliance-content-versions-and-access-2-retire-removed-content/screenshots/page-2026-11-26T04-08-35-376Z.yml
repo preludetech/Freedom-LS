@@ -1,0 +1,89 @@
+- generic [active] [ref=f57e1]:
+  - banner [ref=f57e2]:
+    - link [ref=f57e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f57e4]
+    - navigation [ref=f57e5]:
+      - generic [ref=f57e6]:
+        - generic [ref=f57e7]:
+          - button "Notifications, none new" [ref=f57e8]
+          - status:
+            - generic [ref=f57e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f57e14] [cursor=pointer]:
+          - generic [ref=f57e15]:
+            - generic [ref=f57e16]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f57e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f57e18]:
+    - generic [ref=f57e21]:
+      - navigation "Back" [ref=f57e23]:
+        - link "Courses" [ref=f57e24] [cursor=pointer]:
+          - /url: /educator/organisations/demodev/courses
+      - generic [ref=f57e28]:
+        - generic [ref=f57e30]:
+          - generic [ref=f57e33]:
+            - button "Open navigation panel" [ref=f57e34] [cursor=pointer]
+            - heading "Functionality Demo - Course Parts" [level=1] [ref=f57e38]
+          - navigation "Course sections" [ref=f57e39]:
+            - list [ref=f57e40]:
+              - listitem [ref=f57e41]:
+                - link "Overview" [ref=f57e42] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/overview
+              - listitem [ref=f57e43]:
+                - link "Content" [ref=f57e44] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22/__tabs/content
+        - generic [ref=f57e48]:
+          - generic [ref=f57e50]:
+            - heading "Course content" [level=2] [ref=f57e53]
+            - generic [ref=f57e55]:
+              - list [ref=f57e57]:
+                - listitem [ref=f57e58]:
+                  - generic [ref=f57e60]:
+                    - generic [ref=f57e61]: Course details
+                    - generic [ref=f57e64]: Course
+                    - button "Preview course details page" [ref=f57e66] [cursor=pointer]: Preview
+                - listitem [ref=f57e67]:
+                  - button "Getting Started" [ref=f57e69]
+                  - generic [ref=f57e73]:
+                    - generic [ref=f57e74]:
+                      - generic [ref=f57e75]: "1."
+                      - generic [ref=f57e76]:
+                        - generic [ref=f57e77]: Part
+                        - generic [ref=f57e81]: Getting Started
+                    - generic [ref=f57e82]: Part
+                - listitem [ref=f57e83]:
+                  - button "Core Concepts" [ref=f57e85]
+                  - generic [ref=f57e89]:
+                    - generic [ref=f57e90]:
+                      - generic [ref=f57e91]: "2."
+                      - generic [ref=f57e92]:
+                        - generic [ref=f57e93]: Part
+                        - generic [ref=f57e97]: Core Concepts
+                    - generic [ref=f57e98]: Part
+                - listitem [ref=f57e99]:
+                  - button "Wrapping Up" [ref=f57e101]
+                  - generic [ref=f57e105]:
+                    - generic [ref=f57e106]:
+                      - generic [ref=f57e107]: "3."
+                      - generic [ref=f57e108]:
+                        - generic [ref=f57e109]: Part
+                        - generic [ref=f57e113]: Wrapping Up
+                    - generic [ref=f57e114]: Part
+              - paragraph [ref=f57e116]: 10 course outline items
+          - generic [ref=f57e118]:
+            - heading "Reference" [level=2] [ref=f57e121]
+            - list [ref=f57e125]:
+              - listitem [ref=f57e126]:
+                - paragraph [ref=f57e130]: No reference material in this course yet.
+  - contentinfo [ref=f57e133]:
+    - generic [ref=f57e134]:
+      - paragraph [ref=f57e135]: © 2026 FirstClass
+      - navigation "Legal" [ref=f57e136]:
+        - link "Terms and Conditions" [ref=f57e137] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f57e138] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f57e139] [cursor=pointer]: sacaa-compliance-content-versions-and-access-2-retire-removed-content
+  - generic "Show toolbar" [ref=f57e141]: DJDT
