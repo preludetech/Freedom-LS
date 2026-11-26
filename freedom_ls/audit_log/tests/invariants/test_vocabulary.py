@@ -21,6 +21,7 @@ NOUNS = frozenset(
         "user",
         "course",
         "deadline",
+        "question",
         "bulk_action",
         "import",
         "conversation",

@@ -30,6 +30,7 @@ from freedom_ls.form_engine.factories import (
     FormQuestionFactory,
     QuestionOptionFactory,
 )
+from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
@@ -57,13 +58,18 @@ FLASHCARD = (
 )
 
 
-def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
+def _seed_course(
+    user: AbstractBaseUser, *, holds_question_role: bool = True
+) -> tuple[Organisation, Course]:
     """An organisation `user` administers, holding a course with a flashcard
     topic, a part with a second topic, a quiz and a two-page survey, and a
-    reference part holding one topic."""
+    reference part holding one topic. `user` also holds the question bank
+    viewer role unless `holds_question_role` is False."""
     organisation = cast(Organisation, OrganisationFactory(name="Org A"))
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, user, "organisation_admin", organisation)
+    if holds_question_role:
+        assign_role(grantor, user, "question_bank_viewer", organisation)
     course = cast(Course, CourseFactory(title="Algebra"))
     LearnerCourseRegistrationFactory(
         learner=LearnerFactory(organisation=organisation), course=course
@@ -72,7 +78,7 @@ def _seed_course(user: AbstractBaseUser) -> tuple[Organisation, Course]:
     topic = TopicFactory(title="Cards", content=FLASHCARD)
     part = CoursePartFactory(title="Chapter One")
     part_topic = TopicFactory(title="Inside the part", content="Part body.")
-    quiz = FormFactory(title="Check yourself")
+    quiz = FormFactory(title="Check yourself", strategy=FormStrategy.QUIZ)
     page = FormPageFactory(form=quiz, title="Page one")
     question = FormQuestionFactory(form_page=page, question="Pick one")
     QuestionOptionFactory(question=question, text="Option A")
@@ -408,3 +414,69 @@ def test_course_outline_shows_a_retired_badge_beside_a_retired_topic_at_every_vi
                 page.get_by_text("Retired", exact=True).locator("visible=true")
             ).to_have_count(1)
             assert_no_horizontal_overflow(page)
+
+
+def test_a_non_holder_sees_quiz_previews_disabled_with_the_reason(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation, course = _seed_course(educator_user, holds_question_role=False)
+    content_url = interface_url(
+        live_server, organisation.slug, f"courses/{course.pk}/__tabs/content"
+    )
+
+    for viewport in QA_VIEWPORTS:
+        with no_console_errors(page):
+            page.set_viewport_size(viewport)
+            page.goto(content_url)
+            quiz_preview = page.get_by_role("button", name="Preview Check yourself")
+            expect(quiz_preview.locator("visible=true")).to_be_disabled()
+            reason = (
+                page.get_by_text(
+                    "Previewing a quiz needs the question bank viewer role."
+                )
+                .locator("visible=true")
+                .first
+            )
+            expect(reason).to_be_visible()
+            assert_no_horizontal_overflow(page)
+            page.get_by_role("button", name="Preview Cards").locator(
+                "visible=true"
+            ).click()
+            expect(
+                page.locator("#app-modal[open]").get_by_role(
+                    "heading", name="Cards (Preview)"
+                )
+            ).to_be_visible()
+            _press_escape_and_expect_closed(page)
+
+
+def test_a_holders_quiz_preview_is_listed_in_the_audit_log(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation, course = _seed_course(educator_user)
+    content_url = interface_url(
+        live_server, organisation.slug, f"courses/{course.pk}/__tabs/content"
+    )
+    page.set_viewport_size(QA_VIEWPORTS[-1])
+    page.goto(content_url)
+
+    page.get_by_role("button", name="Preview Check yourself").locator(
+        "visible=true"
+    ).click()
+    modal = page.locator("#app-modal[open]")
+    expect(modal.get_by_text("Option B")).to_be_visible()
+    _press_escape_and_expect_closed(page)
+    page.goto(interface_url(live_server, organisation.slug, "audit-log"))
+
+    expect(
+        page.get_by_text("Question detail viewed").locator("visible=true").first
+    ).to_be_visible()
+    expect(
+        page.get_by_text("Course preview: Check yourself").locator("visible=true").first
+    ).to_be_visible()

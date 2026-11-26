@@ -1,5 +1,6 @@
-"""`can`: the single capability check every permission decision in the
-educator interface answers through.
+"""`can`, the single capability check every permission decision in the
+educator interface answers through, and the audit write for a view of
+question detail.
 
 It reads role assignments and the role config, never guardian rows, so a
 config change or a fresh grant takes effect immediately, with nothing to
@@ -9,6 +10,7 @@ queryset twin of each step, so the two can never disagree.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast
 
 from django.contrib.contenttypes.models import ContentType
@@ -16,6 +18,8 @@ from django.contrib.sites.models import Site
 from django.db.models import CharField, Exists, Model, OuterRef, Q, QuerySet
 from django.db.models.functions import Cast
 
+from freedom_ls.audit_log.types import JSONValue
+from freedom_ls.audit_log.writer import record_entry
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortMembership,
@@ -210,3 +214,28 @@ def can_view_course_questions(user: RequestUser, organisation: Organisation) -> 
     it, so a cohort-level grant of the permission can never pass.
     """
     return can(user, VIEW_COURSE_QUESTIONS, organisation)
+
+
+def record_question_view(
+    *,
+    actor: User,
+    target: Model,
+    target_label: str,
+    organisation: Organisation,
+    subjects: Iterable[Model] = (),
+    details: dict[str, JSONValue],
+) -> None:
+    """Write the audit entry for one view of question detail.
+
+    Every surface that shows question detail writes through here, so the
+    action code and the shape of `details` cannot drift between them.
+    """
+    record_entry(
+        action="question.viewed",
+        actor=actor,
+        target=target,
+        target_label=target_label,
+        organisation=organisation,
+        subjects=subjects,
+        details=details,
+    )

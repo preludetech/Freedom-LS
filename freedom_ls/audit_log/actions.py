@@ -44,6 +44,29 @@ class AuditAction:
     group: str = "Other"
 
 
+_QUESTION_VIEW_SURFACES = {
+    "preview": "Course preview",
+    "cohort_report": "Cohort report",
+    "attempt_review": "Attempt review",
+}
+
+
+def _describe_question_view(entry: AuditLogEntry) -> str:
+    """Where the question detail was shown and which quizzes it belonged to."""
+    surface = _QUESTION_VIEW_SURFACES.get(str(entry.details.get("surface", "")), "")
+    forms = entry.details.get("forms")
+    titles = (
+        ", ".join(
+            str(form["title"])
+            for form in forms
+            if isinstance(form, dict) and "title" in form
+        )
+        if isinstance(forms, list)
+        else ""
+    )
+    return ": ".join(part for part in (surface, titles) if part)
+
+
 _ADDED_OUTCOMES = {
     "created": "Account created and setup email sent",
     "joined": "Joined the organisation",
@@ -274,6 +297,7 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     ),
     AuditAction("import.committed", "Import committed", _describe_run_summary),
     AuditAction("conversation.viewed", "Conversation viewed"),
+    AuditAction("question.viewed", "Question detail viewed", _describe_question_view),
     AuditAction("api_key.issued", "API key issued"),
     AuditAction("api_key.revoked", "API key revoked"),
     AuditAction("audit_log.exported", "Audit log exported", _describe_export),

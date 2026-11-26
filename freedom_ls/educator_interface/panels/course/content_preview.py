@@ -9,11 +9,13 @@ from functools import cached_property
 from typing import Literal, cast
 from uuid import UUID
 
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Page, Paginator
 from django.db.models import QuerySet, prefetch_related_objects
 from django.http import Http404, HttpRequest, HttpResponse
 from django.utils.html import strip_tags
 
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.course_details import course_details_context
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
@@ -28,8 +30,16 @@ from freedom_ls.educator_interface.panels.common.request import (
 from freedom_ls.form_engine.conditions import full_path
 from freedom_ls.form_engine.models import Form, FormPage, FormStrategy
 from freedom_ls.form_engine.queries import count_sitting_questions, drawing_page_counts
+from freedom_ls.learner_management.capabilities import (
+    can_view_course_questions,
+    record_question_view,
+)
 from freedom_ls.learner_management.queries import is_course_available_to_organisation
-from freedom_ls.panel_framework.actions import PanelAction, count_phrase
+from freedom_ls.panel_framework.actions import (
+    PanelAction,
+    count_phrase,
+    denied_response,
+)
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import DataTablePanel
 from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
@@ -61,7 +71,9 @@ class OutlineRow:
     topic, a form or one page of a multi-page form. A group row (a part, a
     multi-page form) holds its rows in `children`. `preview_query` is the
     Preview trigger's query string, empty for a part, which has nothing to
-    show. A `note` row carries only that text."""
+    show. A `note` row carries only that text. A quiz row the viewer may not
+    preview is withheld: its `preview_query` is empty and its Preview shows
+    disabled, with the reason beside it."""
 
     number: str
     title: str
@@ -76,6 +88,7 @@ class OutlineRow:
     item_pk: UUID | None = None
     page_pk: UUID | None = None
     retired: bool = False
+    preview_withheld: bool = False
 
     @property
     def has_preview(self) -> bool:
@@ -101,30 +114,43 @@ class OutlineRow:
 CourseList = Literal["learning_path", "reference"]
 
 
+def _is_quiz(child: object) -> bool:
+    return isinstance(child, Form) and child.strategy == FormStrategy.QUIZ
+
+
 def _form_page_rows(
-    item: ContentCollectionItem, form: Form, number: str
+    item: ContentCollectionItem, form: Form, number: str, *, withheld: bool
 ) -> tuple[OutlineRow, ...]:
-    """One row per page of a form, each previewing that page alone."""
+    """One row per page of a form, each previewing that page alone, or
+    withheld when the form is a quiz the viewer may not preview."""
     return tuple(
         OutlineRow(
             number=f"{number}.{position}",
             title=page.title or f"Page {position}",
             kind="page",
-            preview_query=f"item={item.pk}&page={page.pk}",
+            preview_query="" if withheld else f"item={item.pk}&page={page.pk}",
             form_title=form.title,
             item_pk=item.pk,
             page_pk=page.pk,
             retired=page.is_retired,
+            preview_withheld=withheld,
         )
         for position, page in enumerate(form.pages.all(), start=1)
     )
 
 
-def _part_row(part: CoursePart, number: str, *, nested: bool) -> OutlineRow:
+def _part_row(
+    part: CoursePart, number: str, *, nested: bool, may_view_questions: bool
+) -> OutlineRow:
     """A part's group row holding a row for each of its collection items,
     or a note when it has none."""
     children = tuple(
-        _outline_item_rows(item, f"{number}.{position}", nested=True)
+        _outline_item_rows(
+            item,
+            f"{number}.{position}",
+            nested=True,
+            may_view_questions=may_view_questions,
+        )
         for position, item in enumerate(part.collection_items(), start=1)
     )
     return OutlineRow(
@@ -140,27 +166,33 @@ def _part_row(part: CoursePart, number: str, *, nested: bool) -> OutlineRow:
 
 
 def _outline_item_rows(
-    item: ContentCollectionItem, number: str, *, nested: bool
+    item: ContentCollectionItem, number: str, *, nested: bool, may_view_questions: bool
 ) -> OutlineRow:
     """The row for one collection item, with its children set. A part holds
     its items (or a note when it has none) and a form with more than one page
     holds its pages; a form with one page is a single row that previews intro
-    and page together."""
+    and page together. A quiz the viewer may not preview keeps its rows with
+    the preview withheld."""
     child = item.child
     label = number if nested else f"{number}."
     if isinstance(child, CoursePart):
-        return _part_row(child, number, nested=nested)
+        return _part_row(
+            child, number, nested=nested, may_view_questions=may_view_questions
+        )
+    withheld = _is_quiz(child) and not may_view_questions
+    preview_query = "" if withheld else f"item={item.pk}"
     if isinstance(child, Form):
-        pages = _form_page_rows(item, child, number)
+        pages = _form_page_rows(item, child, number, withheld=withheld)
         if len(pages) > 1:
             return OutlineRow(
                 number=label,
                 title=child.title,
                 kind="form",
-                preview_query=f"item={item.pk}",
+                preview_query=preview_query,
                 item_pk=item.pk,
                 children=pages,
                 retired=child.is_retired,
+                preview_withheld=withheld,
             )
         kind: Literal["form", "topic"] = "form"
     else:
@@ -169,9 +201,10 @@ def _outline_item_rows(
         number=label,
         title=str(getattr(child, "title", "")),
         kind=kind,
-        preview_query=f"item={item.pk}",
+        preview_query=preview_query,
         item_pk=item.pk,
         retired=child is not None and child.is_retired,
+        preview_withheld=withheld,
     )
 
 
@@ -198,7 +231,7 @@ def _prefetch_form_pages(items: list[ContentCollectionItem]) -> None:
     prefetch_related_objects(forms, "pages")
 
 
-def outline_rows(course: Course) -> list[OutlineRow]:
+def outline_rows(course: Course, *, may_view_questions: bool) -> list[OutlineRow]:
     """The top-level rows of the course outline: the course details first,
     then every collection item in order, numbered as the learner outline
     numbers them, each holding its own child rows."""
@@ -206,7 +239,9 @@ def outline_rows(course: Course) -> list[OutlineRow]:
     _prefetch_form_pages(items)
     rows = [OutlineRow(number="", title="Course details", kind="course")]
     rows.extend(
-        _outline_item_rows(item, str(position), nested=False)
+        _outline_item_rows(
+            item, str(position), nested=False, may_view_questions=may_view_questions
+        )
         for position, item in enumerate(items, start=1)
     )
     if not items:
@@ -262,14 +297,16 @@ def _reference_parts(course: Course) -> list[CourseReferencePart]:
     )
 
 
-def reference_rows(course: Course) -> list[OutlineRow]:
+def reference_rows(course: Course, *, may_view_questions: bool) -> list[OutlineRow]:
     """One group row per reference part of the course, in order, numbered
     within the reference list. There is no course details row: the course
     content outline already carries it."""
     parts = [reference_part.course_part for reference_part in _reference_parts(course)]
     _prefetch_form_pages([item for part in parts for item in part.collection_items()])
     rows = [
-        _part_row(part, str(position), nested=False)
+        _part_row(
+            part, str(position), nested=False, may_view_questions=may_view_questions
+        )
         for position, part in enumerate(parts, start=1)
     ]
     return rows or [
@@ -303,6 +340,13 @@ def _preview_available(request: HttpRequest, course: Course) -> bool:
     registration on it shows its details but not its content."""
     organisation = cast(OrganisationScopedRequest, request).organisation
     return is_course_available_to_organisation(course, organisation)
+
+
+def _may_view_questions(request: HttpRequest) -> bool:
+    """Whether the viewer may see question detail in the request's organisation."""
+    return can_view_course_questions(
+        cast(User, request.user), cast(OrganisationScopedRequest, request).organisation
+    )
 
 
 def _outline_content_count(rows: Sequence[OutlineRow]) -> int:
@@ -396,7 +440,9 @@ class CourseContentPanel(DataTablePanel):
         return self.build_rows(cast(Course, self.instance))
 
     def build_rows(self, course: Course) -> list[OutlineRow]:
-        return outline_rows(course)
+        return outline_rows(
+            course, may_view_questions=_may_view_questions(self.request)
+        )
 
     def preview_actions(self) -> list[PanelAction]:
         return [PreviewContentAction(), PreviewCourseDetailsAction()]
@@ -441,7 +487,9 @@ class CourseReferencePanel(CourseContentPanel):
     table_key = "reference"
 
     def build_rows(self, course: Course) -> list[OutlineRow]:
-        return reference_rows(course)
+        return reference_rows(
+            course, may_view_questions=_may_view_questions(self.request)
+        )
 
     def preview_actions(self) -> list[PanelAction]:
         return [PreviewContentAction(course_list="reference")]
@@ -526,18 +574,32 @@ def _quiz_facts(
     ]
 
 
+class _QuestionDetailWithheld(PermissionDenied):
+    """The viewer asked for a quiz preview without the permission to see
+    question detail."""
+
+
 class PreviewContentAction(PanelAction):
     """Shows one child of the course read-only in the app modal. The
     target is found among the authorised course's own collection items,
-    so an id from any other course is as missing as a made-up one."""
+    so an id from any other course is as missing as a made-up one. A quiz
+    shows question detail, so it needs the permission to see it and each
+    preview of a quiz page is recorded in the audit log."""
 
     action_name = "preview_content"
+    label = "Preview"
     capability = None
     renders_in_footer = False
     template_name = "educator_interface/modal/content_preview.html"
 
     def __init__(self, course_list: CourseList = "learning_path") -> None:
         self.course_list = course_list
+
+    def render_fragment(self, ctx: PanelContext) -> HttpResponse:
+        try:
+            return super().render_fragment(ctx)
+        except _QuestionDetailWithheld:
+            return denied_response(ctx, self)
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         if ctx.request.headers.get("HX-Request") != "true":
@@ -554,6 +616,12 @@ class PreviewContentAction(PanelAction):
         )
         if collection_item is None or isinstance(collection_item.child, CoursePart):
             raise Http404
+        is_quiz = _is_quiz(collection_item.child)
+        may_view_questions = _may_view_questions(ctx.request)
+        if is_quiz and not may_view_questions:
+            # Refused from the target itself, so a hand-built URL fares no
+            # better than the disabled button.
+            raise _QuestionDetailWithheld
         context: dict[str, object] = {
             "collection_item": collection_item,
             "child": collection_item.child,
@@ -561,9 +629,9 @@ class PreviewContentAction(PanelAction):
         page_param = ctx.request.GET.get("page")
         page_pk = uuid_or_404(page_param) if page_param is not None else None
         sequence = preview_sequence(
-            outline_rows(course)
+            outline_rows(course, may_view_questions=may_view_questions)
             if self.course_list == "learning_path"
-            else reference_rows(course)
+            else reference_rows(course, may_view_questions=may_view_questions)
         )
         index = next(
             (
@@ -579,6 +647,8 @@ class PreviewContentAction(PanelAction):
             form = collection_item.child
             form_context = _form_preview_context(form, page_pk)
             context.update(form_context)
+            if is_quiz and form_context["preview_pages"]:
+                self._record_view(ctx, course, form, form_context)
             if form.strategy == FormStrategy.QUIZ and page_pk is None:
                 context["quiz_facts"] = _quiz_facts(
                     form,
@@ -589,6 +659,29 @@ class PreviewContentAction(PanelAction):
             # Only a form has pages.
             raise Http404
         return context
+
+    @staticmethod
+    def _record_view(
+        ctx: PanelContext, course: Course, form: Form, form_context: dict[str, object]
+    ) -> None:
+        """Log one view of a quiz page. The intro of a multi-page quiz shows
+        no page and writes nothing; a one-page quiz's form row shows its only
+        page, as page 1."""
+        (shown,) = cast(list[dict[str, FormPage]], form_context["preview_pages"])
+        record_question_view(
+            actor=cast(User, ctx.request.user),
+            target=course,
+            target_label=course.title,
+            organisation=cast(OrganisationScopedRequest, ctx.request).organisation,
+            details={
+                "surface": "preview",
+                "forms": [{"id": str(form.pk), "title": form.title}],
+                "page": {
+                    "id": str(shown["page"].pk),
+                    "number": cast(int | None, form_context["page_position"]) or 1,
+                },
+            },
+        )
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         # Opening is a read; there is nothing to submit.
@@ -611,7 +704,14 @@ class PreviewCourseDetailsAction(PanelAction):
         return {
             **course_details_context(course),
             **_stepping_urls(
-                ctx, preview_sequence(outline_rows(course)), 0, "learning_path"
+                ctx,
+                preview_sequence(
+                    outline_rows(
+                        course, may_view_questions=_may_view_questions(ctx.request)
+                    )
+                ),
+                0,
+                "learning_path",
             ),
             "course": course,
             "in_modal": True,

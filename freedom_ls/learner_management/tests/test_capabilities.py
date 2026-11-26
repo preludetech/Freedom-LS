@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from types import ModuleType
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -11,13 +12,15 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.learner_management.capabilities import (
     VIEW_COURSE_QUESTIONS,
     can,
     can_view_course_questions,
+    record_question_view,
 )
 from freedom_ls.learner_management.factories import CohortFactory
-from freedom_ls.learner_management.models import StaffMember
+from freedom_ls.learner_management.models import Cohort, StaffMember
 from freedom_ls.learner_management.queries import (
     VIEW_COURSE_QUESTIONS as QUERIES_VIEW_COURSE_QUESTIONS,
 )
@@ -245,3 +248,32 @@ def test_a_cohort_grant_of_the_permission_does_not_pass_the_organisation_check(
 
 def test_the_queries_module_re_exports_the_view_course_questions_constant() -> None:
     assert QUERIES_VIEW_COURSE_QUESTIONS == VIEW_COURSE_QUESTIONS
+
+
+@pytest.mark.django_db
+def test_record_question_view_writes_one_entry_with_what_it_was_given(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    actor = UserFactory()
+    subject = cast(Cohort, CohortFactory(organisation=organisation))
+    details = {"surface": "cohort_report", "forms": [{"id": "1", "title": "Quiz"}]}
+
+    record_question_view(
+        actor=actor,
+        target=organisation,
+        target_label="Acme",
+        organisation=organisation,
+        subjects=[subject],
+        details=details,
+    )
+
+    (entry,) = AuditLogEntry.unscoped.filter(action="question.viewed")
+    assert (entry.actor, entry.organisation, entry.target_label, entry.details) == (
+        actor,
+        organisation,
+        "Acme",
+        details,
+    )
+    assert f"freedom_ls_learner_management.cohort:{subject.pk}" in entry.subjects
+    assert entry.target_object_id == str(organisation.pk)

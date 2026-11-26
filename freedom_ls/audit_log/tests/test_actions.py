@@ -229,3 +229,43 @@ def test_course_progress_actions_describe_their_details(
     entry = AuditLogEntryFactory.build(action=code, details=details)
 
     assert get_audit_action(code).describe(entry) == expected
+
+
+def test_question_viewed_is_registered_under_other():
+    action = get_audit_action("question.viewed")
+
+    assert (action.label, action.group) == ("Question detail viewed", "Other")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("details", "expected"),
+    [
+        (
+            {
+                "surface": "preview",
+                "forms": [{"id": "1", "title": "Safety quiz"}],
+            },
+            "Course preview: Safety quiz",
+        ),
+        (
+            {
+                "surface": "cohort_report",
+                "forms": [
+                    {"id": "1", "title": "Quiz A"},
+                    {"id": "2", "title": "Quiz B"},
+                ],
+            },
+            "Cohort report: Quiz A, Quiz B",
+        ),
+        ({"surface": "attempt_review", "forms": []}, "Attempt review"),
+        ({"surface": "unknown", "forms": "not a list"}, ""),
+        ({"forms": [{"id": "1"}, "stray"]}, ""),
+    ],
+)
+def test_question_viewed_describes_its_surface_and_form_titles(
+    mock_site_context, details, expected
+):
+    entry = AuditLogEntryFactory.build(action="question.viewed", details=details)
+
+    assert get_audit_action("question.viewed").describe(entry) == expected

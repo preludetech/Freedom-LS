@@ -28,7 +28,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course as CourseModel
-from freedom_ls.content_engine.models import File
+from freedom_ls.content_engine.models import CourseAudience, File
 from freedom_ls.educator_interface.panels.course.content_preview import (
     OutlineRow,
     outline_rows,
@@ -53,9 +53,11 @@ from freedom_ls.form_engine.models import (
     FormStrategy,
     QuestionAnswer,
 )
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -1868,7 +1870,7 @@ def test_the_preview_sequence_runs_depth_first_across_parts_and_form_pages(
 ) -> None:
     course, _items = _stepping_course()
 
-    sequence = preview_sequence(outline_rows(course))
+    sequence = preview_sequence(outline_rows(course, may_view_questions=True))
 
     assert [row.title for row in sequence] == [
         "Course details",
@@ -1887,7 +1889,7 @@ def test_an_empty_course_has_only_the_course_details_to_step_through(
 ) -> None:
     course = cast(CourseModel, CourseFactory())
 
-    sequence = preview_sequence(outline_rows(course))
+    sequence = preview_sequence(outline_rows(course, may_view_questions=True))
 
     assert [row.title for row in sequence] == ["Course details"]
 
@@ -1898,7 +1900,9 @@ def test_a_one_topic_course_sequence_is_the_details_then_the_topic(
 ) -> None:
     course, _item = _course_with_topic(TopicFactory(title="Only"))
 
-    sequence = preview_sequence(outline_rows(cast(CourseModel, course)))
+    sequence = preview_sequence(
+        outline_rows(cast(CourseModel, course), may_view_questions=True)
+    )
 
     assert [row.title for row in sequence] == ["Course details", "Only"]
 
@@ -1910,7 +1914,7 @@ def test_the_reference_sequence_has_no_details_row_and_no_parts(
     course = cast(CourseModel, CourseFactory())
     _reference_topic_item(course, "Cheat sheet")
 
-    sequence = preview_sequence(reference_rows(course))
+    sequence = preview_sequence(reference_rows(course, may_view_questions=True))
 
     assert [row.title for row in sequence] == ["Cheat sheet"]
 
@@ -2193,7 +2197,7 @@ def test_outline_rows_flag_a_retired_topic_and_nothing_else(
         order=1,
     )
 
-    assert _flagged_titles(outline_rows(course)) == ["Gone"]
+    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == ["Gone"]
 
 
 @pytest.mark.django_db
@@ -2207,7 +2211,7 @@ def test_outline_rows_flag_a_retired_part_but_not_its_live_children(
         collection_object=part, child_object=TopicFactory(title="Kept"), order=0
     )
 
-    assert _flagged_titles(outline_rows(course)) == ["Old part"]
+    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == ["Old part"]
 
 
 @pytest.mark.django_db
@@ -2217,7 +2221,7 @@ def test_outline_rows_flag_a_retired_form(mock_site_context: Site) -> None:
     FormPageFactory(form=form, order=0)
     ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
 
-    assert _flagged_titles(outline_rows(course)) == ["Old quiz"]
+    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == ["Old quiz"]
 
 
 @pytest.mark.django_db
@@ -2230,7 +2234,7 @@ def test_outline_rows_flag_a_retired_form_page_but_not_its_form(
     retired(FormPageFactory(form=form, title="Old page", order=1))
     ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
 
-    assert _flagged_titles(outline_rows(course)) == ["Old page"]
+    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == ["Old page"]
 
 
 @pytest.mark.django_db
@@ -2248,7 +2252,7 @@ def test_reference_rows_flag_a_retired_part_and_a_retired_topic(
         order=0,
     )
 
-    assert _flagged_titles(reference_rows(course)) == ["Old reference", "Old glossary"]
+    assert _flagged_titles(reference_rows(course, may_view_questions=True)) == ["Old reference", "Old glossary"]
 
 
 @pytest.mark.django_db
@@ -2349,3 +2353,381 @@ def test_a_dropdown_preview_badges_a_retired_option(staff_client: Client) -> Non
     ]
     assert gone.text_content().strip() == "Gone option (Retired)"
     assert response.content.decode().count("Retired") == 1
+
+
+def _question_viewer_client(organisation: Organisation, *, holds_role: bool) -> Client:
+    """A client for a staff member of `organisation`, who holds the question
+    bank viewer role too when `holds_role`."""
+    user = cast(User, UserFactory(staff=True))
+    grantor = cast(User, UserFactory(superuser=True))
+    assign_role(grantor, user, "organisation_admin", organisation)
+    if holds_role:
+        assign_role(grantor, user, "question_bank_viewer", organisation)
+    client = Client()
+    client.force_login(user)
+    return client
+
+
+def _available_course(organisation: Organisation) -> CourseModel:
+    course = cast(CourseModel, CourseFactory(audience=CourseAudience.PUBLIC))
+    course.organisations.add(organisation)
+    return course
+
+
+def _quiz_form(title: str = "Safety quiz", pages: int = 1) -> Model:
+    form = FormFactory(title=title, strategy=FormStrategy.QUIZ)
+    for order in range(pages):
+        page = FormPageFactory(form=form, title=f"Page {order + 1}", order=order)
+        FormQuestionFactory(form_page=page, question=f"Question {order + 1}")
+    return cast(Model, form)
+
+
+def _place(course: CourseModel, child: Model, order: int = 0) -> Model:
+    return cast(
+        Model,
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=child, order=order
+        ),
+    )
+
+
+def _preview_get(
+    client: Client,
+    organisation: Organisation,
+    course: CourseModel,
+    query: str,
+    *,
+    htmx: bool = True,
+    panel: str = "content",
+) -> _MonkeyPatchedWSGIResponse:
+    url = _content_action_url(organisation, course, "preview_content", panel=panel)
+    extra = {"HTTP_HX_REQUEST": "true"} if htmx else {}
+    return client.get(f"{url}?{query}", **extra)
+
+
+def _question_views() -> list[AuditLogEntry]:
+    return list(AuditLogEntry.unscoped.filter(action="question.viewed"))
+
+
+def _quiz_course_rows(
+    may_view_questions: bool, *, in_part: bool, reference: bool
+) -> list[OutlineRow]:
+    """The outline rows of a course whose only quiz has two pages, placed in
+    the learning path or the reference list, in a part or not."""
+    course = cast(CourseModel, CourseFactory())
+    quiz = _quiz_form(pages=2)
+    if reference:
+        part = CoursePartFactory()
+        CourseReferencePartFactory(course=course, course_part=part, order=0)
+        _place(part, quiz)
+        _place(part, TopicFactory(title="Reference topic"), 1)
+        return reference_rows(course, may_view_questions=may_view_questions)
+    if in_part:
+        part = CoursePartFactory()
+        _place(course, part)
+        _place(part, quiz)
+        _place(part, TopicFactory(title="Part topic"), 1)
+    else:
+        _place(course, quiz)
+        _place(course, TopicFactory(title="Loose topic"), 1)
+    return outline_rows(course, may_view_questions=may_view_questions)
+
+
+def _flatten(rows: list[OutlineRow]) -> list[OutlineRow]:
+    return [found for row in rows for found in (row, *_flatten(list(row.children)))]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("in_part", "reference"), [(False, False), (True, False), (False, True)]
+)
+def test_without_the_permission_a_quiz_and_its_pages_are_withheld_and_nothing_else(
+    mock_site_context: object, in_part: bool, reference: bool
+) -> None:
+    rows = _flatten(_quiz_course_rows(False, in_part=in_part, reference=reference))
+
+    withheld = [row for row in rows if row.preview_withheld]
+    assert [row.title for row in withheld] == [
+        "Safety quiz",
+        "Page 1",
+        "Page 2",
+    ]
+    assert [row.preview_query for row in withheld] == ["", "", ""]
+    assert all(row.preview_query for row in rows if row.kind == "topic")
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("in_part", "reference"), [(False, False), (True, False), (False, True)]
+)
+def test_with_the_permission_no_row_is_withheld_and_every_row_previews(
+    mock_site_context: object, in_part: bool, reference: bool
+) -> None:
+    rows = _flatten(_quiz_course_rows(True, in_part=in_part, reference=reference))
+
+    assert not any(row.preview_withheld for row in rows)
+    assert all(
+        row.preview_query for row in rows if row.kind in {"form", "page", "topic"}
+    )
+
+
+@pytest.mark.django_db
+def test_the_preview_sequence_omits_withheld_rows(mock_site_context: object) -> None:
+    rows = _quiz_course_rows(False, in_part=False, reference=False)
+
+    assert [row.title for row in preview_sequence(rows)] == [
+        "Course details",
+        "Loose topic",
+    ]
+
+
+@pytest.mark.django_db
+def test_a_survey_row_is_not_withheld(mock_site_context: object) -> None:
+    course = cast(CourseModel, CourseFactory())
+    _place(course, FormFactory(title="Plain survey"))
+
+    rows = _flatten(outline_rows(course, may_view_questions=False))
+
+    assert not any(row.preview_withheld for row in rows)
+
+
+@pytest.mark.django_db
+def test_a_non_holders_outline_disables_each_quiz_preview_and_keeps_others(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course = _available_course(organisation)
+    _place(course, TopicFactory(title="Intro"), 0)
+    _place(course, _quiz_form("Safety quiz", pages=2), 1)
+    _place(course, FormFactory(title="Plain survey"), 2)
+    client = _question_viewer_client(organisation, holds_role=False)
+
+    document = _get_document(
+        client,
+        _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content"),
+    )
+
+    panel = document.cssselect("section[data-panel='content']")[0]
+    disabled = panel.cssselect("table button[disabled][aria-describedby]")
+    assert {button.get("aria-label") for button in disabled} == {
+        "Preview Safety quiz",
+        "Preview Safety quiz: Page 1",
+        "Preview Safety quiz: Page 2",
+    }
+    assert all(
+        document.get_element_by_id(button.get("aria-describedby")).text_content()
+        == "Previewing a quiz needs the question bank viewer role."
+        for button in disabled
+    )
+    assert {
+        button.get("aria-label") for button in panel.cssselect("table button[hx-get]")
+    } == {
+        "Preview course details page",
+        "Preview Intro",
+        "Preview Plain survey",
+    }
+
+
+@pytest.mark.django_db
+def test_a_non_holders_topic_next_link_skips_the_quiz(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course = _available_course(organisation)
+    first = _place(course, TopicFactory(title="First"), 0)
+    _place(course, _quiz_form(), 1)
+    last = _place(course, TopicFactory(title="Last"), 2)
+    client = _question_viewer_client(organisation, holds_role=False)
+
+    response = _preview_get(client, organisation, course, f"item={first.pk}")
+
+    assert _step_target(_stepping_buttons(response)["Next"]) == f"item={last.pk}"
+
+
+def _quiz_in_course(
+    organisation: Organisation, pages: int
+) -> tuple[CourseModel, Model, Model]:
+    course = _available_course(organisation)
+    quiz = _quiz_form(f"Safety quiz {uuid.uuid4().hex[:8]}", pages=pages)
+    return course, _place(course, quiz), quiz.pages.first()
+
+
+def _cohort_only_client(organisation: Organisation) -> Client:
+    user = cast(User, UserFactory(staff=True))
+    cohort = CohortFactory(organisation=organisation)
+    assign_role(cast(User, UserFactory(superuser=True)), user, "cohort_admin", cohort)
+    client = Client()
+    client.force_login(user)
+    return client
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("pages", [1, 2])
+def test_a_non_holder_asking_for_a_quiz_directly_is_refused_and_logs_nothing(
+    mock_site_context: object, pages: int
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory(name="Acme Training"))
+    course, item, first_page = _quiz_in_course(organisation, pages)
+    client = _question_viewer_client(organisation, holds_role=False)
+
+    item_response = _preview_get(client, organisation, course, f"item={item.pk}")
+    page_response = _preview_get(
+        client, organisation, course, f"item={item.pk}&page={first_page.pk}"
+    )
+
+    assert (item_response.status_code, page_response.status_code) == (403, 403)
+    assert "Acme Training" in item_response.content.decode()
+    assert _question_views() == []
+
+
+@pytest.mark.django_db
+def test_a_holder_of_a_cohort_role_only_is_refused_a_quiz_preview(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course, item, _page = _quiz_in_course(organisation, 1)
+    client = _cohort_only_client(organisation)
+
+    response = _preview_get(client, organisation, course, f"item={item.pk}")
+
+    assert response.status_code != 200
+    assert _question_views() == []
+
+
+@pytest.mark.django_db
+def test_a_holders_quiz_page_preview_writes_one_entry_describing_the_view(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course, item, first_page = _quiz_in_course(organisation, 2)
+    form = item.child
+    client = _question_viewer_client(organisation, holds_role=True)
+
+    response = _preview_get(
+        client, organisation, course, f"item={item.pk}&page={first_page.pk}"
+    )
+
+    (entry,) = _question_views()
+    assert response.status_code == 200
+    assert (entry.target_object_id, entry.organisation, entry.target_label) == (
+        str(course.pk),
+        organisation,
+        course.title,
+    )
+    assert entry.details == {
+        "surface": "preview",
+        "forms": [{"id": str(form.pk), "title": form.title}],
+        "page": {"id": str(first_page.pk), "number": 1},
+    }
+
+
+@pytest.mark.django_db
+def test_a_second_view_by_a_holder_writes_a_second_entry(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course, item, first_page = _quiz_in_course(organisation, 2)
+    client = _question_viewer_client(organisation, holds_role=True)
+    _preview_get(client, organisation, course, f"item={item.pk}&page={first_page.pk}")
+
+    _preview_get(client, organisation, course, f"item={item.pk}&page={first_page.pk}")
+
+    assert len(_question_views()) == 2
+
+
+@pytest.mark.django_db
+def test_a_single_page_quizs_form_row_logs_page_one_and_a_multi_page_intro_logs_nothing(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    client = _question_viewer_client(organisation, holds_role=True)
+    multi_course, multi_item, _page = _quiz_in_course(organisation, 2)
+    _preview_get(client, organisation, multi_course, f"item={multi_item.pk}")
+    nothing_logged = _question_views()
+    single_course, single_item, only_page = _quiz_in_course(organisation, 1)
+
+    _preview_get(client, organisation, single_course, f"item={single_item.pk}")
+
+    (entry,) = _question_views()
+    assert nothing_logged == []
+    assert entry.details["page"] == {"id": str(only_page.pk), "number": 1}
+
+
+@pytest.mark.django_db
+def test_a_non_htmx_quiz_request_by_a_holder_is_a_404_and_logs_nothing(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course, item, _page = _quiz_in_course(organisation, 1)
+    client = _question_viewer_client(organisation, holds_role=True)
+
+    response = _preview_get(client, organisation, course, f"item={item.pk}", htmx=False)
+
+    assert response.status_code == 404
+    assert _question_views() == []
+
+
+@pytest.mark.django_db
+def test_a_superusers_quiz_preview_succeeds_and_is_logged(
+    mock_site_context: object, staff_client: Client
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course, item, _page = _quiz_in_course(organisation, 1)
+
+    response = _preview_get(staff_client, organisation, course, f"item={item.pk}")
+
+    assert response.status_code == 200
+    assert len(_question_views()) == 1
+
+
+@pytest.mark.django_db
+def test_topic_and_survey_previews_write_no_question_entry(
+    mock_site_context: object, staff_client: Client
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course = _available_course(organisation)
+    topic = _place(course, TopicFactory(), 0)
+    survey = _place(course, FormFactory(), 1)
+    survey_page = FormPageFactory(form=survey.child)
+
+    _preview_get(staff_client, organisation, course, f"item={topic.pk}")
+    _preview_get(staff_client, organisation, course, f"item={survey.pk}")
+    _preview_get(
+        staff_client, organisation, course, f"item={survey.pk}&page={survey_page.pk}"
+    )
+
+    assert _question_views() == []
+
+
+@pytest.mark.django_db
+def test_a_shared_courses_entry_belongs_to_the_viewers_organisation(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    owner = cast(Organisation, OrganisationFactory())
+    course = cast(CourseModel, CourseFactory(audience=CourseAudience.PUBLIC))
+    course.organisations.add(owner)
+    course.shared_with.add(organisation)
+    item = _place(course, _quiz_form())
+    client = _question_viewer_client(organisation, holds_role=True)
+
+    _preview_get(client, organisation, course, f"item={item.pk}")
+
+    (entry,) = _question_views()
+    assert entry.organisation == organisation
+
+
+@pytest.mark.django_db
+def test_the_audit_log_shows_a_quiz_title_with_markup_escaped(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course = _available_course(organisation)
+    item = _place(course, _quiz_form("<b>Bold</b> quiz"))
+    client = _question_viewer_client(organisation, holds_role=True)
+    _preview_get(client, organisation, course, f"item={item.pk}")
+
+    html = client.get(_interface_url(organisation.slug, "audit-log")).content.decode()
+
+    assert "Course preview: &lt;b&gt;Bold&lt;/b&gt; quiz" in html
+    assert "<b>Bold</b>" not in html

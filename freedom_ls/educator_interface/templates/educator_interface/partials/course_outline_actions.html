@@ -1,6 +1,8 @@
 {% comment %}
 The Preview trigger of an outline row. row_action_urls comes from the
-panel's own actions; a part has no preview query and shows nothing.
+panel's own actions; a part has no preview query and shows nothing. A quiz
+row the viewer may not preview keeps its button, disabled, with the reason
+beside it, because the viewer needs to know a role would open it.
 {% endcomment %}
 {% if object.kind == "course" %}
     <c-data-table-actions>
@@ -8,6 +10,14 @@ panel's own actions; a part has no preview query and shows nothing.
                          url="{{ row_action_urls.preview_course_details }}"
                          label="Preview"
                          aria_label="Preview course details page" />
+    </c-data-table-actions>
+{% elif object.preview_withheld %}
+    <c-data-table-actions>
+        <c-button size="small" variant="secondary" class="md:-my-1" disabled="true"
+                  aria_label="{% if object.kind == 'page' %}Preview {{ object.form_title }}: {{ object.title }}{% else %}Preview {{ object.title }}{% endif %}"
+                  aria_describedby="preview-withheld-{{ object.item_pk }}{% if object.page_pk %}-{{ object.page_pk }}{% endif %}">Preview</c-button>
+        <span id="preview-withheld-{{ object.item_pk }}{% if object.page_pk %}-{{ object.page_pk }}{% endif %}"
+              class="text-xs text-muted">Previewing a quiz needs the question bank viewer role.</span>
     </c-data-table-actions>
 {% elif object.preview_query and row_action_urls.preview_content %}
     <c-data-table-actions>
