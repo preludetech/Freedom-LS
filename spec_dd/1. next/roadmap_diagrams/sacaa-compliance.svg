@@ -51,7 +51,7 @@
 <text x="370.0" y="323.0" fill="#111827">sacaa-compliance-assessment-</text>
 <text x="370.0" y="338.0" fill="#111827">controls-6-minimum-learning-</text>
 <text x="370.0" y="353.0" fill="#111827">time</text>
-<rect x="24.0" y="402.0" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="402.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,402.0 H30.0 A6,6 0 0 0 24.0,408.0 V446.0 A6,6 0 0 0 30.0,452.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="424.0" fill="#111827">sacaa-compliance-assessment-</text>
 <text x="40.0" y="439.0" fill="#111827">controls-2-attempt-limits</text>
