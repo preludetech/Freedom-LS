@@ -60,7 +60,7 @@ Retired rows are never deleted, so every learner record pointing at them stays i
 
 1. Run `uv run manage.py migrate`. This applies
    `content_engine/0017_activity_retired_at_article_retired_at_and_more` and
-   `form_engine/0015_form_retired_at_formcontent_retired_at_and_more`. Both only add a nullable
+   `form_engine/0018_form_retired_at_formcontent_retired_at_and_more`. Both only add a nullable
    column, so every existing row stays live.
 2. Before your next `content_save` on a live site, check that the command gets every source path
    your site's content comes from. Any row it does not find will be retired.

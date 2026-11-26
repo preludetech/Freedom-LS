@@ -2557,7 +2557,9 @@ class TestChipStaysOnOneLine:
         lines in a narrow, sideways-scrolling table."""
         from pathlib import Path
 
-        css = Path("tailwind.components.css").read_text()
+        css = (
+            Path(__file__).resolve().parents[3] / "tailwind.components.css"
+        ).read_text()
         rule = re.search(r"\n\s*\.chip \{(.*?)\}", css, re.S)
 
         assert rule is not None
