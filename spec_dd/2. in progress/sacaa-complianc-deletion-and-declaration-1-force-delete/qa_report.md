@@ -118,7 +118,7 @@ The tests themselves force deleted users and learners in the dev DB, as the plan
 |---|---|---|
 | B1 | Reason label sits beside the textarea at desktop width | **FIXED** (commit: e450ff3eb) |
 | B2 | Model row names are lower case and sorted case-sensitively | **FIXED** (commit: f0c08de6e; test expectation follow-up b15b60632) |
-| B3 | Auto-created many-to-many join rows listed as "questionanswer-questionoption relationships" | **UNRESOLVED** (reason: hiding the join rows or naming them is a product decision about what the page should count) |
+| B3 | Auto-created many-to-many join rows listed as "questionanswer-questionoption relationships" | **FIXED** (commit: e8b95fa24) — after the fix: ![](screenshots/fixed/page-2026-11-26T06-56-58-229Z.png) |
 | B4 | Disclosure chevron does not turn up when a row opens | **FIXED** (commit: e8aeea5f2) |
 
 ## General notes
@@ -131,4 +131,4 @@ The tests themselves force deleted users and learners in the dev DB, as the plan
 - Untracked files at start: the seed command and the `screenshots/` directory.
 - Screenshots `page-2026-11-26T05-04-37-943Z.png`, `05-05-56-713Z`, `05-09-51-835Z`, `05-10-52-510Z` and `05-11-58-947Z` are in the folder but no record references them.
 
-status: ok · reason: 4 bugs — 3 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 4 bugs — 4 fixed, 0 unresolved; report rendered, screenshots verified
