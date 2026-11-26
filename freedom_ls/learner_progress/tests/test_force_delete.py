@@ -23,8 +23,13 @@ from freedom_ls.form_engine.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
+    QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, QuestionAnswerFile
+from freedom_ls.form_engine.models import (
+    FormProgress,
+    QuestionAnswer,
+    QuestionAnswerFile,
+)
 from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
@@ -270,6 +275,41 @@ def test_a_protected_row_outside_the_progress_collection_blocks(
 
     assert plan.can_run is False
     assert plan.blocking_models == (str(CourseProgress._meta.verbose_name),)
+
+
+def test_plan_leaves_auto_created_join_rows_out_of_counts_and_listing(
+    mock_site_context, request_for, actor
+) -> None:
+    """The join table behind a many-to-many field used to be listed and counted
+    as "questionanswer-questionoption relationships", a row nobody can recognise.
+    The join rows still go with their answer."""
+    user: User = UserFactory()
+    answer = QuestionAnswerFactory(form_progress=FormProgressFactory(user=user))
+    answer.selected_options.add(
+        QuestionOptionFactory(question=answer.question),
+        QuestionOptionFactory(question=answer.question),
+    )
+    through = QuestionAnswer.selected_options.through
+    assert through._meta.auto_created
+    plan = _plan(user, request_for)
+
+    counts = plan.counts()
+    listed = [rows.name for rows in plan.listing()]
+
+    join_name = str(through._meta.verbose_name_plural)
+    assert join_name not in counts
+    assert join_name not in listed
+    assert counts[str(QuestionAnswer._meta.verbose_name_plural)] == 1
+    assert str(QuestionAnswer._meta.verbose_name_plural) in listed
+    assert through in plan.objects
+    force_delete_users(
+        [user],
+        actor=actor,
+        reason="Erasure requested",
+        request=request_for,
+        admin_site=admin.site,
+    )
+    assert not through.objects.exists()
 
 
 def test_force_delete_leaves_no_row_pointing_at_the_user(

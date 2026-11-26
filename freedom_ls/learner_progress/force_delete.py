@@ -40,12 +40,19 @@ class ForceDeletePlan:
     blocking_models: tuple[str, ...]
     unlinked: dict[type[Model], int] = field(default_factory=dict)
 
+    def _named_rows(self) -> dict[str, set[Model]]:
+        """Rows per plural verbose name. Models Django creates for a
+        many-to-many field are left out: they go with their parent rows, and
+        their names mean nothing to an operator."""
+        return {
+            str(model._meta.verbose_name_plural): rows
+            for model, rows in self.objects.items()
+            if not model._meta.auto_created
+        }
+
     def counts(self) -> dict[str, int]:
         """Row count per model, keyed by plural verbose name and sorted by it."""
-        counts = {
-            str(model._meta.verbose_name_plural): len(rows)
-            for model, rows in self.objects.items()
-        }
+        counts = {name: len(rows) for name, rows in self._named_rows().items()}
         return dict(sorted(counts.items(), key=_by_casefold))
 
     def unlinked_counts(self) -> dict[str, int]:
@@ -54,10 +61,7 @@ class ForceDeletePlan:
 
     def listing(self) -> list[ForceDeleteRows]:
         """Every model's rows, sorted by model name, for the page to list."""
-        rows_by_name = {
-            str(model._meta.verbose_name_plural): rows
-            for model, rows in self.objects.items()
-        }
+        rows_by_name = self._named_rows()
         return [
             ForceDeleteRows(
                 name=name,
