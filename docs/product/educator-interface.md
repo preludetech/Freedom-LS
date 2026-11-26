@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-11-24_
+_Last updated: 2026-11-26_
 
 ## Summary
 
@@ -59,7 +59,7 @@ Cohort admins manage membership and course registrations within their own cohort
 
 ![Learners list with a learner's quick view open on the right, showing status, cohorts, course registrations and a message box](screenshots/educator_learner_quick_view.png)
 
-Selecting a learner's or cohort's preview control opens a summary beside the list, with a link through to the full page. On a wide screen it sits beside the list; on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active. For a cohort it shows status, learner count and courses. It shows only what the educator could already see on the full page. Courses have no quick view.
+Selecting a learner's or cohort's preview control opens a summary beside the list, with a link through to the full page. On a wide screen it sits beside the list; on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active. Last active is the last time the learner used the site while signed in, not their latest course activity, and reads "Never" for a learner who has not been active. For a cohort it shows status, learner count and courses. It shows only what the educator could already see on the full page. Courses have no quick view.
 
 ### Messaging from a learner
 
@@ -167,6 +167,8 @@ Confirming a removal or deactivation (removing a learner from a cohort, deactiva
 ![Audit log table of when, who, what, target and details, with an Add filter control](screenshots/educator_audit_log.png)
 
 The Audit log, under Administration, lists the current organisation's entries, newest first, sorted by any column and filtered by who, by what and by when, and names the person each row is about. The Audit log and both History tabs export to CSV with their current filters, and each export is itself recorded in the Audit log. Only site admins and organisation admins see the Audit log and a learner's History tab. A cohort admin also sees the History tab of a cohort they administer. Cohort viewers see neither.
+
+A superuser who force deletes a learner, or a user with learners, leaves a "Learner force deleted" entry in each affected organisation's log, with the reason; see [security and data handling](./security-and-data-handling.md).
 
 Not recorded: anything before the feature was installed (there is no backfill), logins, and records edited directly in the Django admin. The log has no search, and entries cannot be edited or undone. For how long entries are kept and how they are protected, see [security and data handling](./security-and-data-handling.md#audit-log-built).
 

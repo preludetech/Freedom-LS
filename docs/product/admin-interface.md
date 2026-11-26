@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-11-24_
+_Last updated: 2026-11-26_
 
 ## Summary
 
@@ -23,7 +23,7 @@ _Last updated: 2026-11-24_
 - Registration rules are an optional extra on top of HR attributes. When that app is installed, the admin has a Registration rules screen where an administrator sets, per organisation and course, who is registered automatically, with a preview before any change that affects who is registered. See [registration rules](./registration-rules.md).
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
 - API keys are issued and revoked in the admin. A key's text is shown once, when it is issued, and a key cannot be deleted. See [API Keys](#api-keys).
-- Erasing a user from the admin is refused while that user has course progress or form progress records.
+- Users cannot be deleted in the admin the ordinary way: the record is kept and the user is deactivated instead. Only a superuser can force delete users, or a learner, after a confirmation page that lists what will be erased and requires a reason. Each force delete is recorded in the audit log. See [Deleting Users](#deleting-users).
 - Superusers can see outgoing email, with its status and last error but never its body, and resend one that failed. See [Outgoing Email](#outgoing-email).
 
 ## Unfold
@@ -50,7 +50,7 @@ Topic progress, course progress and course form attempts are listed in the admin
 
 Course [applications](./learner-experience.md#applying-to-a-course) have their own read-only list in the admin, showing every application and its state: Not submitted, Waiting for review, Approved, Declined or Withdrawn. An administrator finds one by searching or filtering on applicant, course, state, verified email and created date, then opens it to read the applicant's answers page by page. Questions the applicant skipped are marked "Not answered", questions their answers never led them to are marked "Not asked", and an attached file appears with a download link. The form progress page shows the same answers the same way and links to its application.
 
-Anonymous visitors can apply before they have an account, so their applications show up as soon as they are submitted and can be found by the applicant's email. Until the applicant follows the emailed claim link, the application is flagged "Unverified email" on the list, the application page, and the form-answer and uploaded-file screens. Anonymous applicants also have their own read-only list, searchable by email, whose only action is delete: deleting one erases that applicant's application, answers and files, which is how an erasure request is handled before an account exists. An applicant who has already claimed their application is protected from that delete, because the application, answers and files now belong to their user account. The admin can't erase that account either: it refuses to delete a user with form progress records, and a claimed applicant always has one. Until erasure comes back to the admin, an operator handles that request outside it. Nothing is purged automatically; see [security and data handling](./security-and-data-handling.md). An applicant can correct their own email address, both while the application is a draft and after submitting it while the address is still unverified, so match an erasure request against the application's current address. "Verified email" does not mean the application is submitted: an applicant who follows their claim link on an unfinished draft is verified and has an account while the application is still a draft, and an unverified application may still be a draft. The applicant's side is described under [applying to a course](./learner-experience.md#applying-to-a-course).
+Anonymous visitors can apply before they have an account, so their applications show up as soon as they are submitted and can be found by the applicant's email. Until the applicant follows the emailed claim link, the application is flagged "Unverified email" on the list, the application page, and the form-answer and uploaded-file screens. Anonymous applicants also have their own read-only list, searchable by email, whose only action is delete: deleting one erases that applicant's application, answers and files, which is how an erasure request is handled before an account exists. An applicant who has already claimed their application is protected from that delete, because the application, answers and files now belong to their user account. A superuser erases that account by [force deleting the user](#deleting-users), which also takes the application, answers and files. Nothing is purged automatically; see [security and data handling](./security-and-data-handling.md). An applicant can correct their own email address, both while the application is a draft and after submitting it while the address is still unverified, so match an erasure request against the application's current address. "Verified email" does not mean the application is submitted: an applicant who follows their claim link on an unfinished draft is verified and has an account while the application is still a draft, and an unverified application may still be a draft. The applicant's side is described under [applying to a course](./learner-experience.md#applying-to-a-course).
 
 Access follows the standard view permissions, so a staff user granted them can read applications, answers and files without being a superuser; see [security and data handling](./security-and-data-handling.md#applicant-uploads-built). Applications cannot be added, edited or deleted in the admin, and there is no review, approve or reject action yet; see [roadmap](./roadmap.md).
 
@@ -58,10 +58,20 @@ Access follows the standard view permissions, so a staff user granted them can r
 
 The Users list and the Course applications list each export to CSV: the ticked rows, or everything the current search and filters leave showing. Anyone who can view a list can export it; there is no separate export permission. The files are safe to open directly in a spreadsheet.
 
-- **Users.** One row per user: name, email, whether the email is verified, active and staff flags, when the account was created, and last login. Passwords, the superuser flag, groups and permissions are never included.
+- **Users.** One row per user: name, email, whether the email is verified, active and staff flags, when the account was created, last login, and when the user was last active. Passwords, the superuser flag, groups and permissions are never included.
 - **Applications.** One row per application, anonymous applicants' and drafts included, with the applicant, course, state, verified-email and submitted flags, and when it was submitted. Every question on every form in the export gets its own column, so one file can mix several courses' applications. A question the applicant's path never reached reads "Not asked" in its column, while one they reached and skipped is left empty. A file-upload answer exports the file's name only, never the file.
 
 Exports are CSV only. Registration-form answers, consent records and signup attribution are not in the Users export; attribution has [its own export](./signup-attribution.md).
+
+## Deleting Users
+
+Nobody can delete a user in the admin the ordinary way, superusers included. The record is kept, in line with the retention posture in [security and data handling](./security-and-data-handling.md), and a user who should no longer sign in is deactivated.
+
+A superuser can instead force delete, for the rare case where erasure is required: one or several users from the Users list, or a learner from the read-only Learners list. Force deleting a learner removes that learner's records in one organisation and leaves the user account and its other organisations alone. A confirmation page lists the records that will be erased, with counts, and requires a reason that covers every row picked. Staff who are not superusers are not offered it.
+
+Each force delete is written to the audit log with the reason and the counts erased, and shows in the audit log of every organisation the user belonged to.
+
+The Users list shows when each user was last active, which helps find accounts that have gone quiet.
 
 ## Pausing and extending
 

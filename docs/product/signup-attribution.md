@@ -57,7 +57,7 @@ FLS is installed into someone else's project, and that operator is the data cont
 
 ## Retention
 
-A signup record is kept until its account is deleted, and goes with it at that point, as do the account's touches and conversions. Touches are also deleted by the scheduled housekeeping run (`fls_run_housekeeping`) once they are older than `REFERRAL_TRACKING_TOUCH_RETENTION_DAYS`, 365 days by default. That setting cannot be shorter than the attribution window (a system check refuses it), because a younger touch can still be credited by a conversion that has not happened yet. Touches a conversion names are kept, and conversions are never pruned. See [security and data handling](./security-and-data-handling.md#retention-deletion-and-data-subject-rights-not-yet-built) for the wider retention and erasure position, which this feature shares.
+A signup record is kept until its account is deleted, and goes with it at that point, as do the account's touches and conversions. Touches are also deleted by the scheduled housekeeping run (`fls_run_housekeeping`) once they are older than `REFERRAL_TRACKING_TOUCH_RETENTION_DAYS`, 365 days by default. That setting cannot be shorter than the attribution window (a system check refuses it), because a younger touch can still be credited by a conversion that has not happened yet. Touches a conversion names are kept, and conversions are never pruned. See [security and data handling](./security-and-data-handling.md#retention-deletion-and-data-subject-rights-built-in-part) for the wider retention and erasure position, which this feature shares.
 
 ## Configuration
 
