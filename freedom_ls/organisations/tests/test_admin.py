@@ -22,6 +22,7 @@ from freedom_ls.organisations.admin import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.tests.app_guards import app_not_installed
 
 ADD_URL_NAME = "admin:freedom_ls_organisations_organisation_add"
 CHANGE_URL_NAME = "admin:freedom_ls_organisations_organisation_change"
@@ -318,10 +319,18 @@ class TestContributedExtras:
             == OrganisationAdmin.inlines
         )
 
+    @pytest.mark.skipif(
+        app_not_installed("freedom_ls.hr_attributes"),
+        reason="no installed app contributes an organisation inline",
+    )
     def test_something_is_actually_contributed(
         self, admin_instance: OrganisationAdmin, mock_site_context
     ) -> None:
-        """Guards every other test here from passing on an empty seam."""
+        """Guards every other test here from passing on an empty seam.
+
+        ``hr_attributes`` is the one app that contributes an inline today. A
+        project that leaves it out has an empty seam, which is valid there.
+        """
         organisation = OrganisationFactory()
 
         assert admin_instance.get_inlines(request=None, obj=organisation)
