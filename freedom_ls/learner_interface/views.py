@@ -12,6 +12,7 @@ from pydantic import ValidationError as PydanticValidationError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
+from django.db import transaction
 from django.db.models import Q
 from django.http import (
     Http404,
@@ -73,6 +74,7 @@ from freedom_ls.form_engine.declarations import (
     form_requires_declaration,
     sitting_needs_declaration,
 )
+from freedom_ls.form_engine.enums import CompletionReason
 from freedom_ls.form_engine.live_tree import live_options
 from freedom_ls.form_engine.models import (
     Form,
@@ -1211,6 +1213,44 @@ def _course_access_decision(user: RequestUser, course: Course) -> CourseAccessDe
     return get_course_access_backend().get_access(user=user, course=course)
 
 
+def _complete_expired_sitting(
+    user: User, course: Course, collection_item: ContentCollectionItem, now: datetime
+) -> bool:
+    """Complete this learner's open sitting at the placement if its time has run
+    out, and say whether it did.
+
+    Reads the course progress record without minting one, and runs ahead of every
+    access gate: the clock does not stop for a pause, a closed item or ended
+    access, so those learners' sittings end here too.
+    """
+    record = course_progress_for(user, course)
+    if record is None:
+        return False
+    sitting = get_latest_incomplete(record, collection_item)
+    if sitting is None or not sitting.is_expired(now):
+        return False  # the common path takes no lock
+    with transaction.atomic():
+        # Record first, then sitting: the order start_attempt takes them in.
+        CourseProgress.objects.select_for_update().get(pk=record.pk)
+        return sitting.complete_if_expired(now)
+
+
+def _expired_sitting_redirect(
+    user: User,
+    course: Course,
+    collection_item: ContentCollectionItem,
+    index: int,
+) -> HttpResponseRedirect | None:
+    """The results redirect for a sitting this request just completed as expired."""
+    if not _complete_expired_sitting(user, course, collection_item, timezone.now()):
+        return None
+    return redirect(
+        "learner_interface:course_form_complete",
+        course_slug=course.slug,
+        index=index,
+    )
+
+
 def _course_access_redirect(
     decision: CourseAccessDecision,
     course: Course,
@@ -1520,6 +1560,12 @@ def view_course_item(request, course_slug, index):
     if index < 1 or index > len(viewable_collection_items):
         raise Http404("No course item at this index.")
     current_collection_item = viewable_collection_items[index - 1]
+    if isinstance(current_collection_item.child, Form):
+        expired = _expired_sitting_redirect(
+            cast("User", request.user), course, current_collection_item, index
+        )
+        if expired is not None:
+            return expired
     paused = decision.paused_at is not None
     # Only an ended or paused learner's gate reads the record; everyone else is
     # decided by the decision alone, so nothing is fetched for them.
@@ -2036,6 +2082,18 @@ def _form_start_gate(request: HttpRequest, course: Course, index: int) -> FormSt
     return FormStartGate(None, collection_item, course_progress, decision, course_index)
 
 
+def _expired_form_sitting_redirect(
+    request: HttpRequest, course: Course, index: int
+) -> HttpResponseRedirect | None:
+    """`_expired_sitting_redirect` for the routes whose gate resolves the placement
+    itself: the hidden-course and index 404s still come first."""
+    raise_404_if_unavailable(request.user, course)
+    collection_item = get_form_collection_item_for_index(course, index)
+    return _expired_sitting_redirect(
+        cast("User", request.user), course, collection_item, index
+    )
+
+
 def _declaration_redirect(course_slug: str, index: int) -> HttpResponseRedirect:
     return redirect(
         "learner_interface:form_declaration", course_slug=course_slug, index=index
@@ -2060,6 +2118,9 @@ def form_start(request: HttpRequest, course_slug: str, index: int) -> HttpRespon
     """Start or resume a form for the current user."""
 
     course = get_object_or_404(Course, slug=course_slug)
+    expired = _expired_form_sitting_redirect(request, course, index)
+    if expired is not None:
+        return expired
     gate = _form_start_gate(request, course, index)
     if gate.redirect is not None:
         return gate.redirect
@@ -2098,6 +2159,9 @@ def form_declaration(
 ) -> HttpResponse:
     """The declaration a learner signs before each attempt at a declaration quiz."""
     course = get_object_or_404(Course, slug=course_slug)
+    expired = _expired_form_sitting_redirect(request, course, index)
+    if expired is not None:
+        return expired
     gate = _form_start_gate(request, course, index)
     if gate.redirect is not None:
         return gate.redirect
@@ -2259,6 +2323,11 @@ def form_fill_page(
     course = get_object_or_404(Course, slug=course_slug)
     decision = _course_access_decision(request.user, course)
     collection_item = get_form_collection_item_for_index(course, index)
+    expired = _expired_sitting_redirect(
+        cast("User", request.user), course, collection_item, index
+    )
+    if expired is not None:
+        return expired
     no_access = _course_access_redirect(
         decision, course, route=PlayerRoute.ITEM, collection_item=collection_item
     )
@@ -2373,6 +2442,10 @@ def course_form_complete(request, course_slug, index):
     )
     form = cast("Form", collection_item.child)
 
+    # Completing it here lets the access gate below find the finished sitting.
+    _complete_expired_sitting(
+        cast("User", request.user), course, collection_item, timezone.now()
+    )
     course_progress = course_progress_for(request.user, course)
     no_access = _course_access_redirect(
         decision,
@@ -2498,6 +2571,8 @@ def course_form_complete(request, course_slug, index):
         "incorrect_answers": incorrect_answers,
         "stored_score_outdated": score_outdated,
         "quiz_verdict": quiz_verdict,
+        "time_expired": form_progress.completion_reason
+        == CompletionReason.TIME_EXPIRED,
         "next_url": next_url,
         "previous_url": previous_url,
         "retry_url": retry_url,
@@ -3181,6 +3256,11 @@ def form_submit_and_exit(
     course = get_object_or_404(Course, slug=course_slug)
     decision = _course_access_decision(request.user, course)
     collection_item = get_form_collection_item_for_index(course, index)
+    expired = _expired_sitting_redirect(
+        cast("User", request.user), course, collection_item, index
+    )
+    if expired is not None:
+        return expired
     no_access = _course_access_redirect(
         decision,
         course,

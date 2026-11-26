@@ -58,6 +58,11 @@
                             pass or fail — here is how you scored.
                         </p>
                     {% endif %}
+                    {% if time_expired %}
+                        <p class="text-muted" data-testid="time-expired-note">
+                            Time ran out. Your quiz was submitted with the answers you had saved.
+                        </p>
+                    {% endif %}
                 </div>
 
             </div>
