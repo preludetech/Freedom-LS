@@ -15,7 +15,7 @@
 <text x="370.0" y="109.5" fill="#111827">sacaa-compliance-content-</text>
 <text x="370.0" y="124.5" fill="#111827">versions-and-access-3-</text>
 <text x="370.0" y="139.5" fill="#111827">question-versions</text>
-<rect x="24.0" y="141.0" width="250" height="65" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="141.0" width="250" height="65" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,141.0 H30.0 A6,6 0 0 0 24.0,147.0 V200.0 A6,6 0 0 0 30.0,206.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="163.0" fill="#111827">sacaa-compliance-content-</text>
 <text x="40.0" y="178.0" fill="#111827">versions-and-access-4-</text>
