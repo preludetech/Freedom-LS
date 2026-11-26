@@ -6,11 +6,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from typing import cast
+from urllib.parse import urlencode
 
 import pytest
 import time_machine
 
-from django.http import HttpResponse
+from django.http import HttpResponse, QueryDict
 from django.test import Client
 from django.urls import reverse
 
@@ -34,6 +35,7 @@ from freedom_ls.learner_interface.tests.helpers import (
     form_attempt,
     set_due_date,
 )
+from freedom_ls.learner_interface.views import _save_page_and_complete
 from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
@@ -357,3 +359,358 @@ def test_a_learner_with_no_course_progress_record_is_not_given_one(
     _request(client, course, "form_start")
 
     assert not CourseProgress.objects.exists()
+
+
+EXPIRY = STARTED_AT + timedelta(minutes=LIMIT_MINUTES)
+
+QuestionIds = dict[str, str]
+PagedCourse = tuple[Course, Form, dict[int, QuestionIds], User, CourseProgress]
+
+
+def _paged_quiz(
+    *, limit: int | None = LIMIT_MINUTES, submit_on_exit: bool = True
+) -> tuple[Form, dict[int, QuestionIds]]:
+    """A two-page quiz; each page holds a required text question, an optional
+    one and an email question, so a post can leave one blank or get one wrong."""
+    form: Form = FormFactory(
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=70,
+        time_limit_minutes=limit,
+        submit_on_exit=submit_on_exit,
+    )
+    questions: dict[int, QuestionIds] = {}
+    for number in (1, 2):
+        page = FormPageFactory(form=form, order=number - 1)
+        questions[number] = {
+            "required": str(
+                FormQuestionFactory(
+                    form_page=page, type="short_text", order=0, required=True
+                ).pk
+            ),
+            "optional": str(
+                FormQuestionFactory(
+                    form_page=page, type="short_text", order=1, required=False
+                ).pk
+            ),
+            "email": str(
+                FormQuestionFactory(
+                    form_page=page, type="email", order=2, required=False
+                ).pk
+            ),
+        }
+    return form, questions
+
+
+def _post_data(ids: QuestionIds, case: str) -> dict[str, str]:
+    """What a page posts: the optional answer is always valid, so it is what a
+    test looks for; `case` leaves the required one blank or gets the email wrong."""
+    data = {f"question_{ids['optional']}": "kept"}
+    if case != "required_unanswered":
+        data[f"question_{ids['required']}"] = "also kept"
+    if case == "invalid":
+        data[f"question_{ids['email']}"] = "not an email"
+    return data
+
+
+def _time_up_data(ids: QuestionIds, case: str) -> dict[str, str]:
+    return {**_post_data(ids, case), "time_up": "1", "page_number": "1"}
+
+
+def _saved_answers(sitting: FormProgress) -> dict[str, str]:
+    return {str(a.question_id): a.text_answer for a in sitting.answers.all()}
+
+
+def _fill_url(course: Course, page_number: int) -> str:
+    return reverse(
+        "learner_interface:form_fill_page",
+        kwargs={**_kwargs(course), "page_number": page_number},
+    )
+
+
+def _exit_url(course: Course) -> str:
+    return reverse("learner_interface:form_submit_and_exit", kwargs=_kwargs(course))
+
+
+@pytest.fixture
+def paged_course(mock_site_context: object, client: Client) -> PagedCourse:
+    user: User = UserFactory()
+    form, questions = _paged_quiz()
+    course = course_with_form(form)
+    record = course_progress_record(course, user, created_at=REGISTERED_AT)
+    client.force_login(user)
+    return course, form, questions, user, record
+
+
+CASES = ["valid", "required_unanswered", "invalid"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("case", CASES)
+@pytest.mark.parametrize("page_number", [1, 2])
+def test_a_page_post_just_after_expiry_is_saved(
+    paged_course: PagedCourse, client: Client, page_number: int, case: str
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=8), tick=False):
+        client.post(
+            _fill_url(course, page_number), _post_data(questions[page_number], case)
+        )
+
+    assert _saved_answers(sitting)[questions[page_number]["optional"]] == "kept"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("case", CASES)
+@pytest.mark.parametrize("page_number", [1, 2])
+def test_a_page_post_just_after_expiry_completes_the_sitting_as_time_expired(
+    paged_course: PagedCourse, client: Client, page_number: int, case: str
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=8), tick=False):
+        response = client.post(
+            _fill_url(course, page_number), _post_data(questions[page_number], case)
+        )
+
+    sitting.refresh_from_db()
+    assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+    assert _location(response) == _results_url(course)
+
+
+@pytest.mark.django_db
+def test_a_page_post_after_the_grace_window_saves_nothing(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=11), tick=False):
+        client.post(_fill_url(course, 1), _post_data(questions[1], "valid"))
+
+    assert _saved_answers(sitting) == {}
+
+
+@pytest.mark.django_db
+def test_a_page_post_after_the_grace_window_still_lands_on_the_results(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=11), tick=False):
+        response = client.post(_fill_url(course, 1), _post_data(questions[1], "valid"))
+
+    sitting.refresh_from_db()
+    assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+    assert _location(response) == _results_url(course)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("scenario", ["paused", "closed", "access_ended"])
+def test_a_page_post_inside_the_window_is_saved_whatever_gate_the_learner_is_behind(
+    paged_course: PagedCourse, client: Client, scenario: str
+) -> None:
+    course, form, questions, user, record = paged_course
+    SCENARIOS[scenario][0](course, form, record)
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=5), tick=False):
+        client.post(_fill_url(course, 1), _post_data(questions[1], "valid"))
+
+    assert _saved_answers(sitting)[questions[1]["optional"]] == "kept"
+
+
+@pytest.mark.django_db
+def test_a_page_post_with_no_open_sitting_writes_nothing(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, _form, questions, _user, _record = paged_course
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=5), tick=False):
+        client.post(_fill_url(course, 1), _post_data(questions[1], "valid"))
+
+    assert FormProgress.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_a_page_post_never_changes_another_learners_sitting(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, _user, _record = paged_course
+    other: User = UserFactory()
+    course_progress_record(course, other, created_at=REGISTERED_AT)
+    others_sitting = _open_sitting(course, other, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=5), tick=False):
+        client.post(_fill_url(course, 1), _post_data(questions[1], "valid"))
+
+    others_sitting.refresh_from_db()
+    assert others_sitting.completed_time is None
+    assert _saved_answers(others_sitting) == {}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("submit_on_exit", [True, False])
+@pytest.mark.parametrize("case", ["required_unanswered", "invalid"])
+@pytest.mark.parametrize("offset", [-5, 0, 10])
+def test_a_time_up_post_inside_its_window_saves_the_page_and_completes(
+    mock_site_context: object,
+    client: Client,
+    offset: int,
+    case: str,
+    submit_on_exit: bool,
+) -> None:
+    user: User = UserFactory()
+    form, questions = _paged_quiz(submit_on_exit=submit_on_exit)
+    course = course_with_form(form)
+    course_progress_record(course, user, created_at=REGISTERED_AT)
+    sitting = _open_sitting(course, user, form)
+    client.force_login(user)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=offset), tick=False):
+        response = client.post(_exit_url(course), _time_up_data(questions[1], case))
+
+    sitting.refresh_from_db()
+    assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+    assert _saved_answers(sitting)[questions[1]["optional"]] == "kept"
+    assert _location(response) == _results_url(course)
+
+
+@pytest.mark.django_db
+def test_a_time_up_post_records_the_expiry_as_the_completed_time(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=8), tick=False):
+        client.post(_exit_url(course), _time_up_data(questions[1], "valid"))
+
+    sitting.refresh_from_db()
+    assert sitting.completed_time == EXPIRY
+
+
+@pytest.mark.django_db
+def test_a_time_up_post_with_more_than_the_lead_left_saves_nothing(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY - timedelta(seconds=6), tick=False):
+        client.post(_exit_url(course), _time_up_data(questions[1], "valid"))
+
+    assert _saved_answers(sitting) == {}
+
+
+@pytest.mark.django_db
+def test_a_time_up_post_with_more_than_the_lead_left_completes_nothing(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY - timedelta(seconds=6), tick=False):
+        client.post(_exit_url(course), _time_up_data(questions[1], "valid"))
+
+    sitting.refresh_from_db()
+    assert sitting.completed_time is None
+
+
+@pytest.mark.django_db
+def test_a_time_up_post_with_more_than_the_lead_left_returns_to_the_runner_page(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY - timedelta(seconds=6), tick=False):
+        response = client.post(_exit_url(course), _time_up_data(questions[1], "valid"))
+
+    assert _location(response) == _fill_url(course, 1)
+
+
+@pytest.mark.django_db
+def test_a_time_up_post_after_the_grace_window_saves_nothing(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=11), tick=False):
+        client.post(_exit_url(course), _time_up_data(questions[1], "valid"))
+
+    assert _saved_answers(sitting) == {}
+
+
+@pytest.mark.django_db
+def test_a_time_up_post_after_the_grace_window_still_completes_the_sitting(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=11), tick=False):
+        response = client.post(_exit_url(course), _time_up_data(questions[1], "valid"))
+
+    sitting.refresh_from_db()
+    assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+    assert _location(response) == _results_url(course)
+
+
+@pytest.mark.django_db
+def test_a_time_up_post_on_an_untimed_sitting_is_a_plain_exit(
+    mock_site_context: object, client: Client
+) -> None:
+    user: User = UserFactory()
+    form, questions = _paged_quiz(limit=None)
+    course = course_with_form(form)
+    course_progress_record(course, user, created_at=REGISTERED_AT)
+    sitting = _open_sitting(course, user, form)
+    client.force_login(user)
+
+    with time_machine.travel(LATE, tick=False):
+        client.post(_exit_url(course), _time_up_data(questions[1], "valid"))
+
+    sitting.refresh_from_db()
+    assert sitting.completion_reason == CompletionReason.LEARNER_SUBMITTED
+
+
+@pytest.mark.django_db
+def test_a_time_up_post_for_a_sitting_already_completed_saves_nothing(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, questions, user, _record = paged_course
+    sitting = _open_sitting(course, user, form)
+    with time_machine.travel(EXPIRY - timedelta(minutes=1), tick=False):
+        sitting.complete()
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=1), tick=False):
+        client.post(_exit_url(course), _time_up_data(questions[1], "valid"))
+
+    assert _saved_answers(sitting) == {}
+
+
+@pytest.mark.django_db
+def test_saving_into_a_sitting_another_request_completed_changes_nothing(
+    paged_course: PagedCourse,
+) -> None:
+    course, form, questions, user, record = paged_course
+    stale = _open_sitting(course, user, form)
+    with time_machine.travel(EXPIRY - timedelta(minutes=1), tick=False):
+        FormProgress.objects.get(pk=stale.pk).complete()
+
+    saved = _save_page_and_complete(
+        record,
+        stale,
+        1,
+        QueryDict(urlencode(_post_data(questions[1], "valid"))),
+        EXPIRY + timedelta(seconds=1),
+        FormProgress.accepts_time_up,
+    )
+
+    assert saved is False
+    assert _saved_answers(stale) == {}

@@ -77,6 +77,7 @@ from freedom_ls.form_engine.declarations import (
 from freedom_ls.form_engine.enums import CompletionReason
 from freedom_ls.form_engine.live_tree import live_options
 from freedom_ls.form_engine.models import (
+    TIME_UP_LEAD,
     Form,
     FormDeclaration,
     FormProgress,
@@ -1213,26 +1214,41 @@ def _course_access_decision(user: RequestUser, course: Course) -> CourseAccessDe
     return get_course_access_backend().get_access(user=user, course=course)
 
 
-def _complete_expired_sitting(
-    user: User, course: Course, collection_item: ContentCollectionItem, now: datetime
-) -> bool:
-    """Complete this learner's open sitting at the placement if its time has run
-    out, and say whether it did.
+@dataclass(frozen=True)
+class OpenSitting:
+    """A learner's open sitting at a placement and the record it belongs to."""
 
-    Reads the course progress record without minting one, and runs ahead of every
-    access gate: the clock does not stop for a pause, a closed item or ended
-    access, so those learners' sittings end here too.
+    course_progress: CourseProgress
+    sitting: FormProgress
+
+
+def _open_sitting_at(
+    user: User, course: Course, collection_item: ContentCollectionItem
+) -> OpenSitting | None:
+    """The learner's open sitting at the placement, read-only.
+
+    Reads the course progress record without minting one, so a learner who has
+    never started the course is not given one by a request that only looks.
     """
     record = course_progress_for(user, course)
     if record is None:
-        return False
+        return None
     sitting = get_latest_incomplete(record, collection_item)
-    if sitting is None or not sitting.is_expired(now):
+    return None if sitting is None else OpenSitting(record, sitting)
+
+
+def _complete_expired_sitting(found: OpenSitting | None, now: datetime) -> bool:
+    """Complete the open sitting if its time has run out, and say whether it did.
+
+    Runs ahead of every access gate: the clock does not stop for a pause, a
+    closed item or ended access, so those learners' sittings end here too.
+    """
+    if found is None or not found.sitting.is_expired(now):
         return False  # the common path takes no lock
     with transaction.atomic():
         # Record first, then sitting: the order start_attempt takes them in.
-        CourseProgress.objects.select_for_update().get(pk=record.pk)
-        return sitting.complete_if_expired(now)
+        CourseProgress.objects.select_for_update().get(pk=found.course_progress.pk)
+        return found.sitting.complete_if_expired(now)
 
 
 def _expired_sitting_redirect(
@@ -1240,15 +1256,56 @@ def _expired_sitting_redirect(
     course: Course,
     collection_item: ContentCollectionItem,
     index: int,
+    found: OpenSitting | None = None,
 ) -> HttpResponseRedirect | None:
-    """The results redirect for a sitting this request just completed as expired."""
-    if not _complete_expired_sitting(user, course, collection_item, timezone.now()):
+    """The results redirect for a sitting this request just completed as expired.
+
+    A caller that has already looked the open sitting up passes it as `found`,
+    so the request reads it once.
+    """
+    if found is None:
+        found = _open_sitting_at(user, course, collection_item)
+    if not _complete_expired_sitting(found, timezone.now()):
         return None
     return redirect(
         "learner_interface:course_form_complete",
         course_slug=course.slug,
         index=index,
     )
+
+
+def _save_page_and_complete(
+    course_progress: CourseProgress,
+    sitting: FormProgress,
+    page_number: int | None,
+    post_data: QueryDict,
+    now: datetime,
+    in_window: Callable[[FormProgress, datetime], bool],
+) -> bool:
+    """Save the posted page to a sitting whose time has just run out, then
+    complete it, as one step no other request can come between.
+
+    `in_window` is the model's own test of whether a post arriving `now` is still
+    accepted. It is checked on the locked row, so it is false for a sitting
+    another request completed meanwhile, and nothing is saved then.
+    """
+    with transaction.atomic():
+        # Record first, then sitting: the order start_attempt takes them in.
+        # complete()'s receivers write the record while the sitting is held.
+        CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
+        locked = FormProgress.objects.select_for_update(of=("self",)).get(pk=sitting.pk)
+        if not in_window(locked, now):
+            return False
+        # An unsigned sitting was served nothing, so it has no page to save.
+        if page_number is not None and not sitting_needs_declaration(locked):
+            ensure_served_paper(locked)
+            page = page_at(current_path(locked), page_number)
+            if page is not None:
+                # Rejected answers are dropped: the valid ones are stored, and a
+                # rejection must not re-render the page or leave the sitting open.
+                submit_page(page, post_data, locked, require_answers=False)
+        locked.complete(CompletionReason.TIME_EXPIRED)
+        return locked.completed_time is not None
 
 
 def _course_access_redirect(
@@ -2323,8 +2380,32 @@ def form_fill_page(
     course = get_object_or_404(Course, slug=course_slug)
     decision = _course_access_decision(request.user, course)
     collection_item = get_form_collection_item_for_index(course, index)
+    found = _open_sitting_at(cast("User", request.user), course, collection_item)
+    now = timezone.now()
+    # A page post that lands just after the clock ran out is still the learner's
+    # work: it is saved, then the sitting completes. It runs ahead of the access
+    # gates because the window is the server's clock, not the learner's access, and
+    # it writes only this learner's own open sitting.
+    if (
+        request.method == "POST"
+        and found is not None
+        and found.sitting.in_grace(now)
+        and _save_page_and_complete(
+            found.course_progress,
+            found.sitting,
+            page_number,
+            request.POST,
+            now,
+            FormProgress.in_grace,
+        )
+    ):
+        return redirect(
+            "learner_interface:course_form_complete",
+            course_slug=course_slug,
+            index=index,
+        )
     expired = _expired_sitting_redirect(
-        cast("User", request.user), course, collection_item, index
+        cast("User", request.user), course, collection_item, index, found
     )
     if expired is not None:
         return expired
@@ -2444,7 +2525,8 @@ def course_form_complete(request, course_slug, index):
 
     # Completing it here lets the access gate below find the finished sitting.
     _complete_expired_sitting(
-        cast("User", request.user), course, collection_item, timezone.now()
+        _open_sitting_at(cast("User", request.user), course, collection_item),
+        timezone.now(),
     )
     course_progress = course_progress_for(request.user, course)
     no_access = _course_access_redirect(
@@ -3221,6 +3303,14 @@ def course_finish(request, course_slug):
     return render(request, "learner_interface/course_finish.html", context)
 
 
+def _posted_page_number(post_data: QueryDict) -> int | None:
+    """The page number a page-bearing POST names, or None when it names none."""
+    try:
+        return int(post_data.get("page_number", ""))
+    except ValueError:
+        return None
+
+
 def _posted_page(path: SittingPath, post_data: QueryDict) -> CurrentPage | None:
     """The page a submit-and-exit POST was made from.
 
@@ -3230,11 +3320,8 @@ def _posted_page(path: SittingPath, post_data: QueryDict) -> CurrentPage | None:
     handed no answer for, so only that page's questions may be passed; a POST
     that names no usable page saves nothing rather than guessing at one.
     """
-    try:
-        page_number = int(post_data.get("page_number", ""))
-    except ValueError:
-        return None
-    return page_at(path, page_number)
+    page_number = _posted_page_number(post_data)
+    return None if page_number is None else page_at(path, page_number)
 
 
 @login_required
@@ -3256,8 +3343,34 @@ def form_submit_and_exit(
     course = get_object_or_404(Course, slug=course_slug)
     decision = _course_access_decision(request.user, course)
     collection_item = get_form_collection_item_for_index(course, index)
+    found = _open_sitting_at(cast("User", request.user), course, collection_item)
+    now = timezone.now()
+    # An untimed sitting has no expiry to honour, so time_up is ignored and this
+    # is a plain exit.
+    expiry = None if found is None else found.sitting.expires_at()
+    if found is not None and expiry is not None and "time_up" in request.POST:
+        sitting = found.sitting
+        if sitting.accepts_time_up(now):
+            if _save_page_and_complete(
+                found.course_progress,
+                sitting,
+                _posted_page_number(request.POST),
+                request.POST,
+                now,
+                FormProgress.accepts_time_up,
+            ):
+                return redirect(
+                    "learner_interface:course_form_complete",
+                    course_slug=course_slug,
+                    index=index,
+                )
+            # Completed by another request inside the window: fall through.
+        elif now < expiry - TIME_UP_LEAD:
+            # The server never takes the client's word that time is up.
+            return _form_page_redirect(course_slug, index, sitting)
+        # Past the grace window: fall through; nothing is saved.
     expired = _expired_sitting_redirect(
-        cast("User", request.user), course, collection_item, index
+        cast("User", request.user), course, collection_item, index, found
     )
     if expired is not None:
         return expired
@@ -3339,7 +3452,7 @@ def form_submit_and_exit(
 
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
     from django.db.models import QuerySet
 
