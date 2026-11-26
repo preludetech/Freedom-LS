@@ -682,6 +682,25 @@ def test_the_settings_tab_name_section_shows_the_email_above_the_name_form(
 
 
 @pytest.mark.django_db
+def test_the_name_panel_email_row_uses_the_full_width_and_sits_apart_from_the_form(
+    staff_client: Client,
+):
+    """The email row used to sit in a two-column stacked grid, so a long address got half
+    the panel, and the list touched the first name label below it."""
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, user__email="ada@example.com")
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    document = _get_document(staff_client, f"{page_url}/__tabs/settings")
+
+    (name,) = document.cssselect("section[data-panel='name']")
+    (definition_list,) = name.cssselect("dl")
+    classes = definition_list.get("class").split()
+    assert not any(c.startswith(("grid-cols-2", "md:grid-cols")) for c in classes)
+    assert "mb-3" in classes
+
+
+@pytest.mark.django_db
 def test_a_refused_rename_swaps_only_the_form_and_the_panel_keeps_its_email(
     staff_client: Client,
 ):

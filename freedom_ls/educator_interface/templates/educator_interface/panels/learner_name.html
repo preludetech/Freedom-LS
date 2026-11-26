@@ -5,7 +5,7 @@ edit action's form context), email.
 {% endcomment %}
 
 {% block panel_body %}
-    <c-panel-definition-list>
+    <c-panel-definition-list layout="inline" class="mb-3">
         <c-panel-definition-row label="Email"><span class="break-words">{{ email }}</span></c-panel-definition-row>
     </c-panel-definition-list>
     {% include "educator_interface/partials/learner_name_form.html" with form=rename.form action_url=rename.action_url %}
