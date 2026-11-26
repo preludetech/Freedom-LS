@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import timedelta
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -30,6 +31,7 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
 )
 from freedom_ls.form_engine.models import (
+    CompletionReason,
     Form,
     FormDeclaration,
     FormProgress,
@@ -46,6 +48,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_progress.attempts import (
     START_REUSE_WINDOW,
+    close_left_signed_sitting,
     finalise_stale_incomplete,
     get_or_create_incomplete,
     sittings_at_placement,
@@ -605,3 +608,110 @@ def test_retiring_a_topic_form_question_and_option_leaves_progress_rows_unchange
     _retire_all(topic, form, question, right)
 
     assert _progress_snapshot() == before
+
+
+@pytest.fixture
+def timed_save_on_exit_placement(
+    mock_site_context: object,
+) -> tuple[CourseProgress, ContentCollectionItem]:
+    """A placement whose quiz saves on exit and has a 30 minute time limit."""
+    course = CourseFactory()
+    record: CourseProgress = CourseProgressFactory(course=course)
+    collection_item: ContentCollectionItem = ContentCollectionItemFactory(
+        collection_object=course,
+        child_object=FormFactory(
+            strategy=FormStrategy.QUIZ, submit_on_exit=False, time_limit_minutes=30
+        ),
+        order=0,
+    )
+    return record, collection_item
+
+
+def _started_minutes_ago(sitting: FormProgress, minutes: int) -> None:
+    FormProgress.objects.filter(pk=sitting.pk).update(
+        start_time=timezone.now() - timedelta(minutes=minutes)
+    )
+
+
+@pytest.mark.django_db
+class TestTimedSittings:
+    def test_a_start_on_an_expired_sitting_completes_it_as_time_expired(
+        self,
+        timed_save_on_exit_placement: tuple[CourseProgress, ContentCollectionItem],
+    ) -> None:
+        record, collection_item = timed_save_on_exit_placement
+        first = get_or_create_incomplete(record, collection_item)
+        _started_minutes_ago(first, 31)
+
+        second = start_attempt(record, collection_item)
+
+        first.refresh_from_db()
+        assert first.completion_reason == CompletionReason.TIME_EXPIRED
+        assert second.pk != first.pk
+        assert second.completed_time is None
+
+    def test_an_expired_sitting_is_not_reused_inside_the_reuse_window(
+        self,
+        timed_save_on_exit_placement: tuple[CourseProgress, ContentCollectionItem],
+    ) -> None:
+        """A one minute limit that lapsed seconds ago is also a fresh start."""
+        record, collection_item = timed_save_on_exit_placement
+        Form.objects.filter(pk=cast("Form", collection_item.child).pk).update(
+            time_limit_minutes=1
+        )
+        first = get_or_create_incomplete(record, collection_item)
+        FormProgress.objects.filter(pk=first.pk).update(
+            start_time=timezone.now() - timedelta(seconds=61)
+        )
+
+        second = start_attempt(record, collection_item)
+
+        first.refresh_from_db()
+        assert first.completion_reason == CompletionReason.TIME_EXPIRED
+        assert second.pk != first.pk
+
+    def test_a_course_pause_does_not_keep_an_expired_sitting_open(
+        self,
+        timed_save_on_exit_placement: tuple[CourseProgress, ContentCollectionItem],
+    ) -> None:
+        record, collection_item = timed_save_on_exit_placement
+        first = get_or_create_incomplete(record, collection_item)
+        _started_minutes_ago(first, 31)
+
+        second = start_attempt(
+            record,
+            collection_item,
+            kept_if_untouched_since=timezone.now() + timedelta(hours=1),
+        )
+
+        first.refresh_from_db()
+        assert first.completion_reason == CompletionReason.TIME_EXPIRED
+        assert second.pk != first.pk
+
+    def test_an_unexpired_save_on_exit_sitting_is_still_resumed(
+        self,
+        timed_save_on_exit_placement: tuple[CourseProgress, ContentCollectionItem],
+    ) -> None:
+        record, collection_item = timed_save_on_exit_placement
+        first = get_or_create_incomplete(record, collection_item)
+        _started_minutes_ago(first, 5)
+
+        second = start_attempt(record, collection_item)
+
+        assert second.pk == first.pk
+        assert second.completed_time is None
+
+    def test_close_left_signed_sitting_completes_an_expired_sitting(
+        self,
+        timed_save_on_exit_placement: tuple[CourseProgress, ContentCollectionItem],
+    ) -> None:
+        record, collection_item = timed_save_on_exit_placement
+        first = get_or_create_incomplete(record, collection_item)
+        FormDeclarationFactory(form_progress=first)
+        _started_minutes_ago(first, 31)
+
+        left_open = close_left_signed_sitting(record, collection_item)
+
+        first.refresh_from_db()
+        assert left_open is None
+        assert first.completion_reason == CompletionReason.TIME_EXPIRED

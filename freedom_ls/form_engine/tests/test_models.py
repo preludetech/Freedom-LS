@@ -1,18 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 import pytest
+import time_machine
 from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import ProtectedError, RestrictedError
 from django.test import override_settings
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_base.models import BaseContent
@@ -1382,3 +1386,304 @@ def test_a_new_sitting_defaults_to_learner_submitted_with_no_recorded_limit(
 
     assert sitting.completion_reason == CompletionReason.LEARNER_SUBMITTED
     assert sitting.time_limit_minutes is None
+
+
+# The quiz time limit: when a sitting expires, and how completing it records why.
+
+START = datetime(2030, 1, 1, 12, 0, 0, tzinfo=UTC)
+LIMIT_MINUTES = 30
+EXPIRY = START + timedelta(minutes=LIMIT_MINUTES)
+
+
+def _timed_sitting(limit: int | None = LIMIT_MINUTES, **kwargs: object) -> FormProgress:
+    """A sitting that started at START, on a form with the given time limit."""
+    sitting: FormProgress = FormProgressFactory(
+        form=FormFactory(strategy=FormStrategy.QUIZ, time_limit_minutes=limit),
+        **kwargs,
+    )
+    # start_time is auto_now_add, so only an update can place it.
+    FormProgress.objects.filter(pk=sitting.pk).update(start_time=START)
+    sitting.refresh_from_db()
+    return sitting
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("offset", "expected"),
+    [
+        (timedelta(seconds=-1), False),
+        (timedelta(0), False),
+        (timedelta(seconds=1), True),
+    ],
+)
+def test_is_expired_is_strict_at_the_sitting_expiry(
+    mock_site_context, offset, expected
+):
+    sitting = _timed_sitting()
+
+    assert sitting.is_expired(EXPIRY + offset) is expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("offset", "expected"),
+    [
+        (timedelta(seconds=-1), False),
+        (timedelta(0), False),
+        (timedelta(seconds=1), True),
+        (timedelta(seconds=10), True),
+        (timedelta(seconds=10, microseconds=1), False),
+    ],
+)
+def test_in_grace_covers_ten_seconds_after_the_expiry(
+    mock_site_context, offset, expected
+):
+    sitting = _timed_sitting()
+
+    assert sitting.in_grace(EXPIRY + offset) is expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("offset", "expected"),
+    [
+        (timedelta(seconds=-6), False),
+        (timedelta(seconds=-5), True),
+        (timedelta(0), True),
+        (timedelta(seconds=10), True),
+        (timedelta(seconds=10, microseconds=1), False),
+    ],
+)
+def test_accepts_time_up_runs_from_five_seconds_before_to_ten_after(
+    mock_site_context, offset, expected
+):
+    sitting = _timed_sitting()
+
+    assert sitting.accepts_time_up(EXPIRY + offset) is expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["is_expired", "in_grace", "accepts_time_up"])
+def test_an_untimed_sitting_never_expires(mock_site_context, method):
+    sitting = _timed_sitting(limit=None)
+
+    assert getattr(sitting, method)(EXPIRY + timedelta(days=1)) is False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("method", ["is_expired", "in_grace", "accepts_time_up"])
+def test_a_completed_sitting_never_expires(mock_site_context, method):
+    sitting = _timed_sitting(completed_time=START)
+
+    assert getattr(sitting, method)(EXPIRY + timedelta(seconds=1)) is False
+
+
+@pytest.mark.django_db
+def test_expires_at_is_the_start_plus_the_limit(mock_site_context):
+    assert _timed_sitting().expires_at() == EXPIRY
+
+
+@pytest.mark.django_db
+def test_an_untimed_sitting_has_no_expiry(mock_site_context):
+    assert _timed_sitting(limit=None).expires_at() is None
+
+
+@pytest.mark.django_db
+def test_complete_defaults_to_learner_submitted(mock_site_context):
+    sitting = _timed_sitting()
+
+    with time_machine.travel(START + timedelta(minutes=1), tick=False):
+        sitting.complete()
+
+    assert sitting.completion_reason == CompletionReason.LEARNER_SUBMITTED
+
+
+@pytest.mark.django_db
+def test_complete_records_the_limit_in_force(mock_site_context):
+    sitting = _timed_sitting()
+
+    with time_machine.travel(START + timedelta(minutes=1), tick=False):
+        sitting.complete()
+
+    sitting.refresh_from_db()
+    assert sitting.time_limit_minutes == LIMIT_MINUTES
+
+
+@pytest.mark.django_db
+def test_complete_records_no_limit_for_an_untimed_form(mock_site_context):
+    sitting = _timed_sitting(limit=None)
+
+    sitting.complete()
+
+    sitting.refresh_from_db()
+    assert sitting.time_limit_minutes is None
+
+
+@pytest.mark.django_db
+def test_a_lapsed_time_expired_completion_is_stamped_at_the_expiry(mock_site_context):
+    sitting = _timed_sitting()
+
+    with time_machine.travel(EXPIRY + timedelta(hours=3), tick=False):
+        sitting.complete(CompletionReason.TIME_EXPIRED)
+
+    assert sitting.completed_time == EXPIRY
+    assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+
+
+@pytest.mark.django_db
+def test_an_early_time_expired_completion_is_stamped_now(mock_site_context):
+    sitting = _timed_sitting()
+    now = EXPIRY - timedelta(seconds=3)
+
+    with time_machine.travel(now, tick=False):
+        sitting.complete(CompletionReason.TIME_EXPIRED)
+
+    assert sitting.completed_time == now
+
+
+@pytest.mark.django_db
+def test_a_manual_submit_after_the_expiry_is_recorded_as_time_expired(
+    mock_site_context,
+):
+    sitting = _timed_sitting()
+
+    with time_machine.travel(EXPIRY + timedelta(minutes=2), tick=False):
+        sitting.complete(CompletionReason.LEARNER_SUBMITTED)
+
+    assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+    assert sitting.completed_time == EXPIRY
+
+
+@pytest.mark.django_db
+def test_a_second_completion_keeps_the_first_reason_and_time(mock_site_context):
+    sitting = _timed_sitting()
+    with time_machine.travel(START + timedelta(minutes=1), tick=False):
+        sitting.complete()
+    first_time = sitting.completed_time
+
+    with time_machine.travel(EXPIRY + timedelta(hours=1), tick=False):
+        sitting.complete(CompletionReason.TIME_EXPIRED)
+
+    assert sitting.completed_time == first_time
+    assert sitting.completion_reason == CompletionReason.LEARNER_SUBMITTED
+
+
+@pytest.mark.django_db
+def test_a_second_completion_sends_no_second_signal(mock_site_context):
+    sitting = _timed_sitting()
+    sent: list[FormProgress] = []
+
+    def _record(sender: type[FormProgress], attempt: FormProgress, **kwargs) -> None:
+        sent.append(attempt)
+
+    form_attempt_completed.connect(_record)
+    try:
+        sitting.complete()
+        sitting.complete()
+    finally:
+        form_attempt_completed.disconnect(_record)
+
+    assert len(sent) == 1
+
+
+@pytest.mark.django_db
+def test_a_stale_copy_completes_against_the_forms_current_limit(mock_site_context):
+    stale = _timed_sitting()
+    assert stale.form.time_limit_minutes == LIMIT_MINUTES
+    Form.objects.filter(pk=stale.form_id).update(time_limit_minutes=10)
+
+    with time_machine.travel(START + timedelta(minutes=20), tick=False):
+        stale.complete()
+
+    assert stale.completion_reason == CompletionReason.TIME_EXPIRED
+    assert stale.time_limit_minutes == 10
+
+
+@pytest.mark.django_db
+def test_a_time_expired_completion_on_a_form_whose_limit_was_removed_stays_open(
+    mock_site_context,
+):
+    sitting = _timed_sitting()
+    Form.objects.filter(pk=sitting.form_id).update(time_limit_minutes=None)
+
+    with time_machine.travel(EXPIRY + timedelta(hours=1), tick=False):
+        sitting.complete(CompletionReason.TIME_EXPIRED)
+
+    assert sitting.completed_time is None
+    assert FormProgress.objects.get(pk=sitting.pk).completed_time is None
+
+
+@pytest.mark.django_db
+def test_complete_if_expired_leaves_an_unexpired_sitting_open(mock_site_context):
+    sitting = _timed_sitting()
+
+    result = sitting.complete_if_expired(EXPIRY)
+
+    assert result is False
+    assert FormProgress.objects.get(pk=sitting.pk).completed_time is None
+
+
+@pytest.mark.django_db
+def test_complete_if_expired_completes_an_expired_sitting(mock_site_context):
+    sitting = _timed_sitting()
+
+    with time_machine.travel(EXPIRY + timedelta(seconds=1), tick=False):
+        result = sitting.complete_if_expired(timezone.now())
+
+    assert result is True
+    assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+
+
+def _time_the_quiz(quiz: TwoQuestionQuiz) -> FormProgress:
+    FormProgress.objects.filter(pk=quiz.progress.pk).update(start_time=START)
+    Form.objects.filter(pk=quiz.form.pk).update(time_limit_minutes=LIMIT_MINUTES)
+    quiz.progress.refresh_from_db()
+    return quiz.progress
+
+
+@pytest.mark.django_db
+def test_an_expired_sitting_with_no_answers_scores_zero_of_the_served_paper(
+    two_question_quiz,
+):
+    two_question_quiz.progress.answers.all().delete()
+    progress = _time_the_quiz(two_question_quiz)
+
+    with time_machine.travel(EXPIRY + timedelta(minutes=1), tick=False):
+        progress.complete(CompletionReason.TIME_EXPIRED)
+
+    assert progress.scores == {"score": 0, "max_score": 2}
+
+
+@pytest.mark.django_db
+def test_an_expired_sitting_with_some_answers_marks_only_those(two_question_quiz):
+    progress = _time_the_quiz(two_question_quiz)
+
+    with time_machine.travel(EXPIRY + timedelta(minutes=1), tick=False):
+        progress.complete(CompletionReason.TIME_EXPIRED)
+
+    assert progress.scores == {"score": 1, "max_score": 2}
+
+
+@pytest.mark.django_db(transaction=True)
+def test_two_threads_completing_one_sitting_complete_it_once(mock_site_context):
+    sitting = _timed_sitting()
+    sent: list[FormProgress] = []
+
+    def _record(sender: type[FormProgress], attempt: FormProgress, **kwargs) -> None:
+        sent.append(attempt)
+
+    def _complete(pk: int) -> None:
+        try:
+            FormProgress._base_manager.get(pk=pk).complete()
+        finally:
+            connection.close()
+
+    form_attempt_completed.connect(_record)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            for future in [pool.submit(_complete, sitting.pk) for _ in range(2)]:
+                future.result()
+    finally:
+        form_attempt_completed.disconnect(_record)
+
+    assert len(sent) == 1

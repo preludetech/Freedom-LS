@@ -50,6 +50,18 @@ def get_latest_incomplete(
     return course_attempt.form_progress if course_attempt else None
 
 
+def _open_sitting_unless_expired(
+    course_progress: CourseProgress,
+    collection_item: ContentCollectionItem,
+) -> FormProgress | None:
+    """The open sitting at this placement, after completing it if its time has
+    run out. Call it under the course progress lock."""
+    sitting = get_latest_incomplete(course_progress, collection_item)
+    if sitting is not None and sitting.complete_if_expired(timezone.now()):
+        return None
+    return sitting
+
+
 def latest_attempt(
     course_progress: CourseProgress,
     collection_item: ContentCollectionItem,
@@ -170,7 +182,7 @@ def close_left_signed_sitting(
     """
     with transaction.atomic():
         CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
-        open_sitting = get_latest_incomplete(course_progress, collection_item)
+        open_sitting = _open_sitting_unless_expired(course_progress, collection_item)
         if open_sitting is None or _kept_open(open_sitting, signing=True):
             return open_sitting
         finalised = finalise_stale_incomplete(
@@ -203,7 +215,7 @@ def start_attempt(
     """
     with transaction.atomic():
         CourseProgress.objects.select_for_update().get(pk=course_progress.pk)
-        open_sitting = get_latest_incomplete(course_progress, collection_item)
+        open_sitting = _open_sitting_unless_expired(course_progress, collection_item)
         reusable = open_sitting is not None and _kept_open(
             open_sitting, signing=declaration is not None
         )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -489,6 +490,15 @@ def marking_options(
     return [*offered, *added]
 
 
+# A time-up post is honoured from this long before the sitting expiry: the
+# countdown works from a remaining time floored to whole seconds, so its zero
+# can land just ahead of the server's.
+TIME_UP_LEAD = timedelta(seconds=5)
+# A page post still saves this long after the sitting expiry, to cover the
+# network round trip of a post sent at zero.
+EXPIRY_GRACE = timedelta(seconds=10)
+
+
 class FormProgress(SiteAwareModel):
     """Tracks a learner's progress through a form.
 
@@ -687,16 +697,66 @@ class FormProgress(SiteAwareModel):
             answer.save()
         return rejected
 
-    def complete(self) -> None:
+    def expires_at(self) -> datetime | None:
+        """When the quiz time limit runs out for this sitting, by the form's
+        limit as it is now, so a changed limit moves an open sitting's expiry
+        and a removed one makes it untimed."""
+        limit = self.form.time_limit_minutes
+        return None if limit is None else self.start_time + timedelta(minutes=limit)
+
+    def _open_expiry(self) -> datetime | None:
+        """The sitting expiry of an open, timed sitting; None for any other."""
+        return None if self.completed_time else self.expires_at()
+
+    def is_expired(self, now: datetime) -> bool:
+        expiry = self._open_expiry()
+        # Strict, as closing instants are elsewhere: the expiry itself is still in time.
+        return expiry is not None and now > expiry
+
+    def in_grace(self, now: datetime) -> bool:
+        """Whether a page post arriving now still saves, though the sitting has expired."""
+        expiry = self._open_expiry()
+        return expiry is not None and expiry < now <= expiry + EXPIRY_GRACE
+
+    def accepts_time_up(self, now: datetime) -> bool:
+        """Whether a time-up post arriving now is believed: from just before the
+        expiry, to cover the countdown's rounding, to the end of the grace window."""
+        expiry = self._open_expiry()
+        return (
+            expiry is not None and expiry - TIME_UP_LEAD <= now <= expiry + EXPIRY_GRACE
+        )
+
+    def complete(
+        self, reason: CompletionReason = CompletionReason.LEARNER_SUBMITTED
+    ) -> None:
         """Finish the sitting: keep only the answers it was asked, record what it
-        was asked, score it, then tell the apps above (idempotent)."""
-        if self.completed_time:
-            return
+        was asked, score it, record why it ended, then tell the apps above.
+
+        Idempotent and safe under concurrency: the first completion wins and a
+        later one changes nothing and sends no signal.
+        """
         # Local import: conditions imports this module.
         from .conditions import current_path
         from .served_paper import ensure_served_paper
 
         with transaction.atomic():
+            # Callers hold copies read before another request may have completed the
+            # sitting, and save() writes every field, so work from the locked row.
+            # _base_manager, because a sweep completes sittings with no request site.
+            # Reloading also drops the cached form, so the limit read below is current.
+            self.refresh_from_db(
+                from_queryset=FormProgress._base_manager.select_for_update(of=("self",))
+            )
+            if self.completed_time:
+                return
+            now = timezone.now()
+            expiry = self.expires_at()
+            if reason == CompletionReason.LEARNER_SUBMITTED and self.is_expired(now):
+                # A manual submit that lost the race to the clock.
+                reason = CompletionReason.TIME_EXPIRED
+            if reason == CompletionReason.TIME_EXPIRED and expiry is None:
+                # The limit was removed: the sitting is untimed and stays open.
+                return
             ensure_served_paper(self)
             path = current_path(self)
             # Only this form's own off-path questions: an answer whose question
@@ -708,7 +768,15 @@ class FormProgress(SiteAwareModel):
                 question_id__in=path.question_ids
             ).delete()
             self.asked = path.as_asked()
-            self.completed_time = timezone.now()
+            # The expiry instant, not now, when the sitting lapsed earlier: a late
+            # request or sweep must not read as overtime. Never a future time.
+            self.completed_time = (
+                min(expiry, now)
+                if reason == CompletionReason.TIME_EXPIRED and expiry is not None
+                else now
+            )
+            self.completion_reason = reason
+            self.time_limit_minutes = self.form.time_limit_minutes
             self.score(path)
             self.save()
         # Sent once the block has committed or released its savepoint, not through
@@ -716,6 +784,17 @@ class FormProgress(SiteAwareModel):
         # the row this block wrote.
         form_attempt_completed.send(
             sender=type(self), user=self.user, form=self.form, attempt=self
+        )
+
+    def complete_if_expired(self, now: datetime) -> bool:
+        """Complete the sitting as time-expired if its time has run out, saving
+        nothing posted. True when the sitting is now completed for that reason."""
+        if not self.is_expired(now):
+            return False
+        self.complete(CompletionReason.TIME_EXPIRED)
+        return (
+            self.completed_time is not None
+            and self.completion_reason == CompletionReason.TIME_EXPIRED
         )
 
     def score_category_value_sum(self, path: SittingPath) -> None:
