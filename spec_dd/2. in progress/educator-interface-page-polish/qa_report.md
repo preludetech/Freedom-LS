@@ -135,7 +135,7 @@ The probe flags were empty everywhere, yet the 4.1 and 4.4 screenshots show the 
 
 ## General notes
 
-- Test 6.4 (over-limit cohort message) was skipped: seeding 501 learners was not done. Unit tests cover it.
+- Test 6.4 (over-limit cohort message) was run after QA, with REPORTS_MAX_LEARNERS lowered to 10 for the dev server: the dashboard callout reads "Cohort 2025.03.04 has 47 learners, over the report's learner limit of 10, so it is not included.", the cohort name is a link that opens the cohort page, and at 375px the callout wraps with no sideways scroll. PASS. ![](screenshots/fixed/page-2026-11-26T13-06-13-064Z.png) ![](screenshots/fixed/page-2026-11-26T13-06-28-888Z.png)
 - Test 6.3: no course outside the viewer's visible set exists in the data, so the plain-text (unlinked) branch was not exercised.
 - Test 7.8: the background-run confirmation was not confirmed, to keep the QA learners active.
 - Test 2.1: at 1280px the Courses tab panel container is about 910px, under the table's 58rem card breakpoint, so it shows cards rather than the table. This is the framework's `cards_when_narrow` rule. The table was checked at 1920.

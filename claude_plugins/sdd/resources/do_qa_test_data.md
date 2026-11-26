@@ -5,6 +5,12 @@ rows, a panel with no instance of the model, a flow with no user, group or cours
 shape you need: entity counts, relationships, which fixtures. It owns the data-creation
 conventions, so do not hand-roll data scripts. Wait for it to confirm, then re-attempt the test.
 
+**A threshold the data must cross** (a size limit, a page size, a background-run cutoff, read from a
+setting): lower the setting for the dev server rather than seeding past it. Put the override in a
+settings module that version control ignores, start the server with it, and delete it once the test
+is done. Seed only when the setting cannot be overridden, and then through `sdd:qa-data-helper`.
+Either way the test runs: a large threshold is never a reason to skip it.
+
 **Blocking data**: a stale registration, an orphaned join row, a stray role grant, a password an
 earlier run changed. Clear it, cheapest option first. Rungs 2 and 3 run the commands configured under
 `## QA Dev Data` in `.claude/sdd/config.md`, with the literal values substituted.
