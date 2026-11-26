@@ -20,11 +20,30 @@ tests. No model, migration, setting, template, URL or dependency changes.
 
 ## Manual steps
 
-None. No action needed.
+None for a project that does not classify signups into marketing channels. No action needed.
 
-Optional: a project that classifies `SignupAttribution` rows into marketing channels with its own
-code can switch to `freedom_ls.referral_tracking.channels.classify`, which takes a `FirstTouch`
-(or `None`) and returns a `ChannelResult` holding a `Channel`, a `ChannelBasis` and a source
-platform. `has_signal` reports whether a first touch carried any attribution signal. The channel
-tables are module constants; a project that needs extra rules wraps `classify` rather than
-editing them.
+A project that keeps its own copy of a marketing-channel classifier (First-Class-LMS keeps one in
+`apps/admin_dashboard/channels.py`) can import `Channel`, `ChannelBasis`, `ChannelResult`,
+`FirstTouch`, `FirstTouchFields`, `classify`, `has_signal` and `is_direct_pair` from
+`freedom_ls.referral_tracking.channels` and delete its copy. The public names and shapes match
+that copy. `FirstTouch.from_record` accepts any object with the first-touch field names, so a
+project model with those fields needs no adapter.
+
+The FLS module classifies differently from that copy in these ways:
+
+- **A referral code gives Referral** when no UTM pair, Google click identifier or referer decides
+  first, and it beats `fbclid`. Basis: the new `ChannelBasis.REFERRAL_CODE`.
+- **`ChannelBasis` values are snake_case tokens with human labels.** `"fbclid only"` is now the value
+  `fbclid_only`, labelled "Meta click ID only"; every member has a human label ("UTM tags",
+  "Google click ID", "Referring site", "Referral code", "No signal"). A report or CSV that exports
+  `basis.value` changes for `fbclid_only` and gains `referral_code`. Export `basis.label` for
+  human text.
+- **Google country domains of the form `google.com.<cc>`** (`google.com.au`, `google.com.br`) are
+  Organic search, Google, rather than Referral.
+- **`EMAIL_HOSTS` adds `outlook.office.com`, `outlook.office365.com`, `mail.proton.me` and
+  `icloud.com`.** A shared iCloud Drive link therefore reads as Email.
+- **`advert_code` is ignored by `classify`**, but `has_signal` counts it.
+
+The channel tables are module constants. A project that needs extra rules wraps `classify` rather
+than editing them. The classifier does not drop self-referrals or payment-gateway referers; filter
+those in the calling code.
