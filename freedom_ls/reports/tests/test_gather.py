@@ -30,7 +30,12 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import Form, FormStrategy, QuestionType
+from freedom_ls.form_engine.models import (
+    CompletionReason,
+    Form,
+    FormStrategy,
+    QuestionType,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -1850,6 +1855,38 @@ class TestQuizResultFor:
 
         assert result is not None
         assert result.attempt_count == len(result.attempts) == 2
+
+
+class TestQuizAttemptCompletionReason:
+    @pytest.mark.django_db
+    def test_a_time_expired_sitting_carries_its_reason_label(
+        self, django_assert_max_num_queries
+    ) -> None:
+        quiz = a_quiz()
+        expired = an_attempt(
+            quiz,
+            completed_time=JAN_1,
+            scores={"score": 1, "max_score": 1},
+            completion_reason=CompletionReason.TIME_EXPIRED,
+        )
+        progress = attempted(quiz, [expired])
+
+        with django_assert_max_num_queries(0):
+            result = _quiz_result_for(LEARNER_ID, quiz, progress.forms)
+
+        assert result is not None
+        assert result.attempts[0].completion_reason == "Time ran out"
+
+    def test_a_learner_submitted_sitting_carries_its_reason_label(self) -> None:
+        quiz = a_quiz()
+        submitted = an_attempt(
+            quiz, completed_time=JAN_1, scores={"score": 1, "max_score": 1}
+        )
+
+        result = _quiz_result_for(LEARNER_ID, quiz, attempted(quiz, [submitted]).forms)
+
+        assert result is not None
+        assert result.attempts[0].completion_reason == "Learner submitted"
 
 
 class TestFoldTopicProgressRows:

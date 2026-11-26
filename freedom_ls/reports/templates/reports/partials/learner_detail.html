@@ -60,6 +60,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
         <th class="col-attempt-quiz">Quiz</th>
         <th class="col-attempt-number numeric">Attempt</th>
         <th class="col-attempt-date">Date</th>
+        <th class="col-attempt-reason">Completion reason</th>
         <th class="col-attempt-score numeric">Score</th>
       </tr>
     </thead>
@@ -70,6 +71,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
         <td class="attempt-quiz">{{ result.title }}</td>
         <td class="numeric">{{ attempt.attempt_number }}</td>
         <td class="attempt-date"><c-date :value="attempt.completed_at" /></td>
+        <td class="attempt-reason">{{ attempt.completion_reason }}</td>
         <td class="numeric {% if attempt.passed is True %}status-pass-cell{% elif attempt.passed is False %}status-fail-cell{% else %}status-no-verdict-cell{% endif %}">
           {% if attempt.passed is True %}<span class="status-glyph status-pass">✓</span>{% elif attempt.passed is False %}<span class="status-glyph status-fail">✗</span>{% else %}<span class="status-glyph status-no-verdict">○</span>{% endif %}
           {% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}

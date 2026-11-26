@@ -444,6 +444,7 @@ def _quiz_result_for(
                 max_score=max_score,
                 percentage=percentage,
                 passed=passed,
+                completion_reason=attempt_row.get_completion_reason_display(),
             )
         )
 

@@ -1045,13 +1045,16 @@ h3.learner-heading {
   table-layout: fixed;
 }
 .learner-section .col-attempt-quiz {
-  width: 62mm;
+  width: 36mm;
 }
 .learner-section .col-attempt-number {
   width: 16mm;
 }
 .learner-section .col-attempt-date {
   width: 24mm;
+}
+.learner-section .col-attempt-reason {
+  width: 26mm;
 }
 .learner-section .col-attempt-score {
   width: 28mm;

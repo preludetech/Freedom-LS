@@ -28,6 +28,7 @@ from uuid import UUID, uuid4
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Topic
 from freedom_ls.form_engine.models import (
+    CompletionReason,
     Form,
     FormPage,
     FormProgress,
@@ -77,6 +78,7 @@ def an_attempt(
     learner_id: UUID = LEARNER_ID,
     completed_time: datetime | None = None,
     scores: dict[str, int] | None = None,
+    completion_reason: CompletionReason = CompletionReason.LEARNER_SUBMITTED,
 ) -> FormProgress:
     """One sitting of `form`, with the form cached so scoring issues no query.
 
@@ -87,7 +89,12 @@ def an_attempt(
     built for the same learner get a record each; the fold keys on the learner
     id inside them, so that is indistinguishable from one record holding both.
     """
-    attempt = FormProgress(form=form, completed_time=completed_time, scores=scores)
+    attempt = FormProgress(
+        form=form,
+        completed_time=completed_time,
+        scores=scores,
+        completion_reason=completion_reason,
+    )
     attempt.course_attempt = CourseFormAttempt(
         course_progress=CourseProgress(learner_id=learner_id), form_progress=attempt
     )

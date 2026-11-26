@@ -1304,6 +1304,34 @@ class TestFlagSeverity:
         assert "flags-error" in html
 
 
+def _an_attempt(number: int, reason: str) -> QuizAttempt:
+    return QuizAttempt(
+        form_progress_id=UUID(int=number),
+        attempt_number=number,
+        completed_at=GENERATED_AT,
+        score=3,
+        max_score=10,
+        percentage=30,
+        passed=False,
+        completion_reason=reason,
+    )
+
+
+def _a_quiz_result(attempts: list[QuizAttempt]) -> QuizResult:
+    return QuizResult(
+        form_id=uuid4(),
+        title="Orbit Quiz",
+        latest_score=3,
+        latest_max_score=10,
+        latest_percentage=30,
+        passed=False,
+        attempt_count=len(attempts),
+        completed_at=GENERATED_AT,
+        pass_percentage=None,
+        attempts=attempts,
+    )
+
+
 class TestQuizAttemptsTable:
     def test_renders_one_row_per_completed_attempt(self) -> None:
         attempts = [
@@ -1354,6 +1382,24 @@ class TestQuizAttemptsTable:
         assert "90%" in html
         assert "3/10" in html
         assert "9/10" in html
+
+    def test_each_attempt_row_shows_its_completion_reason(self) -> None:
+        attempts = [
+            _an_attempt(1, "Learner submitted"),
+            _an_attempt(2, "Time ran out"),
+        ]
+        learner = learner_detail(
+            has_any_progress=True,
+            quiz_results=[_a_quiz_result(attempts)],
+        )
+
+        html = render_to_string(
+            "reports/partials/learner_detail.html", {"learner": learner}
+        )
+
+        assert "Completion reason" in html
+        assert html.count("Learner submitted") == 1
+        assert html.count("Time ran out") == 1
 
     def test_attempt_with_no_pass_mark_shows_no_verdict_glyph(self) -> None:
         learner = learner_detail(
@@ -1951,6 +1997,33 @@ def _with_a_retired_quiz_and_question() -> CohortReportData:
         data,
         courses=[retired_section if c is section else c for c in data.courses],
     )
+
+
+@pytest.mark.weasyprint
+@requires_tailwind_bundle
+class TestCompletionReasonInThePdf:
+    def test_the_attempts_table_prints_each_completion_reason(self) -> None:
+        data = full_report_data()
+        learner = dataclasses.replace(
+            data.learners[0],
+            has_any_progress=True,
+            quiz_results=[
+                _a_quiz_result(
+                    [
+                        _an_attempt(1, "Learner submitted"),
+                        _an_attempt(2, "Time ran out"),
+                    ]
+                )
+            ],
+        )
+        with_attempts = dataclasses.replace(
+            data, learners=[learner, *data.learners[1:]]
+        )
+
+        text = " ".join(_joined_text(_reader(render_report_pdf(with_attempts))).split())
+
+        assert "Learner submitted" in text
+        assert "Time ran out" in text
 
 
 class TestChipStaysOnOneLine:

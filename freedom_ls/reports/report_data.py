@@ -15,6 +15,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from freedom_ls.form_engine.models import CompletionReason
 from freedom_ls.panel_framework.errors import PanelBodyTooLargeError
 from freedom_ls.reports.statuses import ProgressStatus
 
@@ -57,6 +58,8 @@ class QuizAttempt:
     max_score: int | None
     percentage: int | None
     passed: bool | None
+    # The label the attempts table prints, not the stored value.
+    completion_reason: str = str(CompletionReason.LEARNER_SUBMITTED.label)
 
 
 @dataclasses.dataclass(frozen=True)
