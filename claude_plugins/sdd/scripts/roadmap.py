@@ -9,7 +9,7 @@ The roadmap's feature sections are the source. Each run:
 - sets every spec bullet's status from where its directory sits (in progress, ready, blocked),
   drops bullets whose directory is done and drops done specs from every "blocked by" list;
 - retires a feature section that has no spec bullets left, archiving it to
-  ``<parent>/spec-order.md`` when it names a parent;
+  ``<parent>/spec-order.md`` for each parent it names;
 - regenerates the "Up next" section;
 - reads the priority file (``priority.md`` beside the roadmap), creating it when missing, adds
   every roadmap item it lacks under "Priority not set" and drops entries for directories that are
@@ -42,7 +42,8 @@ BULLET_RE = re.compile(
     r"^- `(?P<dir>[^`]+)` — \*\*(?P<status>in progress|ready|blocked)\*\*"
     r"(?: by (?P<by>`[^`]+`(?:, `[^`]+`)*))? — (?P<rest>.*)$"
 )
-PARENT_RE = re.compile(r"Parent: `([^`]+)`")
+PARENT_RE = re.compile(r"Parents?: (`[^`]+`(?:,? (?:and )?`[^`]+`)*)")
+BACKTICKED_RE = re.compile(r"`([^`]+)`")
 IMAGE_RE = re.compile(r"^!\[[^\]]*\]\([^)]*_diagrams/[^)]*\.svg\)$")
 PRECURSOR = "Before starting:"
 REMOVED = "\0removed"
@@ -143,12 +144,13 @@ class Section:
         return self.heading[3:].strip()
 
     @property
-    def parent(self) -> str | None:
+    def parents(self) -> list[str]:
+        """The effort parents the feature's ``Parent:`` (or ``Parents:``) line names."""
         for line in self.lines:
             match = PARENT_RE.search(line)
             if match:
-                return match.group(1)
-        return None
+                return BACKTICKED_RE.findall(match.group(1))
+        return []
 
 
 @dataclass(frozen=True)
@@ -250,13 +252,13 @@ def maintain_priority(
 
     listed = {n for names in priority.entries.values() for n in names}
     for section in sections:
-        parent = section.parent
-        if parent:
+        if section.parents:
             uncovered = [s.dir for s in section.specs if s.dir not in listed]
-            if uncovered and parent not in listed:
-                priority.entries[NOT_SET].append(parent)
-                listed.add(parent)
-                notices.append(f"priority not set: {parent}")
+            if uncovered and not listed.intersection(section.parents):
+                for parent in section.parents:
+                    priority.entries[NOT_SET].append(parent)
+                    listed.add(parent)
+                    notices.append(f"priority not set: {parent}")
             continue
         for spec in section.specs:
             if spec.dir not in listed:
@@ -273,10 +275,10 @@ def effective_ranks(
     lowest = Rank(len(priority.levels), len(entries), "")
     own: dict[str, Rank] = {}
     for section in sections:
+        parent_ranks = [entries[p] for p in section.parents if p in entries]
+        parent_rank = min(parent_ranks, key=lambda r: r.order, default=lowest)
         for spec in section.specs:
-            own[spec.dir] = (
-                entries.get(spec.dir) or entries.get(section.parent or "") or lowest
-            )
+            own[spec.dir] = entries.get(spec.dir) or parent_rank
 
     dependents: dict[str, list[str]] = {d: [] for d in specs}
     for spec in specs.values():
@@ -663,7 +665,7 @@ def build_up_next(
     has_diagram: bool,
     diagram_dir: str,
 ) -> list[str]:
-    parents = {s.dir: section.parent for section in sections for s in section.specs}
+    parents = {s.dir: section.parents for section in sections for s in section.specs}
     specs = sorted(
         (s for section in sections for s in section.specs),
         key=lambda s: (*ranks[s.dir].order, s.dir),
@@ -672,7 +674,7 @@ def build_up_next(
     def bullet(spec: Spec, suffix: str = "") -> str:
         rank = ranks[spec.dir]
         via = ""
-        if rank.source not in (spec.dir, parents[spec.dir], ""):
+        if rank.source not in (spec.dir, *parents[spec.dir], ""):
             via = f", via `{rank.source}`"
         return f"- {priority.label(rank)} · `{spec.dir}` ({spec.feature}{via}){suffix}"
 
@@ -773,28 +775,27 @@ def main(argv: list[str]) -> int:
         if section.specs:
             kept.append(section)
             continue
-        parent = section.parent
-        if parent and (next_dir / parent).is_dir():
+        live_parents = [p for p in section.parents if (next_dir / p).is_dir()]
+        archived = "\n".join(
+            [
+                section.heading,
+                *[ln for ln in section.lines if not IMAGE_RE.match(ln)],
+            ]
+        )
+        note = f"Archived from the spec roadmap on {datetime.now(UTC).date().isoformat()}, when the last of its specs finished.\n\n"
+        for parent in live_parents:
             archive = next_dir / parent / "spec-order.md"
-            archived = "\n".join(
-                [
-                    section.heading,
-                    *[ln for ln in section.lines if not IMAGE_RE.match(ln)],
-                ]
-            )
-            note = f"Archived from the spec roadmap on {datetime.now(UTC).date().isoformat()}, when the last of its specs finished.\n\n"
             prior = archive.read_text() + "\n" if archive.exists() else ""
             archive.write_text(prior + note + archived.strip() + "\n")
             notices.append(f"effort retired: {next_dir / parent}")
             waiting.discard(parent)
-        else:
+        if not live_parents:
             notices.append(f"feature removed, no specs left: {section.name}")
     features = kept
 
     specs = {s.dir: s for section in features for s in section.specs}
     for section in features:
-        if section.parent:
-            waiting.discard(section.parent)
+        waiting.difference_update(section.parents)
     for name in sorted((waiting | in_progress) - set(specs)):
         problems.append(f"directory with no bullet: {name}")
     for cycle in find_cycles(

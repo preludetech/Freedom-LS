@@ -19,7 +19,9 @@ It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and i
    and `roadmap_diagrams/`, which holds the SVGs. `priority.md` is a file, not a spec. `0. noop/`
    and `3. done/` are not indexed.
 4. **Every spec belongs to a feature.** A feature is a `##` section: a cut effort, or a group of
-   standalone specs about the same area. A spec that fits nowhere gets a new feature.
+   standalone specs about the same area. A spec that fits nowhere gets a new feature. Efforts
+   that together make one larger piece of work share a feature, whose line names every parent:
+   ``Parents: `a`, `b`.``
 5. **The script owns the derived parts.** `python3 claude_plugins/sdd/scripts/roadmap.py
    "spec_dd/1. next/roadmap.md"` sets each bullet's status from its directory's location, drops
    done specs from bullets and `blocked by` lists, maintains `priority.md`, orders the feature
@@ -64,7 +66,8 @@ complete.
 - Each `##` heading is a priority level, highest first. The level names are the file's own: rename,
   add or remove levels freely, up to six. `## Priority not set` is fixed and always ranks last.
 - An entry is a spec directory or an effort parent (a feature's `Parent:`). A parent entry covers
-  every spec in that feature with no entry of its own. Order inside a level counts: higher in the
+  every spec in that feature with no entry of its own; in a feature with several parents, the
+  highest of their entries does. Order inside a level counts: higher in the
   list is more important.
 - **A spec inherits priority from its dependents.** Its effective priority is the highest of its
   own entry, its parent's entry and the effective priority of every spec that lists it, directly or
