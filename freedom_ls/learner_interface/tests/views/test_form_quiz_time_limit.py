@@ -143,7 +143,7 @@ def timed_course(
 @pytest.mark.django_db
 @pytest.mark.parametrize("route", REDIRECTING_ROUTES)
 @time_machine.travel(LATE, tick=False)
-def test_a_route_completes_an_expired_sitting_and_redirects_to_the_results(
+def test_a_route_completes_an_expired_sitting_as_time_expired(
     timed_course: tuple[Course, Form, User, CourseProgress],
     client: Client,
     route: str,
@@ -151,25 +151,52 @@ def test_a_route_completes_an_expired_sitting_and_redirects_to_the_results(
     course, form, user, _record = timed_course
     sitting = _open_sitting(course, user, form)
 
-    response = _request(client, course, route)
+    _request(client, course, route)
 
     sitting.refresh_from_db()
     assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("route", REDIRECTING_ROUTES)
+@time_machine.travel(LATE, tick=False)
+def test_a_route_redirects_an_expired_sitting_to_the_results(
+    timed_course: tuple[Course, Form, User, CourseProgress],
+    client: Client,
+    route: str,
+) -> None:
+    course, form, user, _record = timed_course
+    _open_sitting(course, user, form)
+
+    response = _request(client, course, route)
+
     assert _location(response) == _results_url(course)
 
 
 @pytest.mark.django_db
 @time_machine.travel(LATE, tick=False)
-def test_the_results_route_completes_an_expired_sitting_and_renders_it(
+def test_the_results_route_completes_an_expired_sitting_as_time_expired(
     timed_course: tuple[Course, Form, User, CourseProgress], client: Client
 ) -> None:
     course, form, user, _record = timed_course
     sitting = _open_sitting(course, user, form)
 
-    response = client.get(_results_url(course))
+    client.get(_results_url(course))
 
     sitting.refresh_from_db()
     assert sitting.completion_reason == CompletionReason.TIME_EXPIRED
+
+
+@pytest.mark.django_db
+@time_machine.travel(LATE, tick=False)
+def test_the_results_route_renders_an_expired_sitting(
+    timed_course: tuple[Course, Form, User, CourseProgress], client: Client
+) -> None:
+    course, form, user, _record = timed_course
+    _open_sitting(course, user, form)
+
+    response = client.get(_results_url(course))
+
     assert response.status_code == 200
     assert b"Time ran out" in response.content
 
