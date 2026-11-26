@@ -1,0 +1,62 @@
+# Research: restarting a course while keeping the old records
+
+Scope: codebase seams for the idea's "Re-registrations" section. Findings only. Read-only pass; paths are in the main worktree.
+
+## 1. How a learner's place in a course is modelled
+
+- There is no per-run concept. The unit is the **CourseProgress**, "one learner's pass through one course, granted by one registration" (`freedom_ls/learner_progress/models.py:107-108`). It is minted by a registration, not by the learner or course.
+- Grant columns: `learner_registration` (-> `LearnerCourseRegistration`) or `cohort_registration` (-> `CohortCourseRegistration`), exactly one set (check `course_progress_has_exactly_one_grant`, `models.py:178-190`). Both FKs are `PROTECT` (`models.py:120-133`).
+- Uniqueness: one record per (`learner_registration`, `learner`) and per (`cohort_registration`, `learner`) (`models.py:169-177`). **There is no (learner, course) uniqueness.** A learner with a cohort grant plus an individual grant already holds two records for one course. This is documented as intended: "a second grant is a second enrolment" (`learner_progress/utils.py:77-81`).
+- The registrations are what block a second pass:
+  - `unique_learner_course_registration` on (`site`, `learner`, `course`) (`learner_management/models.py:299-304`) allows exactly one individual registration per learner and course. `_ensure_registration` is `get_or_create` plus reactivate (`learner_actions.py:322-345`).
+  - `unique_cohort_course_registration` on (`site`, `course`, `cohort`) (`models.py:342-347`). A second pass today needs a different cohort. The test-out research says the same ("a second pass today needs a new cohort registration, which gives a separate, unlinked progress record", `spec_dd/1. next/learner-interface-features-2-test-out/idea.md:40`).
+- Children: `TopicProgress.course_progress` is CASCADE, unique per (`course_progress`, `collection_item`) (`models.py:71-100`). `CourseFormAttempt.course_progress` is CASCADE, with no uniqueness on the placement, so many attempts per placement are normal (`models.py:254-287`). `CourseFormAttempt.form_progress` is a CASCADE one-to-one to `form_engine.FormProgress`, which holds the answers (`QuestionAnswer`). `FormProgress` and `QuestionAnswer` know nothing about courses.
+- Deadline rows hang off the record or the registration:
+  - Record: `CoursePause`, `DeadlineExtension`, `LearnerDeadlineOverride` (`deadlines/models.py:156,437,519`, all CASCADE).
+  - Registration: `CohortDeadlineOverride`, `CohortCourseRegistrationDeadlineConfig` and `LearnerCourseRegistrationDeadlineConfig`.
+- `Topic` is PROTECT on `TopicProgress` (`models.py:85-87`). `Learner` and `Course` are PROTECT on `CourseProgress`. Nothing on the progress side is SET_NULL-ed except placement pointers (`collection_item`, `last_accessed_item`).
+
+## 2. What resets progress today
+
+- **Deregister then re-register: nothing is reset.** `deactivate_registration` keeps the records (docstring, `learner_actions.py:375-398`); it flips `is_active` and writes `registration.deactivated`. Re-registering reactivates the same row, and `ensure_course_progress_record` returns the existing record "untouched, no timestamp reset" (`utils.py:70-101`). The learner resumes where they were, and `CourseProgress.created_at` does not move.
+- Cohort removal and re-adding behaves the same: the record is bound to the registration, "never to CohortMembership" (`models.py:117-119`).
+- **Move between cohorts carries the record** (`signals.py:381-417`, `utils.py:164-199`): the further record wins and the other is parked under the source registration, unused.
+- **No educator or admin reset exists.** The only resets are developer tools:
+  - `dev_tools ... danger_clear_all_course_progress.py` hard-deletes every progress row, including `QuestionAnswer`. It is dev-only (`require_dev_tools_enabled`, line 49).
+  - `qa_helpers ... qa_reset_learner_progress.py:113-145` deletes `FormProgress` and optionally `TopicProgress`, and zeroes the `CourseProgress` fields in place.
+  - `danger_content_delete` is the content-side equivalent.
+- Admin: `learner_progress/admin.py` still allows delete of progress rows. The force-delete spec lists making them undeletable in "their own admins" as out of scope (`spec_dd/2. in progress/sacaa-complianc-deletion-and-declaration-1-force-delete/idea.md:63-64`).
+
+## 3. What reads progress and would need to see only the current run
+
+Most reads already resolve through a registration, so "current run" is a choice of registration or record:
+- **Learner player and outline:** `course_progress_for` / `course_progress_by_course_for` (`learner_progress/queries.py:184-320`) resolve the registration first (cohort beats individual, then `-is_active`, `-registered_at`), then read that one record. Its docstring says "filtering CourseProgress by hand is a defect". The learner side is therefore the cleanest seam. It would need a rule for "the current run" among a learner's several records.
+- **Completion and percentage:** `completed_collection_item_ids(record)` (`queries.py:161`), `calculate_course_progress_percentage`, and `recalculate_progress_percentage` (`signals.py:61`) are per record. `course_finish` stamps `completed_time` and fires the `course.completed` webhook and GA4 event (`learner_interface/views.py:3059-3131`), once per record.
+- **Form attempts:** `latest_attempt`, `get_latest_incomplete` and `get_or_create_incomplete` filter by `course_progress` (`learner_progress/attempts.py:35-109`). A new record therefore starts with no attempts, and the old ones stay on the old record. No "best attempt" aggregation was found in `learner_progress`. The quiz attempt cap in the sibling spec would count per record, so a fresh record resets it naturally.
+- **Reports and exports:** `reports/indexes.py` loaders take registrations and filter by `_registration_filter` (`indexes.py:291-323`), so a report is scoped to the registrations asked for. Its docstring already anticipates "a second record for the same course under their own registration". `reports/gather.py:1005` filters `CourseProgress` directly. There is no certificate model (grep of `Certificate` in `models.py`: none; `learner-public-profile-4-certificates` is a spec only).
+- **Educator pages:** the learner quick view uses `registrations_with_progress_for_learner` (`queries.py:340`), one row per active registration. The educator matrix and cohort report start from a cohort registration.
+- **Progress API and sync:** `learner_progress/api.py` lists every record of the site, with `registration_id` and `registration_kind` (`api.py:55-61`), so extra records are visible to consumers as extra rows with the same `learner` and `course`.
+- **Deadlines:** the deadline start is `CourseProgress.created_at` (`deadlines/resolver.py:153`). Pauses and extensions are per record, so a new record gets a clean clock, and the old record's pause or extension rows stay with the old run.
+- **Admin:** `CourseProgressAdmin` and `CourseFormAttemptAdmin` list every record.
+
+## 4. Options for "start over, keep the records"
+
+- **A. New registration, therefore new `CourseProgress`.** Already supported by the data model for cohort grants (second cohort registration) and a mixed individual+cohort grant. Blockers: the unique registration constraints above; the new registration has no link to the prior one, so the chain "attempt 1, re-write 1, re-write 2" has nowhere to live; resolution order (`-is_active`, `-registered_at`) would pick the new one only if the old one is deactivated or older. Reports and the API show both records with no run label. Cheapest on code, weakest on audit.
+- **B. Supersede and archive the old record.** Add an `is_current` / `superseded_at` marker (or `run_number`) on `CourseProgress` and put the whole set of record-reading helpers behind it. Keeps one registration, one grant, and all FKs. Cost: every reader that filters `CourseProgress` by hand (the four paths named at `queries.py:193-197`, plus `reports/gather.py:1005`, the API, admin) must be updated. The unique constraints (`models.py:169-177`) would have to include the run, or the old row must stop matching. `ensure_course_progress_record` is `get_or_create` on (learner, grant), so it would have to become run-aware or it would hand back the superseded row. Moves and cohort carry (`signals.py:384-417`) key on registration and would need to be run-aware.
+- **C. Run number on registration (a re-registration chain).** Relax the individual registration unique constraint to include a run, or add a `previous_registration` self-FK. The `learner_for_course` ordering (`learner_management/queries.py:389-431`) already prefers the newest active registration. This keeps "progress belongs to a registration" intact, and the reports already filter by registration. Deactivating the old registration while keeping its record is what `deactivate_registration` does today. Costs: the unique constraint change, `latest_registration`, `_ensure_registration` (`get_or_create` on learner and course), webhooks (`registration.added`) and the CSV import all assume one individual registration per course.
+- **Do not reset in place.** The QA command's approach (`qa_reset_learner_progress`, delete plus zero) destroys the records SACAA wants kept. The recalculation hooks on `post_delete` of `TopicProgress` and `CourseFormAttempt` (`signals.py:139-166`) show deletion is the path to a recalculated percentage, which is the wrong direction here.
+
+## 5. Where an educator action would live
+
+- Learner page actions are classes in `educator_interface/panels/learner/actions.py` (for example `RegisterLearnerForCourseAction` at `:291`, `DeactivateRegistrationAction` at `:329`, `ReactivateRegistrationAction` at `:344`). The shared registration dialogs are in `panels/common/registration_actions.py` (`ConfirmAction`, `capability = CHANGE_LEARNER_REGISTRATION`, `handle_submit`, `registration_changed_response`, `ctx.reason`). Registered via `panels/learner/panels.py` or `config.py`; check the educator-interface skill before building.
+- Audit logging: the service functions in `learner_management/learner_actions.py` wrap a state change plus `record_learner_entry(learner, action, actor, reason=..., details={...})` inside `transaction.atomic()` with a `select_for_update` on the learner (`:375-398`). Actions are a registry in `audit_log/actions.py` (the `registration.*` group at `:185-199`, `course.paused` at `:203`, `deadline.extended` at `:215`). A restart would add an `AuditAction` (for example a `registration.restarted`) and a service function in the same shape. The deadlines app (`deadlines/actions.py:95`) is the template for an action keyed on a `CourseProgress` with a `reason`.
+
+## 6. Collisions with other specs
+
+- **Force-delete** (`2. in progress/sacaa-complianc-deletion-and-declaration-1-force-delete`): the user-deletion path deals with the same `CourseProgress` / `FormProgress` / `QuestionAnswer` rows, and leaves the admins' delete in place (`idea.md:63-64`). A restart that keeps old rows relies on those rows not being deletable by accident. Coordinate over the PROTECT chain.
+- **Content versions** (`2. in progress/sacaa-compliance-content-versions-and-access-2-retire-removed-content`, `-4-question-access`): retired content leaves progress untouched (`idea.md:21`) and attempts "pin at start". An archived run is the same kind of kept data. Neither touches registration or run semantics. The question-versions spec (3) pins which version each answer was scored against, which makes the old run's records meaningful after a content change.
+- **Test-out** (`1. next/learner-interface-features-2-test-out`): open question 7 is "renewal registrations: a new registration outside this work, or a link from the new progress record to prior completed evidence". It is the same decision as options A to C, so decide them once. Its completion semantics also touch `completed_collection_item_ids`.
+- **Deadlines 4 to 7** (`1. next/deadlines-4-learner-self-pause`, `-5-reminders`, `-6-educator-management`, `-7-educator-at-risk`): all key on `CourseProgress`. If a record can be superseded, reminders, at-risk and pauses must skip a superseded record. The clock start `created_at` is the registration date, so a restart is also a clock restart.
+- **Max quiz attempts** (same idea): per-record counting (via `CourseFormAttempt`) resets with a new record; per-learner counting would not. Choose one.
+
+status: ok
