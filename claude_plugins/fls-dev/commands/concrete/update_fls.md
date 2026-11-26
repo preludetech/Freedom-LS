@@ -63,4 +63,4 @@ This is the last step. An integration that only exists locally is a submodule po
 
 Only the concrete project is pushed. The submodule needs no push of its own: every commit the pointer now references is already on FLS's `origin/main`, which is what Step 1 fetched.
 
-Do not push while any spec is still mid-integration or a template override is still flagged for human review — finish or roll back first. If the run happened on the concrete project's default branch, move the commits onto a branch and open a PR rather than pushing to the default branch directly.
+Do not push while any spec is still mid-integration or a template override still waits on the user's answer — finish or roll back first. If the run happened on the concrete project's default branch, move the commits onto a branch and open a PR rather than pushing to the default branch directly.

@@ -58,7 +58,7 @@ Run only the steps the notes call for (or that prose inference indicated, for sp
 
 The project's template directories are the ones listed under `TEMPLATES[*]['DIRS']` in its settings, plus the `templates/` directory of each project app. For each path in `changed_template_paths`, check whether any of those directories holds a file at the same template path. If one does, the upstream source changed underneath the override, so the override may now be stale.
 
-**Flag** every such override for human review: report the path and the sentence that its upstream source changed. **Do not auto-merge.** Re-applying customisations is a human decision.
+**Merge** the upstream change into every such override, keeping the project's customisations, and report the path and what was merged. The spec's upgrade notes say what the change is. When the upstream change and a customisation cannot both stand, the choice is the user's: ask, and leave the override as it is until they answer.
 
 ## 3g. System check
 

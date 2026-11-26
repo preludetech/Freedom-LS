@@ -1,5 +1,5 @@
 ---
-description: Integrate every completed FLS spec into each configured concrete project, fixing FLS first when a cell fails
+description: Integrate every completed FLS spec into each configured concrete project, fixing FLS or the project when a cell fails
 argument-hint: [project path …]
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Skill, Agent, AskUserQuestion, mcp__plugin_ds_playwright__*
 ---
@@ -8,7 +8,7 @@ Run from the FLS `main` worktree. Integrate each completed FLS spec into every c
 
 Inputs from the caller: `$ARGUMENTS`, optional project paths. When given, the run covers only the listed projects whose path matches one of them.
 
-This command runs at **depth 0**, following `claude_plugins/sdd/skills/claude-code-authoring/resources/fanout_recipe.md`. The run is long and the operator answers once and leaves, so every question is **front-loaded** into Step 3, and the scans that feed Step 3 start as early as their inputs exist. The run asks only about workaround removals and pull-ins. It starts without a plan confirmation, always pushes, and asks nothing after Step 3. The Permissions section lists the commands that still prompt by design, and Step 3 shows which cells hit them.
+This command runs at **depth 0**, following `claude_plugins/sdd/skills/claude-code-authoring/resources/fanout_recipe.md`. The run is long and the operator answers once and leaves, so every question is **front-loaded** into Step 3, and the scans that feed Step 3 start as early as their inputs exist. In Step 3 the run asks about workaround removals and pull-ins. After Step 3 it asks only when a project fix turns on a product decision (`## Failure handling`). It starts without a plan confirmation and always pushes. The Permissions section lists the commands that still prompt by design, and Step 3 shows which cells hit them.
 
 ## Rules
 
@@ -163,7 +163,7 @@ Before a cell, apply Resume (below). Then, for `<p>` the project path and `<spec
 2. Apply this cell's approved removals as `## Workaround removal` describes.
 3. Run the portable contract test set from `concrete_spec_integration.md` with `-rf` appended, so failing node ids are listed. This gate runs with the approved removals applied.
 4. Compare the failing ids with the project's baseline ids. An id not in the baseline is new. Re-run each new id alone once, and keep it as new only if it fails again. This one re-run is the whole flake allowance.
-5. A new id, or a file, that an approved removal touched means that removal is still needed: revert it as `## Workaround removal` says and re-run the gate. If any id is then still new, or any resource step errored, the cell fails. Follow `## Failure handling`; a cell that fails ends as `blocked-on-fix` or `blocked-on-spec <slug>`, or retries after a fix.
+5. A new id, or a file, that an approved removal touched means that removal is still needed: revert it as `## Workaround removal` says and re-run the gate. If any id is then still new, or any resource step errored, the cell fails. Follow `## Failure handling`: the failure is fixed, in FLS or in the project, and the cell retries. It ends as `blocked-on-fix` or `blocked-on-spec <slug>` only when the fix does not get it through.
 6. When the spec's done directory holds a `3*. frontend_qa.md`, follow `## QA in the concrete project`. It records the cell's QA result, and a QA bug fails the cell: follow `## Failure handling`.
 7. Run 3j: `git -C <p> add -A`, then `uv run --directory <p> git commit -m "Update FLS: <spec-name>"`, with a body that names the spec directory and the pointer move. Approved removals are part of the staged tree.
 8. Record the project's new last good: `git -C <p> rev-parse HEAD`.
@@ -179,6 +179,7 @@ The cell result file is `.sdd-work/update_concrete_<project>_<spec>.md`. These a
 - `failing:` every id that failed in the final gate run, baseline ids included, or `none`
 - `new-failures:` the ids that stayed new, or `none`
 - `workarounds:` counts of removed, declined, still needed and unmatched
+- `project-fixes:` each project file changed to fit the spec and what changed, or `none`
 - `qa:` `not run` when the spec has no frontend QA plan, otherwise `pass`, `skipped: <reason>` or `bug: see stop card`
 - `result:` the last line, one of `integrated`, `blocked-on-fix`, `blocked-on-spec <slug>` or `skipped`
 
@@ -265,15 +266,24 @@ Print a stop card: project, spec, step, failing ids, diff stat, class and propos
 | --- | --- |
 | FLS code bug, or an FLS test that assumes FLS's own settings, theme, icon set or demo content | FLS fix |
 | `upgrade_notes.md` of the spec missed a step the project needed | FLS fix: correct `spec_dd/3. done/<spec>/upgrade_notes.md`, plus code if any |
-| the project's own override, subclass or template shadow is stale against the spec | report it; the cell is `blocked-on-fix`, not retried |
+| the project's own code is stale against the spec: a link, query, setting, test, override, subclass or template shadow | project fix |
 | pre-existing baseline failure | not a failure |
 | environment (missing `node_modules`, DB not reachable) | fix the environment once and retry |
 
 - A cell whose only new failures are baseline ids is not a failure; the gate already excludes them. This row covers a baseline id that now fails with a different error.
 - An environment failure is fixed once: `npm --prefix <p> install` for `node_modules`, or tell the operator the database is unreachable. The cell then retries, and that retry does not count as the fix attempt.
-- A stale override makes the cell `blocked-on-fix`. The project is not parked, and its next spec's cell still runs.
+- Stale project code is fixed in the project. It is never left as a line in the report for the operator to fix.
 
-**Size test.** A fix is small when all hold: no model or migration change; no new setting; at most three FLS files plus one test file; one regression test covers it. A borderline case takes the small fix, and the call is recorded in report section 8.
+**Project fix.** Fixing the project's stale code is the run's job, not the operator's. The rollback put the project at last good, so run the cell again from its step 1 and change the project code before the gate:
+
+- The spec's `upgrade_notes.md` says what to change. Apply its breaking changes and manual steps to the project, then search the project for every other use of what the spec removed, renamed or now requires.
+- Update the project's tests that assert the old behaviour.
+- The edits are part of the cell's commit. List each one (file, what changed) in the cell result file under `project-fixes:`.
+- When two or more specs in a row only pass together, because one removes what a later one restores, fold them into one cell as Retry describes.
+- A fix with one sensible answer is made without asking. When a fix turns on a choice the notes cannot settle, such as what replaces a removed link or whether a feature stays, ask it with one `AskUserQuestion`, recommended option first, and write the answer to the answers file. This is the only kind of question the run asks after Step 3.
+- The cell ends `blocked-on-fix` only when the gate still has a new failure after the project fix and one more attempt. The evidence goes in the cell result file, the project is not parked, and its next spec's cell still runs.
+
+**Size test.** This test is for an FLS fix. A fix is small when all hold: no model or migration change; no new setting; at most three FLS files plus one test file; one regression test covers it. A borderline case takes the small fix, and the call is recorded in report section 8.
 
 **Small fix.** The fix is made in a sibling worktree, never in the FLS `main` worktree: the operator keeps using `main` as `main` throughout the run, so it never leaves the `main` branch. `<wt>` is the bare repo's directory plus `/fix-<slug>`. From the `main` worktree, each command its own Bash call:
 
@@ -381,7 +391,7 @@ The report is committed before the push, so it carries no push result. Print the
 Sections, in this order:
 
 1. Verdict line: integrated N of M, parked on `<slug>` or `none`, FLS fixes landed, ideas written, and the resume instruction when the run is not complete. The resume instruction is the command name with the project path as its argument.
-2. Needs attention: `blocked-on-fix` cells with their evidence, and the stale-override flags from the template-drift step of `concrete_spec_integration.md`. `none` when there are no such cells. Say when lines were redacted.
+2. Needs attention: `blocked-on-fix` cells with their evidence, each project fix made (file, what changed, the spec, and the operator's answer when one was asked), and the overrides merged in the template-drift step of `concrete_spec_integration.md`. `none` when there are none. Say when lines were redacted.
 3. Per-cell results, one row per cell read from the cell result files: spec, FLS commit, flags, result, project commit, new failures, QA result. The QA column is `pass` with a relative link `<spec-name>/qa_report.md`, `skipped: <reason>`, or `bug: see stop card`.
 4. Baseline: the baseline source and failing ids, and which of them passed in item 1's test run (or the reused `failing:` ids). End the section with the block the next run's Step 3b reads, exactly in this shape, `none` for an empty list:
 

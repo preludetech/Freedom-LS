@@ -293,11 +293,25 @@ def test_roadmap_sync_runs_once_at_the_end_of_the_run() -> None:
     assert "Skill(sdd:roadmap)" in section(text, "## End of run")
 
 
-def test_every_question_is_asked_in_step_3() -> None:
+def test_questions_are_asked_in_step_3_or_for_a_project_fix_decision() -> None:
     text = COMMAND.read_text()
     step_3 = section(text, "## Step 3: Preview and questions")
+    project_fix = section(text, "**Project fix.**")
 
-    assert text.count("`AskUserQuestion`") == step_3.count("`AskUserQuestion`") > 0
+    assert step_3.count("`AskUserQuestion`") > 0
+    assert project_fix.count("`AskUserQuestion`") == 1
+    assert text.count("`AskUserQuestion`") == (
+        step_3.count("`AskUserQuestion`") + project_fix.count("`AskUserQuestion`")
+    )
+
+
+def test_stale_project_code_is_fixed_not_reported() -> None:
+    text = COMMAND.read_text()
+    classify = section(text, "**Classify.**")
+
+    assert "| project fix |" in classify
+    assert "report it" not in classify
+    assert "upgrade_notes.md" in section(text, "**Project fix.**")
 
 
 @pytest.mark.parametrize("question", ["Confirm the plan", "Push policy"])
