@@ -16,8 +16,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
-- [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether to fix tests/test_select_tests.py::test_malformed_remote_entry_exits_2_naming_the_key: its 3 cases fail whenever DS_TEST_REMOTE=off is set (as the local full-suite run sets it) because the test does not clear that variable; it is unrelated to this spec and also fails on main. A one-line monkeypatch.delenv in the test would fix it.
 
