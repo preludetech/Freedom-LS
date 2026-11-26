@@ -68,6 +68,9 @@ LONG_COURSE_TITLE = "Beta Course With A Rather Long Title To Force Wrapping"
 QUESTION = "Which status code for a failed write?"
 PICTURE_TITLE = "Lone tree at dawn"
 BEEP_MP3 = Path(__file__).parent / "fixtures" / "beep.mp3"
+# Outlasts every step that expects a speak button to still be playing, so a
+# slow run never sees the clip end on its own between a press and its check.
+TONE_MP3 = Path(__file__).parent / "fixtures" / "tone_30s.mp3"
 AUDIO_A_LABEL = "Alpha"
 AUDIO_B_LABEL = "Bravo"
 AUDIO_LONG_LABEL = "Good morning, how are you today?"
@@ -252,7 +255,7 @@ def _browse_course(user: User) -> Course:
         FileFactory(
             file_path=f"audio/{name}.mp3",
             file=SimpleUploadedFile(
-                f"{name}.mp3", BEEP_MP3.read_bytes(), content_type="audio/mpeg"
+                f"{name}.mp3", TONE_MP3.read_bytes(), content_type="audio/mpeg"
             ),
             file_type=File.FileType.AUDIO,
             mime_type="audio/mpeg",
