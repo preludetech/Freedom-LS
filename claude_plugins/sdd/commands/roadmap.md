@@ -13,6 +13,10 @@ directory is classified, and the bullet grammar. The script
 and the diagrams; never write those by hand. The priority itself lives in
 `spec_dd/1. next/priority.md`, which the owner edits.
 
+**Paths contain spaces** (`spec_dd/1. next/`, `spec_dd/2. in progress/`). List directories with
+`Glob` and read files with `Read`. Never pass these paths through `xargs`, a `for` loop or any other
+shell command that splits on whitespace, and quote every path you give to `Bash`.
+
 Two modes:
 
 - **No argument, or `apply`: sync.** Reconcile the roadmap with the directories on disk. `apply`
@@ -123,7 +127,7 @@ rest to the product owner, propose the cut, then write the ideas.
 
 ## C1: Read the directory
 
-Read everything in it: the idea, the spec if there is one, every sibling `*.md`, every nested
+List it with `Glob` (`<dir>/**/*`) and read each file with `Read`. Read everything in it: the idea, the spec if there is one, every sibling `*.md`, every nested
 directory. Read the roadmap too, so the cut can depend on efforts and specs that already exist.
 
 If the idea already starts with the parent blockquote it has been cut. Stop and point at its
