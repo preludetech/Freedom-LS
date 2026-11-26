@@ -205,8 +205,8 @@ The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membersh
 | `created` | A standalone object now exists: `cohort.created`. | |
 | `added` | An association now exists: a learner in an organisation (`learner.added`), in a cohort (`cohort_membership.added`), or registered for a course (`registration.added`, `cohort_registration.added`), or a user made a staff member with no role (`staff_member.added`). | `registered`, `enrolled`, `granted` |
 | `deactivated` / `reactivated` | An `is_active` flag went False / True, on any model that has one. | `unregistered`, `suspended`, `removed`, `revoked` (for an `is_active` flip), `reregistered` |
-| `removed` | An association row was deleted: `cohort_membership.removed`, `role.removed` (a role row deleted with its cohort). | |
-| `deleted` | A standalone object was deleted: `cohort.deleted`. | |
+| `removed` | An association row was deleted: `cohort_membership.removed`, `role.removed` (a role row deleted with its cohort), `learner.removed` (a **force delete** of a `Learner`, labelled "Learner force deleted"). | |
+| `deleted` | A standalone object was deleted: `cohort.deleted`, `user.deleted` (a **force delete** of a `User`, labelled "User force deleted"). | |
 | `assigned` | A role was given to a user. Its opposite is `role.deactivated`. | `granted` |
 | `viewed` | Something was read, not changed: `conversation.viewed`, a conversation opened under oversight. Only for a read worth auditing. | `opened`, `accessed`, `read` |
 | `issued` | An API key was created and its key text shown once: `api_key.issued`. | `generated`, `minted` |
@@ -250,6 +250,8 @@ Do not give these a second meaning.
 | **live** | The opposite of **retired**: a content row whose `retired_at` is null. | Keep it to that sense. |
 | **registered**, **registration** | Course access: a `LearnerCourseRegistration` or `CohortCourseRegistration`. | For an account being created: **signup** (`SiteSignupPolicy`, `user.signed_up`). |
 | **removed** | A row that was actually deleted (`cohort_membership.removed`, `role.removed`). One copy exception: the **Remove from cohort** button on a person's cohort role deactivates the role (`role.deactivated`), and `RemoveFromCohortBulkAction` keeps the label for its real deletion of a `CohortMembership`. | For an `is_active` flip: **deactivated**; for the state: **inactive**. |
+| **force delete** | The superuser-only Django admin erasure of a `User` or a `Learner` with its records, a required reason and an audit entry (`user.deleted`, `learner.removed`; `learner_progress/force_delete.py`). The ordinary delete is refused on `UserAdmin`; people are deactivated, not deleted. | Say "force delete" for this and nothing else. Not "purge", "erase" or "hard delete"; a plain "delete" is the ordinary delete of a row such as a `Cohort`. |
+| **last active** | `User.last_active`: when the user last made a signed-in request, written by `LastActiveMiddleware` at most every `LAST_ACTIVE_WRITE_SECONDS`. API-key requests do not count. Every "Last active" in the educator interface reads it. | Not `Max(CourseProgress.last_accessed_time)`, which is course activity (`last_accessed_time`); the reports inactivity rule still reads that. |
 | **learner** | `Learner`, the `(user, organisation)` association row — and also the everyday English word for the person. | In prose either is fine. As an identifier, `learner` means the model; write `learner.user` / `learner__user` when you mean the account. |
 | **role**, bare **title** | Reserved, not in use. `role` is a permission role (`assign_object_role`), and a bare `title` is a content title. | `JobTitle` / `job_title` for what a learner does at work. |
 | **start date** | `organisation_start_date` is the hire date: when the learner started at the organisation, not at a course. | For a course, `started_at` on `CourseProgress`. |
