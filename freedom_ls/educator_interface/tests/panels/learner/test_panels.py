@@ -317,6 +317,35 @@ class TestLearnerCoursesPanel:
             "Unit quiz attempts"
         )
 
+    def test_a_quiz_heading_is_set_smaller_than_its_course_heading(
+        self, logged_in_client
+    ):
+        """The quiz h4 used to carry the course h3's size, so each quiz read as a
+        sibling section of its course instead of part of it."""
+        course = CourseFactory(title="Algebra")
+        quiz = quiz_form("Unit quiz", 50)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=quiz, order=0
+        )
+        record = course_progress_record(course, UserFactory())
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 2, "max_score": 2},
+        )
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        (section,) = document.cssselect("section[aria-labelledby]")
+        quiz_classes = section.cssselect("h4")[0].get("class").split()
+        assert "text-base" in quiz_classes
+        assert "text-base" not in section.cssselect("h3")[0].get("class").split()
+
     def test_a_course_with_completed_items_gets_a_section_listing_them(
         self, logged_in_client
     ):

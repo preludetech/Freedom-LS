@@ -61,7 +61,7 @@
                         {% endif %}
                         {% for quiz in detail.quiz_results %}
                             <div class="flex flex-col gap-1">
-                                <c-panel-heading tag="h4">{{ quiz.title }}</c-panel-heading>
+                                <c-panel-heading tag="h4" class="text-base">{{ quiz.title }}</c-panel-heading>
                                 {% partialdef attempt_number %}
                                     {% if attempt.form_progress_id in openable_sitting_ids %}
                                         {% resolve_url_path_template attempt 'educator_interface:interface' 'quiz-attempts/{form_progress_id}' as attempt_url %}
