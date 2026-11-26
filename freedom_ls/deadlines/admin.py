@@ -25,6 +25,7 @@ from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import SafeString
 
+from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.base.date_display import days_text, display_date
 from freedom_ls.deadlines.admin_views import resume_view
 from freedom_ls.deadlines.consequences import access_end_instant
@@ -498,3 +499,7 @@ class LearnerCourseRegistrationDeadlineConfigAdmin(_DeadlineConfigAdmin):
         "learner_registration__course",
     ]
     search_fields = ["learner_registration__learner__user__email"]
+
+
+# A user force delete takes these rows, though their admins refuse delete.
+USER_ERASURE_CASCADE_MODELS.update({CoursePause, DeadlineExtension})

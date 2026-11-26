@@ -32,3 +32,4 @@ freedom_ls/accounts/tests/test_allauth_pages.py  # tests of allauth's management
 freedom_ls/deadlines/tests/invariants/  # loads content through content_save and checks what a moved part leaves behind in deadlines; mirrors no module
 freedom_ls/learner_progress/tests/invariants/  # loads content through content_save and checks progress after a part moves to reference; mirrors no module
 freedom_ls/form_engine/tests/test_answer_templates.py  # tests of the answers/ templates, which have no Python module
+freedom_ls/deadlines/tests/test_force_delete.py  # checks that the learner_progress user force delete takes deadline rows; deadlines has no force-delete module

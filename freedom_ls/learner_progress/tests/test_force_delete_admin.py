@@ -14,6 +14,9 @@ from freedom_ls.accounts import admin as accounts_admin
 from freedom_ls.accounts.factories import LegalConsentFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import REASON_LENGTH, AuditLogEntry
+from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.learner_progress.factories import CourseFormAttemptFactory
+from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
@@ -321,3 +324,20 @@ def test_a_superuser_force_deleting_their_own_account_gets_a_redirect(
     assert response.url == reverse("admin:freedom_ls_accounts_user_changelist")
     assert not User._base_manager.filter(pk=actor.pk).exists()
     assert entry.actor_label == actor.display_name
+
+
+def test_page_counts_a_course_form_attempt_once_and_post_deletes_it(
+    staff_client,
+) -> None:
+    attempt = CourseFormAttemptFactory()
+    user = attempt.course_progress.learner.user
+
+    page = staff_client.get(_url(user))
+    response = staff_client.post(_url(user), {"ids": str(user.pk), "reason": "Asked"})
+
+    counts = page.context["plan"].counts()
+    assert counts[str(CourseFormAttempt._meta.verbose_name_plural)] == 1
+    assert counts[str(FormProgress._meta.verbose_name_plural)] == 1
+    assert response.status_code == 302
+    assert not CourseFormAttempt._base_manager.filter(pk=attempt.pk).exists()
+    assert not User.objects.filter(pk=user.pk).exists()

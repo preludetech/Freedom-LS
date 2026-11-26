@@ -7,6 +7,7 @@ from django.urls import URLPattern, path, reverse
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
+from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.site_aware_models.admin import (
     ReadOnlyAdminMixin,
     ReadOnlyInline,
@@ -307,3 +308,7 @@ class QuestionAnswerFileAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
             )
         ]
         return custom + list(super().get_urls())
+
+
+# A user force delete takes these rows, though their admins refuse delete.
+USER_ERASURE_CASCADE_MODELS.update({FormProgress, QuestionAnswer, QuestionAnswerFile})

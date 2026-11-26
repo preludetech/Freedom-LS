@@ -30,8 +30,8 @@ from freedom_ls.learner_progress.force_delete import (
     ForceDeletePlan,
     build_plan,
     force_delete_users,
+    user_progress_roots,
 )
-from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.site_aware_models.admin import admin_page_context, ids_from
 
 FORCE_DELETE_URL_NAME = "freedom_ls_accounts_user_force_delete"
@@ -163,10 +163,9 @@ def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpR
 def _plan_for(
     users: Sequence[Model], request: HttpRequest, admin_site: AdminSite
 ) -> ForceDeletePlan:
-    progress = list(CourseProgress._base_manager.filter(learner__user__in=users))
     return build_plan(
         targets=users,
-        progress_roots=progress,
+        progress_roots=user_progress_roots(users),
         request=request,
         admin_site=admin_site,
     )

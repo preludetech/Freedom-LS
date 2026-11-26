@@ -13,6 +13,7 @@ from django.http import HttpRequest
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.accounts.admin import UserAdmin as AccountsUserAdmin
 from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.enums import FormStrategy
@@ -27,6 +28,9 @@ from .force_delete_admin import ForceDeleteAdminMixin
 from .models import CourseFormAttempt, CourseProgress, TopicProgress
 
 admin.site.unregister(User)
+
+# A user force delete takes these rows, though their admins refuse delete.
+USER_ERASURE_CASCADE_MODELS.update({CourseProgress, TopicProgress, CourseFormAttempt})
 
 
 @admin.register(User)

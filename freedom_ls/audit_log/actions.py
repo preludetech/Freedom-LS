@@ -156,6 +156,7 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
         "learner.renamed", "Learner renamed", _describe_rename, group="Learners"
     ),
     AuditAction("learner.deactivated", "Learner deactivated", group="Learners"),
+    AuditAction("learner.removed", "Learner force deleted", group="Learners"),
     AuditAction(
         "learner.reactivated",
         "Learner reactivated",

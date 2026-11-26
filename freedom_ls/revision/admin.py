@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.http import HttpRequest
 
+from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.revision.models import RevisionReview, RevisionSchedule
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
@@ -35,3 +36,7 @@ class RevisionReviewAdmin(_ReadOnlyAdmin):
     list_display = ["user", "question", "reviewed_at", "was_correct", "guessed"]
     list_filter = ["was_correct", "guessed"]
     search_fields = ["user__email"]
+
+
+# A user force delete takes these rows, though their admins refuse delete.
+USER_ERASURE_CASCADE_MODELS.update({RevisionSchedule, RevisionReview})

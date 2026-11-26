@@ -19,7 +19,10 @@ from freedom_ls.accounts import admin as accounts_admin
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.types import JSONValue
 from freedom_ls.audit_log.writer import record_entry
-from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.learner_management.learner_actions import record_learner_entry
+from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
 
 
 @dataclass(frozen=True)
@@ -72,7 +75,13 @@ class ForceDeleteBlockedError(Exception):
 
 def _collect(roots: Sequence[Model], using: str) -> NestedObjects:
     collector = NestedObjects(using=using)
-    collector.collect(roots)
+    # `collect` reads its relations off the first object's model, so roots of
+    # different models are collected one model at a time.
+    by_model: dict[type[Model], list[Model]] = {}
+    for root in roots:
+        by_model.setdefault(type(root), []).append(root)
+    for model_roots in by_model.values():
+        collector.collect(model_roots)
     return collector
 
 
@@ -124,6 +133,44 @@ def build_plan(
     return ForceDeletePlan(objects=objects, blocking_models=tuple(sorted(blocking)))
 
 
+def learner_progress_roots(learners: Sequence[Learner]) -> list[Model]:
+    """The course progress records of these learners, and the form progress
+    records those records' course form attempts link.
+
+    Collection from a course progress record stops at the PROTECT edge into
+    its learner, so these are collected as roots of their own. The form
+    progress ids are read now, before any delete: the course form attempts
+    that link them go with the course progress.
+    """
+    progress = list(CourseProgress._base_manager.filter(learner__in=learners))
+    form_progress_ids = CourseFormAttempt._base_manager.filter(
+        course_progress__in=progress
+    ).values_list("form_progress_id", flat=True)
+    return [*progress, *FormProgress._base_manager.filter(pk__in=form_progress_ids)]
+
+
+def user_progress_roots(users: Sequence[Model]) -> list[Model]:
+    """`learner_progress_roots` for every learner row of these users."""
+    return learner_progress_roots(list(Learner._base_manager.filter(user__in=users)))
+
+
+def counts_for(
+    target: Model,
+    progress_roots: Sequence[Model],
+    *,
+    request: HttpRequest,
+    admin_site: AdminSite,
+) -> dict[str, JSONValue]:
+    """What a force delete of this one target takes, per model."""
+    plan = build_plan(
+        targets=[target],
+        progress_roots=progress_roots,
+        request=request,
+        admin_site=admin_site,
+    )
+    return {**plan.counts()}
+
+
 def force_delete_users(
     users: Sequence[User],
     *,
@@ -132,8 +179,10 @@ def force_delete_users(
     request: HttpRequest,
     admin_site: AdminSite,
 ) -> int:
-    """Delete the users and their rows in one transaction, one entry per user.
+    """Delete the users and their rows in one transaction.
 
+    Each user gets one `user.deleted` entry with no organisation, and each of
+    their learners one `learner.removed` entry in that learner's organisation.
     The users are re-read under a lock and the plan rebuilt inside the
     transaction, so a row added since the confirmation page was shown is
     counted, and a model that now blocks stops the delete. Everything reads
@@ -143,35 +192,59 @@ def force_delete_users(
         locked = list(
             User._base_manager.filter(pk__in=[u.pk for u in users]).select_for_update()
         )
-        progress = CourseProgress._base_manager.filter(learner__user__in=locked)
+        learners = list(
+            Learner._base_manager.filter(user__in=locked).select_related(
+                "user", "organisation"
+            )
+        )
         plan = build_plan(
             targets=locked,
-            progress_roots=list(progress),
+            progress_roots=learner_progress_roots(learners),
             request=request,
             admin_site=admin_site,
         )
         if not plan.can_run:
             raise ForceDeleteBlockedError(plan.blocking_models)
         for user in locked:
-            own_progress = list(CourseProgress._base_manager.filter(learner__user=user))
-            counts: dict[str, JSONValue] = {
-                **build_plan(
-                    targets=[user],
-                    progress_roots=own_progress,
-                    request=request,
-                    admin_site=admin_site,
-                ).counts()
-            }
+            own_learners = [
+                learner for learner in learners if learner.user_id == user.pk
+            ]
             record_entry(
                 action="user.deleted",
                 actor=actor,
                 target=user,
                 target_label=user.display_name,
                 organisation=None,
+                subjects=own_learners,
                 reason=reason,
-                details={"counts": counts},
+                details={
+                    "counts": counts_for(
+                        user,
+                        learner_progress_roots(own_learners),
+                        request=request,
+                        admin_site=admin_site,
+                    ),
+                    "organisations": [
+                        *sorted({learner.organisation.name for learner in own_learners})
+                    ],
+                },
             )
+            for learner in own_learners:
+                record_learner_entry(
+                    learner,
+                    "learner.removed",
+                    actor,
+                    reason=reason,
+                    details={
+                        "counts": counts_for(
+                            learner,
+                            learner_progress_roots([learner]),
+                            request=request,
+                            admin_site=admin_site,
+                        )
+                    },
+                )
         # CourseProgress.learner is PROTECT, so the progress records go first.
-        progress.delete()
+        CourseProgress._base_manager.filter(learner__in=learners).delete()
         User._base_manager.filter(pk__in=[u.pk for u in locked]).delete()
     return len(locked)

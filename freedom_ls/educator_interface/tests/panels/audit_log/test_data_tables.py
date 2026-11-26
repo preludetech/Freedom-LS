@@ -11,8 +11,9 @@ import pytest
 import time_machine
 from pytest_django.fixtures import DjangoAssertNumQueries
 
+from django.contrib import admin
 from django.http import QueryDict
-from django.test import Client
+from django.test import Client, RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -50,6 +51,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
     StaffMemberFactory,
 )
+from freedom_ls.learner_progress.force_delete import force_delete_users
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 
@@ -779,3 +781,31 @@ def test_an_export_entry_shows_on_the_audit_log_and_not_on_the_learner_history(
         True,
         1,
     )
+
+
+@pytest.mark.django_db
+def test_a_force_deleted_learner_appears_in_their_own_organisations_audit_log(
+    staff_client: Client,
+):
+    user = cast(User, UserFactory())
+    organisation = OrganisationFactory()
+    other = OrganisationFactory()
+    LearnerFactory(user=user, organisation=organisation)
+    LearnerFactory(user=user, organisation=other)
+    actor = UserFactory(superuser=True)
+    request = RequestFactory().post("/")
+    request.user = actor
+
+    force_delete_users(
+        [user],
+        actor=actor,
+        reason="Erasure requested",
+        request=request,
+        admin_site=admin.site,
+    )
+
+    ours = _audit_log_rows(_get_document(staff_client, _audit_log_url(organisation)))
+    theirs = _audit_log_rows(_get_document(staff_client, _audit_log_url(other)))
+    assert len(ours) == 1
+    assert "Learner force deleted" in " ".join(ours[0])
+    assert len(theirs) == 1
