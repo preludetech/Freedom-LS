@@ -20,8 +20,6 @@ from django.test import override_settings
 from freedom_ls.content_base.models import BaseContent
 from freedom_ls.content_engine.factories import (
     ArticleFactory,
-
-
     ContentCollectionItemFactory,
     CourseCategoryFactory,
     CourseFactory,
