@@ -3173,7 +3173,7 @@ def test_malformed_remote_entry_exits_2_naming_the_key(
     write_tree(tmp_path, alpha_app() | {"pyproject.toml": table})
 
     # Act
-    result = run_script(SCRIPT, tmp_path, "docs/a.md")
+    result = run_script(SCRIPT, tmp_path, "docs/a.md", environment=remote_environment())
 
     # Assert
     assert result.returncode == 2
