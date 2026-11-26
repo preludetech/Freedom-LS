@@ -26,10 +26,10 @@
                 {% for rows in plan.listing %}
                     <details class="group border border-base-200 rounded-default">
                         <summary class="flex items-center justify-between cursor-pointer px-3 py-2">
-                            <span>{{ rows.name }} ({{ rows.count }})</span>
+                            <span>{{ rows.name|capfirst }} ({{ rows.count }})</span>
                             <c-icon name="dropdown" class="size-4 group-open:rotate-180" />
                         </summary>
-                        <div class="max-h-96 overflow-y-auto px-3 pb-2" role="region" tabindex="0" aria-label="{{ rows.name }}">
+                        <div class="max-h-96 overflow-y-auto px-3 pb-2" role="region" tabindex="0" aria-label="{{ rows.name|capfirst }}">
                             <ul class="list-disc pl-6">
                                 {% for label in rows.labels %}
                                     <li>{{ label }}</li>
@@ -46,7 +46,7 @@
                 <h2 class="font-semibold">Also erased, found by email address</h2>
                 <ul class="mt-2 list-disc pl-6">
                     {% for name, count in plan.unlinked_counts.items %}
-                        <li>{{ name }} ({{ count }})</li>
+                        <li>{{ name|capfirst }} ({{ count }})</li>
                     {% endfor %}
                 </ul>
             </section>

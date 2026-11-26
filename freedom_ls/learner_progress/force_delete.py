@@ -46,7 +46,7 @@ class ForceDeletePlan:
             str(model._meta.verbose_name_plural): len(rows)
             for model, rows in self.objects.items()
         }
-        return dict(sorted(counts.items()))
+        return dict(sorted(counts.items(), key=_by_casefold))
 
     def unlinked_counts(self) -> dict[str, int]:
         """Rows no foreign key reaches, per plural verbose name, sorted by it."""
@@ -64,7 +64,7 @@ class ForceDeletePlan:
                 count=len(rows),
                 labels=tuple(sorted(str(row) for row in rows)),
             )
-            for name, rows in sorted(rows_by_name.items())
+            for name, rows in sorted(rows_by_name.items(), key=_by_casefold)
         ]
 
     @property
@@ -78,9 +78,13 @@ class ForceDeleteBlockedError(Exception):
         self.blocking_models = blocking_models
 
 
+def _by_casefold[T](item: tuple[str, T]) -> str:
+    return item[0].casefold()
+
+
 def _by_name(counts: dict[type[Model], int]) -> dict[str, int]:
     named = {str(model._meta.verbose_name_plural): n for model, n in counts.items()}
-    return dict(sorted(named.items()))
+    return dict(sorted(named.items(), key=_by_casefold))
 
 
 def unlinked_rows(users: Sequence[User]) -> dict[type[Model], int]:

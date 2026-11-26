@@ -212,7 +212,7 @@ def test_page_lists_each_model_in_a_labelled_scrollable_region(staff_client) -> 
     response = staff_client.get(_url(user))
 
     body = response.content.decode()
-    assert 'aria-label="legal consents"' in body
+    assert 'aria-label="Legal consents"' in body
     assert 'role="region"' in body
     assert 'data-icon="dropdown"' in body
 
@@ -359,7 +359,7 @@ def test_page_lists_unlinked_rows_with_their_count(staff_client, monkeypatch) ->
     body = response.content.decode()
     assert calls[0] == [user]
     assert "Also erased, found by email address" in body
-    assert "learners (4)" in body
+    assert "Learners (4)" in body
 
 
 def test_page_does_not_list_an_unlinked_model_with_a_zero_count(
@@ -514,3 +514,23 @@ def test_reason_label_is_a_block_so_it_sits_above_the_textarea(staff_client) -> 
     classes = re.search(r'class="([^"]*)"', label.group(0))
     assert classes is not None
     assert "block" in classes.group(1).split()
+
+
+def test_model_rows_read_in_sentence_case_and_sort_regardless_of_case(
+    staff_client,
+) -> None:
+    """Rows used to show the raw lower case model name and sort capitals first."""
+    user = UserFactory()
+    LegalConsentFactory(user=user)
+    CourseFormAttemptFactory(
+        course_progress__learner=LearnerFactory(user=user),
+    )
+
+    body = staff_client.get(_url(user)).content.decode()
+
+    assert "Users (1)" in body
+    assert "Legal consents (1)" in body
+    assert "users (1)" not in body
+    names = re.findall(r"<span>([^<(]+) \(\d+\)</span>", body)
+    assert names == sorted(names, key=str.casefold)
+    assert "Form progress records" in names
