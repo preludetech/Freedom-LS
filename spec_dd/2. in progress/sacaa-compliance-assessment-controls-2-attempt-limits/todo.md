@@ -5,8 +5,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 1. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
+- [ ] (user) Run `/sdd:roadmap` on main after this branch lands, to add `sacaa-compliance-assessment-controls-8-educator-attempt-status` (new idea, depends on this spec) to the roadmap
 
 ## 2. Plan
 

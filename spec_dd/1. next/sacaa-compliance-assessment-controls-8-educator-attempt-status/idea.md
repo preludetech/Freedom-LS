@@ -5,9 +5,9 @@ Spec 8 in the SACAA assessment controls effort. Read the "SACAA assessment contr
 
 ## What
 
-For a learner at a limited quiz, educators see how many attempts the learner has used, how many are
-left, whether the quiz is locked, and when the next attempt opens while a wait is running. A limited
-quiz is one that sets `max_attempts` or `retry_wait_minutes`, which
+For a learner at an attempt-limited quiz, educators see how many attempts the learner has used, how
+many are left, whether no attempts are left, and when the next attempt opens while a wait is
+running. An attempt-limited quiz is one that sets `max_attempts` or `retry_wait_minutes`, which
 `sacaa-compliance-assessment-controls-2-attempt-limits` adds.
 
 ## Why
@@ -22,7 +22,7 @@ item 3). The user asked for it as a separate spec while the attempt limits spec 
 
 - The view is read only. Educators cannot grant an extra attempt, reset a count or override a limit.
   Restarts stay in spec 7.
-- The numbers come from `attempt_allowance` in `learner_progress/attempts.py`, the one rule function
+- The numbers come from `attempt_decision` in `learner_progress/attempts.py`, the one rule function
   spec 2 adds. This spec adds no rule and no stored counter.
 
 ## Open until the spec
@@ -33,4 +33,4 @@ item 3). The user asked for it as a separate spec while the attempt limits spec 
 
 ## Depends on
 
-- `sacaa-compliance-assessment-controls-2-attempt-limits`, for the fields and `attempt_allowance`.
+- `sacaa-compliance-assessment-controls-2-attempt-limits`, for the fields and `attempt_decision`.
