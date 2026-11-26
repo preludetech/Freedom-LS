@@ -46,7 +46,7 @@ and the column budget is the constraint that decides whether a table splits.
         <td class="cell-learner">{{ row.full_name }}</td>
         {% if not table.continued %}
         <td class="cell-completion">{% include "reports/partials/completion_bar.html" with percentage=row.completion_percentage completed=row.completed_item_count total=row.total_item_count only %}</td>
-        <td class="cell-last-item">{% if row.last_completed_title %}{{ row.last_completed_title }}{% else %}—{% endif %}</td>
+        <td class="cell-last-item">{% if row.last_completed_title %}{{ row.last_completed_title }}{% if row.last_completed_retired %} <span class="chip chip-neutral">Retired</span>{% endif %}{% else %}—{% endif %}</td>
         <td class="cell-when">{% if row.last_completed_at %}<c-date :value="row.last_completed_at" />{% else %}—{% endif %}</td>
         {% endif %}
         {% for result in row.cells %}

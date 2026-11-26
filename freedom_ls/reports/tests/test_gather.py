@@ -1804,6 +1804,7 @@ class TestLatestCompletion:
         assert _latest_completion([early, late], LEARNER_ID, progress) == (
             "Late",
             JAN_2,
+            False,
         )
 
     def test_a_topic_and_a_form_compete_on_timestamp_alone(self) -> None:
@@ -1819,6 +1820,7 @@ class TestLatestCompletion:
         assert _latest_completion([topic, quiz], LEARNER_ID, progress) == (
             "Stars",
             JAN_2,
+            False,
         )
 
     def test_a_form_with_no_completed_attempt_is_ignored(self) -> None:
@@ -1828,7 +1830,7 @@ class TestLatestCompletion:
             latest_by_learner_form={(LEARNER_ID, quiz.id): started}
         )
 
-        assert _latest_completion([quiz], LEARNER_ID, progress) == (None, None)
+        assert _latest_completion([quiz], LEARNER_ID, progress) == (None, None, False)
 
     def test_a_failed_quiz_sitting_is_still_the_last_activity(self) -> None:
         """Sitting a quiz is activity whatever the verdict, so a failed sitting
@@ -1844,13 +1846,25 @@ class TestLatestCompletion:
         assert _latest_completion([topic, quiz], LEARNER_ID, progress) == (
             "Astronomy Quiz",
             JAN_2,
+            False,
         )
 
     def test_a_learner_with_no_completions_has_no_title_and_no_time(self) -> None:
         assert _latest_completion([a_topic()], LEARNER_ID, a_progress_index()) == (
             None,
             None,
+            False,
         )
+
+
+class TestLatestCompletionRetiredFlag:
+    def test_the_flag_is_set_when_the_latest_item_is_retired(self) -> None:
+        gone = a_topic("Gone")
+        progress = a_progress_index(topic_complete_time={(LEARNER_ID, gone.id): JAN_1})
+
+        assert _latest_completion(
+            [gone], LEARNER_ID, progress, frozenset({gone.id})
+        ) == ("Gone", JAN_1, True)
 
 
 class TestCompletedItems:
@@ -3219,7 +3233,36 @@ class TestRetiredContentInTheReport:
         assert row.completion_percentage == 50
         detail = data.learners[0]
         assert (detail.completed_item_count, detail.total_item_count) == (1, 2)
-        assert [item.title for item in detail.completed_items] == ["Live Topic"]
+
+    def test_a_retired_topic_a_learner_completed_is_still_listed_and_marked_retired(
+        self, mock_site_context: Site
+    ) -> None:
+        """Items completed kept only live items, hiding progress recorded on a topic
+        later retired, and the last-completed name carried no retired mark."""
+        course, live_topic, gone_topic, _live_quiz, _gone_quiz = (
+            _course_with_a_topic_and_quiz_each_to_retire()
+        )
+        cohort, record = _one_learner_cohort(course)
+        now = timezone.now()
+        topic_progress(record, live_topic, complete_time=now - timedelta(days=2))
+        topic_progress(record, gone_topic, complete_time=now - timedelta(days=1))
+        retired(gone_topic)
+
+        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
+
+        detail = data.learners[0]
+        assert [(i.title, i.retired) for i in detail.completed_items] == [
+            ("Live Topic", False),
+            ("Gone Topic", True),
+        ]
+        row = data.courses[0].learner_rows[0]
+        assert (row.last_completed_title, row.last_completed_retired) == (
+            "Gone Topic",
+            True,
+        )
+        assert (row.completed_item_count, row.total_item_count) == (1, 3)
+        summary_row = data.courses[0].summary_tables[0].rows[0]
+        assert summary_row.last_completed_retired is True
 
     def test_content_under_a_retired_part_is_flagged_retired_and_out_of_the_completion_denominator(
         self, mock_site_context: Site
@@ -3425,10 +3468,12 @@ class TestCompletionFiguresSkipRetiredItems:
 
         assert counts == (1, 1)
 
-    def test_a_completed_retired_item_is_not_listed_as_completed(self) -> None:
+    def test_a_completed_retired_item_is_listed_as_completed_and_marked_retired(
+        self,
+    ) -> None:
         gone = a_topic("Gone")
         progress = a_progress_index(topic_complete_time={(LEARNER_ID, gone.id): JAN_1})
 
         completed = _completed_items([gone], LEARNER_ID, progress, frozenset({gone.id}))
 
-        assert completed == []
+        assert [(item.title, item.retired) for item in completed] == [("Gone", True)]

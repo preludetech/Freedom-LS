@@ -127,6 +127,9 @@ class CompletedItem:
     title: str
     completed_at: datetime
     is_quiz: bool
+    # The item is one a content save retired. It stays listed so recorded
+    # progress is still readable, but it counts toward no completion figure.
+    retired: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -150,6 +153,8 @@ class LearnerRow:
     last_completed_title: str | None
     last_completed_at: datetime | None
     quiz_cells: dict[UUID, QuizResult | None]
+    # The last item completed is one a content save retired.
+    last_completed_retired: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -163,6 +168,8 @@ class SummaryRow:
     last_completed_at: datetime | None
     # One entry per quiz in the owning SummaryTable, in the same order.
     cells: list[QuizResult | None]
+    # The last item completed is one a content save retired.
+    last_completed_retired: bool = False
 
 
 @dataclasses.dataclass(frozen=True)

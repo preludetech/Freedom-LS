@@ -45,7 +45,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
   <ul class="items-list">
     {% for item in learner.completed_items %}
     <li>
-      <span class="item-title">{{ item.title }}{% if item.is_quiz %} <span class="item-kind">(quiz)</span>{% endif %}</span>
+      <span class="item-title">{{ item.title }}{% if item.is_quiz %} <span class="item-kind">(quiz)</span>{% endif %}{% if item.retired %} <span class="chip chip-neutral">Retired</span>{% endif %}</span>
       <span class="item-date"><c-date :value="item.completed_at" /></span>
     </li>
     {% endfor %}

@@ -323,9 +323,12 @@ def _completion_counts(
 
 
 def _latest_completion(
-    items: list[Topic | Form], learner_id: UUID, progress: ProgressIndex
-) -> tuple[str | None, datetime | None]:
-    """Most recent completion timestamp and title among the given items for one learner.
+    items: list[Topic | Form],
+    learner_id: UUID,
+    progress: ProgressIndex,
+    retired_item_ids: frozenset[UUID] = frozenset(),
+) -> tuple[str | None, datetime | None, bool]:
+    """Most recent completion title, timestamp and retired flag among the given items.
 
     Never CourseProgress.last_accessed_item — that tracks last viewed, not
     last completed.
@@ -336,6 +339,7 @@ def _latest_completion(
     """
     best_title: str | None = None
     best_at: datetime | None = None
+    best_retired = False
     for item in items:
         if isinstance(item, Topic):
             at = progress.topics.complete_time.get((learner_id, item.id))
@@ -348,7 +352,8 @@ def _latest_completion(
             )
         if at is not None and (best_at is None or at > best_at):
             best_at, best_title = at, item.title
-    return best_title, best_at
+            best_retired = item.id in retired_item_ids
+    return best_title, best_at, best_retired
 
 
 def _completed_items(
@@ -357,7 +362,6 @@ def _completed_items(
     progress: ProgressIndex,
     retired_item_ids: frozenset[UUID] = frozenset(),
 ) -> list[CompletedItem]:
-    items = _live_items(items, retired_item_ids)
     completed: list[CompletedItem] = []
     completed_form_ids = progress.forms.completed_form_ids_by_learner.get(
         learner_id, set()
@@ -367,7 +371,12 @@ def _completed_items(
             at = progress.topics.complete_time.get((learner_id, item.id))
             if at is not None:
                 completed.append(
-                    CompletedItem(title=item.title, completed_at=at, is_quiz=False)
+                    CompletedItem(
+                        title=item.title,
+                        completed_at=at,
+                        is_quiz=False,
+                        retired=item.id in retired_item_ids,
+                    )
                 )
         else:
             key = (learner_id, item.id)
@@ -382,6 +391,7 @@ def _completed_items(
                             title=item.title,
                             completed_at=fp.completed_time,
                             is_quiz=item.strategy == FormStrategy.QUIZ,
+                            retired=item.id in retired_item_ids,
                         )
                     )
     return completed
@@ -647,7 +657,9 @@ def _build_learner_row(
     completed_count, total_count = _completion_counts(
         items, learner_id, progress, retired_item_ids
     )
-    last_title, last_at = _latest_completion(items, learner_id, progress)
+    last_title, last_at, last_retired = _latest_completion(
+        items, learner_id, progress, retired_item_ids
+    )
     quiz_cells: dict[UUID, QuizResult | None] = {
         column.form_id: _quiz_result_for(
             learner_id, catalogue.forms_by_id[column.form_id], progress.forms
@@ -663,6 +675,7 @@ def _build_learner_row(
         last_completed_title=last_title,
         last_completed_at=last_at,
         quiz_cells=quiz_cells,
+        last_completed_retired=last_retired,
     )
 
 
@@ -683,6 +696,7 @@ def _build_summary_tables(
                     last_completed_title=row.last_completed_title,
                     last_completed_at=row.last_completed_at,
                     cells=[row.quiz_cells[column.form_id] for column in chunk],
+                    last_completed_retired=row.last_completed_retired,
                 )
                 for row in learner_rows
             ],
@@ -768,7 +782,9 @@ def _build_learner_detail(
     completed_count, total_count = _completion_counts(
         all_items, learner_id, progress, catalogue.retired_item_ids
     )
-    last_title, last_at = _latest_completion(all_items, learner_id, progress)
+    last_title, last_at, _last_retired = _latest_completion(
+        all_items, learner_id, progress, catalogue.retired_item_ids
+    )
     completed_items = _completed_items(
         all_items, learner_id, progress, catalogue.retired_item_ids
     )
@@ -1100,7 +1116,9 @@ def _build_course_detail(
         completed_count, total_count = _completion_counts(
             items, record_id, progress, retired_item_ids
         )
-        last_title, last_at = _latest_completion(items, record_id, progress)
+        last_title, last_at, _last_retired = _latest_completion(
+            items, record_id, progress, retired_item_ids
+        )
         completed_items = _completed_items(items, record_id, progress, retired_item_ids)
         quiz_results = [
             result
