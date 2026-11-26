@@ -225,9 +225,10 @@ Notes that do not fit a row:
 
 - `panel-button`: a wrapper that draws its own button classes instead of `panel-btn` copies three
   framework rules onto them, or the framework's buttons lose them: the small size inside
-  `.panel-data-table td` and `.panel-data-table-card`, the 44px height inside `[data-modal-footer]`
-  below md, and `whitespace-nowrap` inside `.panel-data-table-actions`. FLS's
-  `tailwind.components.css` copies them onto `.btn`.
+  `.panel-data-table td` and `.panel-data-table-card`, the small size inside `[data-modal-footer]`
+  below md (`max-md:px-2 max-md:py-1.5 max-md:text-sm`, with no height set, so the footer's buttons
+  match every other small button on a phone), and `whitespace-nowrap` inside
+  `.panel-data-table-actions`. FLS's `tailwind.components.css` copies them onto `.btn`.
 - `panel-dropdown-menu`: `trigger_variant` and `trigger_size` are the trigger button's `variant` and
   `size`. A wrapper maps them to whatever its own button takes. The framework passes `size="small"` to
   get the small button.
