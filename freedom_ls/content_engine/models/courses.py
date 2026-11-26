@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import defaultdict
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
@@ -738,3 +740,53 @@ class CourseReferencePart(SiteAwareModel):
 
     def __str__(self) -> str:
         return f"{self.course_part} as reference in {self.course}"
+
+
+def prefetch_collection_items(collections: Iterable[Course | CoursePart]) -> None:
+    """Fill each collection's collection_items() memo, and its nested parts', in
+    one query per nesting level plus one per child content type, instead of a
+    query per collection.
+
+    A collection whose memo is already set is left alone. Every collection
+    passed in ends up with a memo, an empty list when it has no items. The
+    parts found among the children are the instances the items hold, so the
+    memos land on the objects a later traversal reads.
+    """
+    pending = [c for c in collections if not hasattr(c, "_collection_items_cache")]
+    while pending:
+        by_content_type: dict[int, dict[object, Course | CoursePart]] = defaultdict(
+            dict
+        )
+        for collection in pending:
+            content_type = DjangoContentType.objects.get_for_model(collection)
+            by_content_type[content_type.pk][collection.pk] = collection
+
+        match = Q()
+        for content_type_id, collections_by_pk in by_content_type.items():
+            match |= Q(
+                collection_type_id=content_type_id,
+                collection_id__in=list(collections_by_pk),
+            )
+
+        items_by_collection: dict[tuple[int, object], list[ContentCollectionItem]] = (
+            defaultdict(list)
+        )
+        for item in ContentCollectionItem.objects.filter(match).prefetch_related(
+            "child"
+        ):
+            items_by_collection[(item.collection_type_id, item.collection_id)].append(
+                item
+            )
+
+        next_pending: list[Course | CoursePart] = []
+        for content_type_id, collections_by_pk in by_content_type.items():
+            for pk, collection in collections_by_pk.items():
+                items = items_by_collection.get((content_type_id, pk), [])
+                collection._collection_items_cache = items
+                next_pending.extend(
+                    item.child
+                    for item in items
+                    if isinstance(item.child, CoursePart)
+                    and not hasattr(item.child, "_collection_items_cache")
+                )
+        pending = next_pending

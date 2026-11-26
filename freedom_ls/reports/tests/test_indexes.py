@@ -16,9 +16,12 @@ import pytest
 import time_machine
 from PIL import Image
 
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.files.base import ContentFile
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -470,6 +473,40 @@ class TestBuildCourseCatalogue:
             live_in.id: frozenset(),
         }
         assert catalogue.retired_item_ids == frozenset()
+
+    def test_the_query_count_does_not_grow_with_the_number_of_courses(
+        self, mock_site_context, django_assert_max_num_queries
+    ):
+        def registrations_for(course_count: int) -> list[LearnerCourseRegistration]:
+            registrations = []
+            for _ in range(course_count):
+                course = CourseFactory()
+                part = CoursePartFactory()
+                _attach(course, part, order=0)
+                _attach(part, TopicFactory(), order=0)
+                _attach(part, FormFactory(), order=1)
+                _attach(course, TopicFactory(), order=1)
+                _attach(course, FormFactory(), order=2)
+                registration: LearnerCourseRegistration = (
+                    LearnerCourseRegistrationFactory(course=course)
+                )
+                registrations.append(registration)
+            return registrations
+
+        def measure(registrations: list[LearnerCourseRegistration]) -> int:
+            ContentType.objects.clear_cache()
+            with CaptureQueriesContext(connection) as queries:
+                build_course_catalogue(registrations)
+            return len(queries)
+
+        one = registrations_for(1)
+        four = registrations_for(4)
+
+        single_course_queries = measure(one)
+
+        with django_assert_max_num_queries(single_course_queries):
+            ContentType.objects.clear_cache()
+            build_course_catalogue(four)
 
 
 class TestRegistrationIds:

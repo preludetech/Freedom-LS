@@ -30,6 +30,7 @@ from django.db.models.functions import RowNumber
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Topic
+from freedom_ls.content_engine.models.courses import prefetch_collection_items
 from freedom_ls.form_engine.models import (
     FREE_TEXT_QUESTION_TYPES,
     Form,
@@ -275,7 +276,12 @@ def build_course_catalogue(
     ordered_quiz_form_ids: list[UUID] = []
     retired_item_ids_by_course: dict[UUID, frozenset[UUID]] = {}
     live_anywhere: set[UUID] = set()
+    # One Course instance per course, so a course registered several times
+    # is prefetched once and every registration reads the same memo.
+    courses_by_id = {reg.course_id: reg.course for reg in registrations}
+    prefetch_collection_items(courses_by_id.values())
     for reg in registrations:
+        reg.course = courses_by_id[reg.course_id]
         items = [
             item
             for item in reg.course.viewable_items(include_retired=True)

@@ -25,6 +25,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
+    CoursePartFactory,
     TopicFactory,
 )
 from freedom_ls.educator_interface.tests.helpers import (
@@ -537,6 +538,38 @@ class TestLearnerCoursesPanel:
             return len(queries)
 
         assert tab_queries(20) <= tab_queries(2)
+
+    def test_the_tab_costs_the_same_queries_for_four_courses_as_for_one(
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
+        def tab_queries(course_count: int) -> int:
+            user = UserFactory()
+            for number in range(course_count):
+                course = CourseFactory()
+                part = CoursePartFactory()
+                ContentCollectionItemFactory(
+                    collection_object=course, child_object=part, order=0
+                )
+                ContentCollectionItemFactory(
+                    collection_object=part, child_object=TopicFactory(), order=0
+                )
+                ContentCollectionItemFactory(
+                    collection_object=part,
+                    child_object=quiz_form(f"Quiz {course_count}-{number}", 50),
+                    order=1,
+                )
+                ContentCollectionItemFactory(
+                    collection_object=course, child_object=TopicFactory(), order=1
+                )
+                record = course_progress_record(course, user)
+            learner = record.learner
+            client = logged_in_client(_org_admin(learner.organisation))
+            ContentType.objects.clear_cache()
+            with CaptureQueriesContext(connection) as queries:
+                _courses_panel_html(client, learner.organisation.slug, learner)
+            return len(queries)
+
+        assert tab_queries(4) <= tab_queries(1)
 
     def test_a_course_with_nothing_completed_says_so_and_flags_no_activity(
         self, logged_in_client

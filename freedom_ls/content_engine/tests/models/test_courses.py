@@ -20,6 +20,9 @@ from django.test import override_settings
 from freedom_ls.content_base.models import BaseContent
 from freedom_ls.content_engine.factories import (
     ArticleFactory,
+
+
+    ContentCollectionItemFactory,
     CourseCategoryFactory,
     CourseFactory,
     CoursePartFactory,
@@ -39,6 +42,7 @@ from freedom_ls.content_engine.models import (
     PriceKind,
     Topic,
 )
+from freedom_ls.content_engine.models.courses import prefetch_collection_items
 from freedom_ls.content_engine.prices import CoursePrice
 from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.validate import parse_single_file
@@ -1482,3 +1486,68 @@ def test_label_for_puts_the_retired_mark_after_the_owners(
         course.label_for(OrganisationFactory(), mark_retired=True)
         == "Safety (Northwind Logistics) (Retired)"
     )
+
+
+# prefetch_collection_items: filling the collection_items() memo for many collections at once.
+
+
+def _course_with_part(part_title: str) -> tuple[Course, CoursePart, list]:
+    course: Course = CourseFactory()
+    first = TopicFactory()
+    part: CoursePart = CoursePartFactory(title=part_title)
+    nested = FormFactory()
+    last = TopicFactory()
+    ContentCollectionItemFactory(collection_object=course, child_object=first, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=part, order=1)
+    ContentCollectionItemFactory(collection_object=part, child_object=nested, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=last, order=2)
+    return course, part, [first, nested, last]
+
+
+@pytest.mark.django_db
+def test_a_prefetched_course_lists_its_viewable_items_without_a_query(
+    mock_site_context, django_assert_num_queries
+):
+    course_a, _, _ = _course_with_part("Part A")
+    course_b, _, _ = _course_with_part("Part B")
+    prefetch_collection_items([course_a, course_b])
+
+    with django_assert_num_queries(0):
+        course_b.viewable_items()
+
+
+@pytest.mark.django_db
+def test_a_part_nested_in_a_prefetched_course_lists_its_items_without_a_query(
+    mock_site_context, django_assert_num_queries
+):
+    course_a, _, _ = _course_with_part("Part A")
+    course_b, _, _ = _course_with_part("Part B")
+    prefetch_collection_items([course_a, course_b])
+    (part,) = [
+        item.child
+        for item in course_a.collection_items()
+        if isinstance(item.child, CoursePart)
+    ]
+
+    with django_assert_num_queries(0):
+        part.collection_items()
+
+
+@pytest.mark.django_db
+def test_a_prefetched_course_lists_its_viewable_items_in_order(mock_site_context):
+    course_a, _, expected = _course_with_part("Part A")
+    course_b, _, _ = _course_with_part("Part B")
+    prefetch_collection_items([course_a, course_b])
+
+    assert course_a.viewable_items() == expected
+
+
+@pytest.mark.django_db
+def test_a_prefetched_course_with_no_items_has_an_empty_list(
+    mock_site_context, django_assert_num_queries
+):
+    course: Course = CourseFactory()
+    prefetch_collection_items([course])
+
+    with django_assert_num_queries(0):
+        assert course.collection_items() == []
