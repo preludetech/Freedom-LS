@@ -28,6 +28,7 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
+    FormStrategy,
     QuestionAnswer,
 )
 from freedom_ls.form_engine.queries import FINAL_GROUP_TITLE
@@ -604,3 +605,119 @@ def test_the_change_page_shows_the_declaration_read_only(staff_client: Client) -
     assert "Signed at" in body
     assert "form-declaration-0-DELETE" not in body
     assert not response.context["inline_admin_formsets"][0].has_add_permission
+
+
+# ---------------------------------------------------------------------------
+# Quiz answers are never shown in the admin
+# ---------------------------------------------------------------------------
+
+QUIZ_NOTE = "Answers to quizzes are not shown in the admin."
+
+
+def _quiz_answer(question_text: str = "Which planet is largest?"):
+    """A quiz sitting holding one answered question with a chosen option."""
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form)
+    question = FormQuestionFactory(
+        form_page=page, question=question_text, type="multiple_choice", order=0
+    )
+    option = QuestionOptionFactory(question=question, text="Jupiter the giant")
+    progress = FormProgressFactory(form=form)
+    answer = QuestionAnswerFactory(form_progress=progress, question=question)
+    answer.selected_options.add(option)
+    return progress, answer
+
+
+def _survey_answer(question_text: str = "How was the venue?"):
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form)
+    question = FormQuestionFactory(
+        form_page=page, question=question_text, type="short_text", order=0
+    )
+    progress = FormProgressFactory(form=form)
+    answer = QuestionAnswerFactory(
+        form_progress=progress, question=question, text_answer="Lovely hall"
+    )
+    return progress, answer
+
+
+def _file_row(model_name: str, answer):
+    if model_name == "questionanswerfile":
+        return QuestionAnswerFileFactory(answer=answer)
+    return answer
+
+
+@pytest.mark.django_db
+def test_a_quiz_sitting_change_page_shows_a_note_and_no_question_or_option_text(
+    staff_client,
+) -> None:
+    progress, _ = _quiz_answer()
+
+    body = _change_page(staff_client, progress)
+
+    assert QUIZ_NOTE in body
+    assert "Which planet is largest?" not in body
+    assert "Jupiter the giant" not in body
+
+
+@pytest.mark.django_db
+def test_a_survey_sitting_change_page_still_shows_each_question_and_answer(
+    staff_client,
+) -> None:
+    progress, _ = _survey_answer()
+
+    body = _change_page(staff_client, progress)
+
+    assert "How was the venue?" in body
+    assert "Lovely hall" in body
+    assert QUIZ_NOTE not in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ["questionanswer", "questionanswerfile"])
+def test_the_answer_changelists_list_survey_rows_and_not_quiz_rows(
+    staff_client, model_name: str
+) -> None:
+    _file_row(model_name, _quiz_answer()[1])
+    survey_row = _file_row(model_name, _survey_answer()[1])
+
+    response = staff_client.get(_answer_url(model_name, "changelist"))
+
+    assert [row.pk for row in response.context["cl"].result_list] == [survey_row.pk]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ["questionanswer", "questionanswerfile"])
+def test_a_quiz_answers_change_url_does_not_open(staff_client, model_name: str) -> None:
+    quiz_row = _file_row(model_name, _quiz_answer()[1])
+
+    response = staff_client.get(_answer_url(model_name, "change", quiz_row.pk))
+
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_searching_for_a_quiz_questions_text_finds_nothing(staff_client) -> None:
+    _quiz_answer("Which planet is largest?")
+
+    response = staff_client.get(
+        _answer_url("questionanswer", "changelist"), {"q": "planet"}
+    )
+
+    assert list(response.context["cl"].result_list) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ["questionanswer", "questionanswerfile"])
+def test_the_answer_changelists_load_with_the_form_filter_and_a_search(
+    staff_client, model_name: str
+) -> None:
+    progress, answer = _survey_answer()
+    _file_row(model_name, answer)
+    params = {"q": "venue"}
+    if model_name == "questionanswer":
+        params["question__form_page__form__id__exact"] = str(progress.form_id)
+
+    response = staff_client.get(_answer_url(model_name, "changelist"), params)
+
+    assert response.status_code == 200

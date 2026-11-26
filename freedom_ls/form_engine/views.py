@@ -28,6 +28,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
 )
 from freedom_ls.form_engine.permissions import can_download_answer_files
+from freedom_ls.form_engine.queries import without_quiz_answers
 from freedom_ls.form_engine.session_access import owned_form_progress
 from freedom_ls.form_engine.sitting_locks import sitting_is_locked
 from freedom_ls.form_engine.uploads import validate_and_sanitise
@@ -208,5 +209,8 @@ def question_answer_file_download_view(
     """
     if not can_download_answer_files(request.user):
         raise PermissionDenied
-    answer_file = get_object_or_404(QuestionAnswerFile, pk=object_id)
+    answer_file = get_object_or_404(
+        without_quiz_answers(QuestionAnswerFile.objects.all(), "answer__form_progress"),
+        pk=object_id,
+    )
     return stream_question_answer_file(answer_file)

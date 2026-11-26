@@ -1024,3 +1024,43 @@ def test_a_retired_question_on_a_pinned_paper_still_accepts_a_file(
     )
 
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# The admin download route
+# ---------------------------------------------------------------------------
+
+
+def _admin_download_url(answer_file: QuestionAnswerFile) -> str:
+    return reverse(
+        "admin:freedom_ls_form_engine_questionanswerfile_download",
+        args=[answer_file.pk],
+    )
+
+
+@pytest.mark.django_db
+def test_the_admin_download_is_a_404_for_a_quiz_answers_file(
+    mock_site_context, staff_client
+) -> None:
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    answer_file = QuestionAnswerFileFactory(
+        answer=QuestionAnswerFactory(form_progress=FormProgressFactory(form=form))
+    )
+
+    response = staff_client.get(_admin_download_url(answer_file))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_admin_download_still_serves_a_survey_answers_file(
+    mock_site_context, staff_client
+) -> None:
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    answer_file = QuestionAnswerFileFactory(
+        answer=QuestionAnswerFactory(form_progress=FormProgressFactory(form=form))
+    )
+
+    response = staff_client.get(_admin_download_url(answer_file))
+
+    assert response.status_code == 200

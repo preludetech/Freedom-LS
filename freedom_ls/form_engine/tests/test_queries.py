@@ -21,6 +21,7 @@ from freedom_ls.form_engine.factories import (
     FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
+    QuestionAnswerFileFactory,
     QuestionOptionFactory,
     served_paper_of,
 )
@@ -30,6 +31,8 @@ from freedom_ls.form_engine.models import (
     FormProgress,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
+    QuestionAnswerFile,
     QuestionOption,
 )
 from freedom_ls.form_engine.queries import (
@@ -44,6 +47,7 @@ from freedom_ls.form_engine.queries import (
     form_questions,
     quiz_verdict,
     stored_score_outdated,
+    without_quiz_answers,
 )
 from freedom_ls.tests.retire import retired
 
@@ -743,3 +747,31 @@ def test_an_off_page_retired_question_is_flagged(mock_site_context: object) -> N
     QuestionAnswerFactory(form_progress=progress, question=moved)
 
     assert answer_groups(progress)[-1].rows[0].question_retired is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("path", "model", "row_of"),
+    [
+        ("form_progress", QuestionAnswer, lambda answer: answer),
+        (
+            "answer__form_progress",
+            QuestionAnswerFile,
+            lambda answer: QuestionAnswerFileFactory(answer=answer),
+        ),
+    ],
+)
+def test_without_quiz_answers_drops_quiz_rows_and_keeps_the_other_strategies(
+    mock_site_context, path, model, row_of
+) -> None:
+    kept = []
+    for strategy in (FormStrategy.UNSCORED, FormStrategy.CATEGORY_VALUE_SUM):
+        form = FormFactory(strategy=strategy)
+        answer = QuestionAnswerFactory(form_progress=FormProgressFactory(form=form))
+        kept.append(row_of(answer).pk)
+    quiz_form = FormFactory(strategy=FormStrategy.QUIZ)
+    row_of(QuestionAnswerFactory(form_progress=FormProgressFactory(form=quiz_form)))
+
+    result = without_quiz_answers(model.objects.all(), path)
+
+    assert sorted(row.pk for row in result) == sorted(kept)

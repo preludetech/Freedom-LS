@@ -2,6 +2,7 @@ from unfold.contrib.filters.admin import RelatedDropdownFilter
 
 from django.apps import apps
 from django.contrib import admin
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.urls import URLPattern, path, reverse
 from django.utils.html import format_html
@@ -22,11 +23,12 @@ from freedom_ls.site_aware_models.admin_filters import (
 from .models import (
     FormDeclaration,
     FormProgress,
+    FormStrategy,
     QuestionAnswer,
     QuestionAnswerFile,
 )
 from .permissions import can_download_answer_files
-from .queries import answer_groups
+from .queries import answer_groups, without_quiz_answers
 from .typed_answers import format_answer
 
 
@@ -50,10 +52,22 @@ def answers_context(
     request: HttpRequest, form_progress: FormProgress
 ) -> dict[str, object]:
     """What the answers document needs: the groups, and whether this reader may
-    follow a file's download link."""
+    follow a file's download link.
+
+    The admin writes no record of a read, so a quiz's answers are never shown
+    here: the groups are empty and the template says why.
+    """
+    can_download = can_download_answer_files(request.user)
+    if form_progress.form.strategy == FormStrategy.QUIZ:
+        return {
+            "answer_groups": [],
+            "quiz_answers_hidden": True,
+            "can_download_answer_files": can_download,
+        }
     return {
         "answer_groups": answer_groups(form_progress),
-        "can_download_answer_files": can_download_answer_files(request.user),
+        "quiz_answers_hidden": False,
+        "can_download_answer_files": can_download,
     }
 
 
@@ -232,6 +246,9 @@ class QuestionAnswerAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     readonly_fields = ("updated_at",)
     list_select_related = ("form_progress", "question")
 
+    def get_queryset(self, request: HttpRequest) -> QuerySet[QuestionAnswer]:
+        return without_quiz_answers(super().get_queryset(request), "form_progress")
+
     fieldsets = (
         (None, {"fields": ("form_progress", "question")}),
         ("Answer", {"fields": ("selected_options", "text_answer")}),
@@ -269,6 +286,11 @@ class QuestionAnswerFileAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     def get_list_select_related(self, request: HttpRequest) -> list[str]:
         return _with_applicant_select_related(
             self.list_select_related, "answer__form_progress__"
+        )
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[QuestionAnswerFile]:
+        return without_quiz_answers(
+            super().get_queryset(request), "answer__form_progress"
         )
 
     readonly_fields = [

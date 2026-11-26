@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from uuid import UUID
 
-from django.db.models import prefetch_related_objects
+from django.db.models import Model, QuerySet, prefetch_related_objects
 from django.utils.translation import ngettext
 
 from .conditions import (
@@ -25,6 +25,19 @@ from .models import (
 from .units import shuffle_units, unit_question_counts
 
 FINAL_GROUP_TITLE = "Questions no longer on the form"
+
+
+def without_quiz_answers[T: Model](
+    queryset: QuerySet[T], form_progress_path: str
+) -> QuerySet[T]:
+    """`queryset` without rows answering a quiz.
+
+    `form_progress_path` is the lookup from the queryset's model to its
+    FormProgress, e.g. "form_progress" or "answer__form_progress".
+    """
+    return queryset.exclude(
+        **{f"{form_progress_path}__form__strategy": FormStrategy.QUIZ}
+    )
 
 
 def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
