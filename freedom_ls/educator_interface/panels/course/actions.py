@@ -147,10 +147,10 @@ class ReactivateCourseLearnerRegistrationAction(
 
 class CourseRegisterAction(CoursePageActionMixin, FormPanelAction):
     """A Register dialog on the course page. It is offered only while the
-    course is open to the organisation in view."""
+    course is open to the organisation in view and is not retired."""
 
     def is_offered(self, ctx: PanelContext) -> bool:
-        return self.course_open_here(ctx)
+        return not cast(Course, ctx.instance).is_retired and self.course_open_here(ctx)
 
     def register_or_refuse(
         self,

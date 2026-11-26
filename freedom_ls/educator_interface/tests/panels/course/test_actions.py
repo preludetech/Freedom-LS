@@ -13,6 +13,7 @@ from django.contrib.sites.models import Site
 from django.db import connection
 from django.test import RequestFactory
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import CourseFactory
@@ -26,6 +27,7 @@ from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
 from freedom_ls.educator_interface.panels.course.actions import (
+    CourseRegisterAction,
     RegisterCohortOnCourseAction,
     RegisterLearnerOnCourseAction,
 )
@@ -969,6 +971,35 @@ def test_the_direct_registrations_footer_hides_register_from_a_cohort_viewer(
     document = _get_document(client, _page_url(organisation, course))
 
     assert _learner_footer_buttons(document) == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "action_class", [RegisterCohortOnCourseAction, RegisterLearnerOnCourseAction]
+)
+def test_register_is_not_offered_for_a_retired_course(
+    mock_site_context: Site,
+    action_class: type[CourseRegisterAction],
+) -> None:
+    """A retired course takes no registrations, but its page used to offer a
+    Register trigger whose dialog always failed on submit."""
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    request = cast(OrganisationScopedRequest, RequestFactory().get("/x"))
+    request.organisation = organisation
+    ctx = PanelContext(
+        request=request,
+        instance=course,
+        base_url="/x",
+        name="learners",
+        config=CourseConfig,
+    )
+    offered_before = action_class().is_offered(ctx)
+    course.retired_at = timezone.now()
+    course.save()
+
+    assert offered_before is True
+    assert action_class().is_offered(ctx) is False
 
 
 @pytest.mark.django_db
