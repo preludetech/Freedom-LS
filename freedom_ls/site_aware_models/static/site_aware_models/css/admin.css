@@ -56,3 +56,10 @@ label > input[type="checkbox"] + span.truncate {
 details.group[open] .group-open\:rotate-180 {
     transform: rotate(180deg);
 }
+
+/* unfold's stylesheet ships no size-4 utility either. Without this rule an icon
+   renders at its icon set's intrinsic size, which is 256px for some sets. */
+.size-4 {
+    width: 1rem;
+    height: 1rem;
+}

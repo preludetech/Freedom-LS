@@ -10,7 +10,9 @@ import pytest
 
 from django.contrib.auth.models import Permission
 from django.contrib.sites.models import Site
+from django.contrib.staticfiles import finders
 from django.db import connection
+from django.template.loader import get_template
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -607,3 +609,20 @@ def test_changelist_action_refuses_a_selection_over_the_cap(
     assert "Select at most 2 users to force delete at once." in (
         response.content.decode()
     )
+
+
+def test_chevron_size_does_not_depend_on_the_icon_set() -> None:
+    """unfold's prebuilt stylesheet ships no size-4 utility. Without a rule of
+    our own the chevron renders at its icon set's intrinsic size, which is
+    256px for some sets."""
+    template_path = get_template(
+        "admin/learner_progress/force_delete_confirm.html"
+    ).origin.name
+    stylesheet = finders.find("site_aware_models/css/admin.css")
+    assert stylesheet is not None
+
+    with open(template_path) as template, open(stylesheet) as css:
+        assert 'class="size-4 ' in template.read()
+        assert re.search(
+            r"\.size-4\s*\{[^}]*width:\s*1rem;[^}]*height:\s*1rem;", css.read()
+        )
