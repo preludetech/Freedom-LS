@@ -93,7 +93,9 @@ def test_opening_a_learner_and_their_courses_tab(
         "link", name="Courses", exact=True
     ).click()
     expect(page.get_by_text("Algebra")).to_be_visible()
-    expect(page.get_by_text("Nothing completed yet")).to_be_visible()
+    expect(
+        page.get_by_text("Nothing completed yet").locator("visible=true")
+    ).to_be_visible()
     learner_url = page.url
 
     stored = educator_user.profile_picture
@@ -163,7 +165,9 @@ def test_the_courses_tab_card_with_an_attempts_table_fits_every_viewport(
                 live_server, organisation.slug, f"learners/{learner.pk}/__tabs/courses"
             )
         )
-        expect(page.get_by_text("1 of 1 items")).to_be_visible()
+        expect(
+            page.get_by_text("1 of 1", exact=True).locator("visible=true")
+        ).to_be_visible()
         # The table and the card list both hold the verdict; one is hidden.
         expect(
             page.get_by_text("Passed", exact=True).locator("visible=true")
@@ -284,7 +288,9 @@ def test_an_attempt_opens_from_the_courses_tab_to_its_paper_and_back(
 
     back_link.click()
     expect(page.get_by_text("Algebra")).to_be_visible()
-    expect(page.get_by_text("1 of 1 items")).to_be_visible()
+    expect(
+        page.get_by_text("1 of 1", exact=True).locator("visible=true")
+    ).to_be_visible()
 
 
 def test_moving_a_learner_between_cohorts_carries_their_progress(
@@ -337,7 +343,9 @@ def test_moving_a_learner_between_cohorts_carries_their_progress(
     expect(main.get_by_text("Evening group").first).to_be_visible()
     expect(main.get_by_text("Morning group")).to_have_count(0)
     main.get_by_role("link", name="Courses", exact=True).click()
-    expect(main.get_by_text("1 of 2 items")).to_be_visible()
+    expect(
+        main.get_by_text("1 of 2", exact=True).locator("visible=true")
+    ).to_be_visible()
 
 
 def test_learner_settings_flow(

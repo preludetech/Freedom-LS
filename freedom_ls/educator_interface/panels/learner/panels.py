@@ -104,7 +104,10 @@ class LearnerAccountPanel(Panel):
 
 
 class LearnerCoursesPanel(Panel):
-    """One card per visible registration: recomputed completion, flags, completed items and quiz attempts.
+    """A table row per visible registration, then a section per course with completed items or quiz attempts.
+
+    The row holds the recomputed completion and flags; the section holds the
+    completed items and the quiz attempts.
 
     Runs live and uncached, so a refresh after an educator action reads the
     current progress.
@@ -134,6 +137,7 @@ class LearnerCoursesPanel(Panel):
             for registration in registrations
         }
         context = super().get_context_data()
+        context["learner_name"] = learner.user.display_name
         # Each course's detail beside who shares the course, when another
         # organisation owns it.
         context["details"] = [

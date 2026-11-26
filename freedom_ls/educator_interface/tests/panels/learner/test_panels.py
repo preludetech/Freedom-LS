@@ -137,21 +137,198 @@ class TestLearnerCoursesPanel:
         learner = LearnerFactory()
         LearnerCourseRegistrationFactory(learner=learner, course=CourseFactory())
         client = logged_in_client(_org_admin(learner.organisation))
-        path = f"learners/{learner.pk}/__tabs/courses/__panels/courses"
 
-        response = client.get(
-            reverse(
-                "educator_interface:interface",
-                kwargs={
-                    "organisation_slug": learner.organisation.slug,
-                    "path_string": path,
-                },
-            )
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
         )
 
-        document = lxml.html.fromstring(response.content.decode())
-        (card_list,) = document.xpath("//ul[li//h3]")
+        (card_list,) = document.cssselect("ul[data-row-cards]")
         assert "list-none" in card_list.get("class").split()
+
+    def test_two_registrations_render_two_rows_under_the_five_column_headings(
+        self, logged_in_client
+    ):
+        learner = LearnerFactory()
+        for title in ("Algebra", "Geometry"):
+            LearnerCourseRegistrationFactory(
+                learner=learner, course=CourseFactory(title=title)
+            )
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        (table,) = document.cssselect("table")
+        headings = [th.text_content().strip() for th in table.cssselect("thead th")]
+        assert headings == ["Course", "Status", "Progress", "Items", "Last completed"]
+        assert len(table.cssselect("tbody tr")) == 2
+
+    def test_the_courses_table_has_a_caption_naming_the_learner(self, logged_in_client):
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(learner=learner, course=CourseFactory())
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        (caption,) = document.cssselect("table caption")
+        assert caption.text_content().strip() == (
+            f"Courses for {learner.user.display_name}"
+        )
+
+    def test_each_registration_is_also_a_card_with_the_same_labelled_values(
+        self, logged_in_client
+    ):
+        learner = LearnerFactory()
+        for title in ("Algebra", "Geometry"):
+            LearnerCourseRegistrationFactory(
+                learner=learner, course=CourseFactory(title=title)
+            )
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        cards = document.cssselect("ul[data-row-cards] > li")
+        assert len(cards) == 2
+        labels = [dt.text_content().strip() for dt in cards[0].cssselect("dt")]
+        assert labels == ["Status", "Progress", "Items", "Last completed"]
+        assert "Algebra" in cards[0].text_content()
+
+    def test_the_course_cell_holds_the_title_and_how_the_learner_is_registered(
+        self, logged_in_client
+    ):
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=CourseFactory(title="Algebra")
+        )
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        cell = document.cssselect("tbody tr td")[0]
+        assert " ".join(cell.text_content().split()) == "Algebra Individual"
+
+    def test_the_progress_cell_names_its_bar_after_the_course(self, logged_in_client):
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=CourseFactory(title="Algebra")
+        )
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        (bar,) = document.cssselect("tbody progress")
+        assert bar.get("aria-label") == "Algebra progress"
+
+    def test_the_items_cell_reads_completed_of_total(self, logged_in_client):
+        course = CourseFactory(title="Algebra")
+        done = TopicFactory()
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=done, order=0
+        )
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=TopicFactory(), order=1
+        )
+        record = course_progress_record(course, UserFactory())
+        topic_progress(record, done, complete_time=timezone.now())
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        items_cell = document.cssselect("tbody tr td")[3]
+        assert items_cell.text_content().strip() == "1 of 2"
+
+    def test_the_last_completed_cell_names_the_item_and_the_date(
+        self, logged_in_client
+    ):
+        course = CourseFactory(title="Algebra")
+        topic = TopicFactory(title="Fractions")
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=0
+        )
+        record = course_progress_record(course, UserFactory())
+        topic_progress(record, topic, complete_time=timezone.now())
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        last_cell = document.cssselect("tbody tr td")[4]
+        assert last_cell.text_content().strip().startswith("Fractions, ")
+
+    def test_a_course_with_a_quiz_result_gets_a_section_after_the_table(
+        self, logged_in_client
+    ):
+        course = CourseFactory(title="Algebra")
+        quiz = quiz_form("Unit quiz", 50)
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=quiz, order=0
+        )
+        record = course_progress_record(course, UserFactory())
+        form_progress(
+            record,
+            quiz,
+            completed_time=timezone.now(),
+            scores={"score": 2, "max_score": 2},
+        )
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        (section,) = document.cssselect("section[aria-labelledby]")
+        assert section.cssselect("h3")[0].text_content().strip() == "Algebra"
+        assert section.cssselect("table caption")[0].text_content().strip() == (
+            "Unit quiz attempts"
+        )
+
+    def test_a_course_with_completed_items_gets_a_section_listing_them(
+        self, logged_in_client
+    ):
+        course = CourseFactory(title="Algebra")
+        topic = TopicFactory(title="Fractions")
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=0
+        )
+        record = course_progress_record(course, UserFactory())
+        topic_progress(record, topic, complete_time=timezone.now())
+        learner = record.learner
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        (section,) = document.cssselect("section[aria-labelledby]")
+        assert "Completed items (1)" in section.text_content()
+
+    def test_a_course_with_neither_completed_items_nor_quiz_results_gets_no_section(
+        self, logged_in_client
+    ):
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(learner=learner, course=CourseFactory())
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        assert not document.cssselect("section[aria-labelledby]")
 
     def test_a_learner_with_no_registrations_gets_the_empty_message(
         self, logged_in_client
@@ -197,7 +374,7 @@ class TestLearnerCoursesPanel:
 
         assert "Individual" in text
         assert "Complete" in text
-        assert "2 of 2 items" in text
+        assert "2 of 2" in text
         assert "Completed items (2)" in text
         assert "0/2 0% 50% Failed" in text
         assert "2/2 100% 50% Passed Latest" in text
@@ -293,7 +470,8 @@ class TestLearnerCoursesPanel:
         document = lxml.html.fromstring(
             _courses_panel_html(client, learner.organisation.slug, learner)
         )
-        row_link = document.cssselect("tbody tr")[number - 1].cssselect("a")[0]
+        attempts_table = document.cssselect("section[aria-labelledby] table")[0]
+        row_link = attempts_table.cssselect("tbody tr")[number - 1].cssselect("a")[0]
 
         response = client.get(row_link.get("href"))
 
@@ -325,7 +503,7 @@ class TestLearnerCoursesPanel:
             _courses_panel_html(client, learner.organisation.slug, learner)
         )
 
-        (card,) = document.cssselect("ul[data-row-cards] > li")
+        (card,) = document.cssselect("section[aria-labelledby] ul[data-row-cards] > li")
         assert card.cssselect("a[aria-controls='quick-view']")
         card_text = " ".join(card.text_content().split())
         for label in ("Completed", "Score", "Percentage", "Pass mark", "Result"):
@@ -520,9 +698,14 @@ def test_the_courses_tab_sets_each_course_out_as_a_plain_section_not_a_nested_ca
     """Each course sat in its own bordered card inside the panel's card."""
     learner = LearnerFactory(organisation=OrganisationFactory())
     for title in ("Algebra", "Geometry"):
-        LearnerCourseRegistrationFactory(
-            learner=learner, course=CourseFactory(title=title)
+        course = CourseFactory(title=title)
+        topic = TopicFactory()
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=topic, order=0
         )
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
+        record = course_progress_record(course, learner.user)
+        topic_progress(record, topic, complete_time=timezone.now())
 
     document = _learner_page(staff_client, learner, "courses")
 
@@ -549,7 +732,8 @@ def test_learner_courses_tab_names_the_owner_of_a_shared_course_only(
         _interface_url(organisation.slug, f"learners/{learner.pk}/__tabs/courses"),
     )
 
-    assert _shared_by_notes(document) == ["Shared by Northwind Logistics"]
+    (table,) = document.cssselect("table")
+    assert _shared_by_notes(table) == ["Shared by Northwind Logistics"]
 
 
 @pytest.mark.django_db

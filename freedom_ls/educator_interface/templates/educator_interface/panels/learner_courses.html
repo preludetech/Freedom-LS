@@ -3,92 +3,119 @@
 
 {% block panel_body %}
     {% if details %}
-        <ul class="list-none ml-0 flex flex-col gap-8">
+        <div class="space-y-8">
+            {% partialdef course-cell %}
+                <p class="font-medium">{{ detail.course_title }}</p>
+                <p class="text-sm text-muted">{% if detail.cohort_name %}via {{ detail.cohort_name }}{% else %}Individual{% endif %}</p>
+                {% include "educator_interface/partials/course_shared_by.html" %}
+            {% endpartialdef %}
+            {% partialdef last-completed %}
+                {% if detail.last_completed_at %}{{ detail.last_completed_title }}, <c-date :value="detail.last_completed_at" />{% else %}Nothing completed yet{% endif %}
+            {% endpartialdef %}
+            <c-panel-table caption="Courses for {{ learner_name }}" cards="true" cards_when_narrow="true">
+                <c-slot name="head">
+                    <tr>
+                        <th scope="col">Course</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Progress</th>
+                        <th scope="col">Items</th>
+                        <th scope="col">Last completed</th>
+                    </tr>
+                </c-slot>
+                {% for detail, sharers in details %}
+                    <tr>
+                        <td>{% partial course-cell %}</td>
+                        <td>{% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}</td>
+                        <td><c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" /></td>
+                        <td class="whitespace-nowrap tabular-nums">{{ detail.completed_item_count }} of {{ detail.total_item_count }}</td>
+                        <td>{% partial last-completed %}</td>
+                    </tr>
+                {% endfor %}
+                <c-slot name="card_rows">
+                    {% for detail, sharers in details %}
+                        <c-panel-table-card>
+                            <c-slot name="content">{% partial course-cell %}</c-slot>
+                            <c-panel-definition-row label="Status">{% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}</c-panel-definition-row>
+                            <c-panel-definition-row label="Progress"><c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" /></c-panel-definition-row>
+                            <c-panel-definition-row label="Items">{{ detail.completed_item_count }} of {{ detail.total_item_count }}</c-panel-definition-row>
+                            <c-panel-definition-row label="Last completed">{% partial last-completed %}</c-panel-definition-row>
+                        </c-panel-table-card>
+                    {% endfor %}
+                </c-slot>
+            </c-panel-table>
             {% for detail, sharers in details %}
-                <li>
-                    <section aria-labelledby="course-{{ forloop.counter }}-title">
-                        <div class="flex flex-col gap-3">
-                            <div class="flex flex-wrap items-baseline justify-between gap-x-4">
-                                <c-panel-heading id="course-{{ forloop.counter }}-title">{{ detail.course_title }}</c-panel-heading>
-                                <span class="text-sm text-muted">{% if detail.cohort_name %}via {{ detail.cohort_name }}{% else %}Individual{% endif %}</span>
-                            </div>
-                            {% include "educator_interface/partials/course_shared_by.html" %}
-                            {% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}
-                            <c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" />
-                            <p class="text-sm text-muted">{{ detail.completed_item_count }} of {{ detail.total_item_count }} items</p>
-                            <p class="text-sm text-muted">
-                                {% if detail.last_completed_at %}Last completed: {{ detail.last_completed_title }}, <c-date :value="detail.last_completed_at" />{% else %}Nothing completed yet{% endif %}
-                            </p>
-                            {% if detail.completed_items %}
-                                <details class="text-sm">
-                                    <summary class="cursor-pointer font-medium">Completed items ({{ detail.completed_items|length }})</summary>
-                                    <c-panel-list class="mt-2">
-                                        {% for item in detail.completed_items %}
-                                            <c-panel-list-row :title="item.title" class="py-2">
-                                                <span class="text-muted"><c-date :value="item.completed_at" /></span>
-                                            </c-panel-list-row>
-                                        {% endfor %}
-                                    </c-panel-list>
-                                </details>
-                            {% endif %}
-                            {% for quiz in detail.quiz_results %}
-                                <div class="flex flex-col gap-1">
-                                    <c-panel-heading tag="h4">{{ quiz.title }}</c-panel-heading>
-                                    {% partialdef attempt_number %}
-                                        {% if attempt.form_progress_id in openable_sitting_ids %}
-                                            {% resolve_url_path_template attempt 'educator_interface:interface' 'quiz-attempts/{form_progress_id}' as attempt_url %}
-                                            <c-quick-view-trigger href="{{ attempt_url }}" url="{{ attempt_url }}/__quick-view" class="font-semibold text-primary no-underline hover:text-primary-hover max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center" aria-label="Attempt {{ attempt.attempt_number }} of {{ quiz.title }}">{{ attempt.attempt_number }}</c-quick-view-trigger>
-                                        {% else %}
-                                            {{ attempt.attempt_number }}
-                                        {% endif %}
-                                    {% endpartialdef %}
-                                    <c-panel-table caption="{{ quiz.title }} attempts" cards="true" cards_when_narrow="true">
-                                        <c-slot name="head">
-                                            <tr>
-                                                <th scope="col">Attempt</th>
-                                                <th scope="col">Completed</th>
-                                                <th scope="col">Score</th>
-                                                <th scope="col">Percentage</th>
-                                                <th scope="col">Pass mark</th>
-                                                <th scope="col">Result</th>
-                                            </tr>
-                                        </c-slot>
+                {% if detail.completed_items or detail.quiz_results %}
+                    <section aria-labelledby="course-{{ forloop.counter }}-title" class="flex flex-col gap-3">
+                        <c-panel-heading id="course-{{ forloop.counter }}-title">{{ detail.course_title }}</c-panel-heading>
+                        {% if detail.completed_items %}
+                            <details class="text-sm">
+                                <summary class="cursor-pointer font-medium">Completed items ({{ detail.completed_items|length }})</summary>
+                                <c-panel-list class="mt-2">
+                                    {% for item in detail.completed_items %}
+                                        <c-panel-list-row :title="item.title" class="py-2">
+                                            <span class="text-muted"><c-date :value="item.completed_at" /></span>
+                                        </c-panel-list-row>
+                                    {% endfor %}
+                                </c-panel-list>
+                            </details>
+                        {% endif %}
+                        {% for quiz in detail.quiz_results %}
+                            <div class="flex flex-col gap-1">
+                                <c-panel-heading tag="h4">{{ quiz.title }}</c-panel-heading>
+                                {% partialdef attempt_number %}
+                                    {% if attempt.form_progress_id in openable_sitting_ids %}
+                                        {% resolve_url_path_template attempt 'educator_interface:interface' 'quiz-attempts/{form_progress_id}' as attempt_url %}
+                                        <c-quick-view-trigger href="{{ attempt_url }}" url="{{ attempt_url }}/__quick-view" class="font-semibold text-primary no-underline hover:text-primary-hover max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center" aria-label="Attempt {{ attempt.attempt_number }} of {{ quiz.title }}">{{ attempt.attempt_number }}</c-quick-view-trigger>
+                                    {% else %}
+                                        {{ attempt.attempt_number }}
+                                    {% endif %}
+                                {% endpartialdef %}
+                                <c-panel-table caption="{{ quiz.title }} attempts" cards="true" cards_when_narrow="true">
+                                    <c-slot name="head">
+                                        <tr>
+                                            <th scope="col">Attempt</th>
+                                            <th scope="col">Completed</th>
+                                            <th scope="col">Score</th>
+                                            <th scope="col">Percentage</th>
+                                            <th scope="col">Pass mark</th>
+                                            <th scope="col">Result</th>
+                                        </tr>
+                                    </c-slot>
+                                    {% for attempt in quiz.attempts %}
+                                        <tr>
+                                            <td>{% partial attempt_number %}</td>
+                                            <td class="whitespace-nowrap"><c-date :value="attempt.completed_at" /></td>
+                                            <td>{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</td>
+                                            <td>{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</td>
+                                            <td class="whitespace-nowrap">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</td>
+                                            <td class="whitespace-nowrap">
+                                                {% if attempt.passed is not None %}{% passed_badge attempt.passed as verdict %}<c-panel-status-badge :badge="verdict" />{% endif %}
+                                                {% if forloop.last %}<span class="text-muted">Latest</span>{% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                    <c-slot name="card_rows">
                                         {% for attempt in quiz.attempts %}
-                                            <tr>
-                                                <td>{% partial attempt_number %}</td>
-                                                <td class="whitespace-nowrap"><c-date :value="attempt.completed_at" /></td>
-                                                <td>{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</td>
-                                                <td>{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</td>
-                                                <td class="whitespace-nowrap">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</td>
-                                                <td class="whitespace-nowrap">
+                                            <c-panel-table-card>
+                                                <c-slot name="content">Attempt {% partial attempt_number %}</c-slot>
+                                                <c-panel-definition-row label="Completed"><c-date :value="attempt.completed_at" /></c-panel-definition-row>
+                                                <c-panel-definition-row label="Score">{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</c-panel-definition-row>
+                                                <c-panel-definition-row label="Percentage">{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</c-panel-definition-row>
+                                                <c-panel-definition-row label="Pass mark">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</c-panel-definition-row>
+                                                <c-panel-definition-row label="Result">
                                                     {% if attempt.passed is not None %}{% passed_badge attempt.passed as verdict %}<c-panel-status-badge :badge="verdict" />{% endif %}
                                                     {% if forloop.last %}<span class="text-muted">Latest</span>{% endif %}
-                                                </td>
-                                            </tr>
+                                                </c-panel-definition-row>
+                                            </c-panel-table-card>
                                         {% endfor %}
-                                        <c-slot name="card_rows">
-                                            {% for attempt in quiz.attempts %}
-                                                <c-panel-table-card>
-                                                    <c-slot name="content">Attempt {% partial attempt_number %}</c-slot>
-                                                    <c-panel-definition-row label="Completed"><c-date :value="attempt.completed_at" /></c-panel-definition-row>
-                                                    <c-panel-definition-row label="Score">{% if attempt.score is not None and attempt.max_score is not None %}{{ attempt.score }}/{{ attempt.max_score }}{% endif %}</c-panel-definition-row>
-                                                    <c-panel-definition-row label="Percentage">{% if attempt.percentage is not None %}{{ attempt.percentage }}%{% endif %}</c-panel-definition-row>
-                                                    <c-panel-definition-row label="Pass mark">{% if quiz.pass_percentage is not None %}{{ quiz.pass_percentage }}%{% else %}No pass mark{% endif %}</c-panel-definition-row>
-                                                    <c-panel-definition-row label="Result">
-                                                        {% if attempt.passed is not None %}{% passed_badge attempt.passed as verdict %}<c-panel-status-badge :badge="verdict" />{% endif %}
-                                                        {% if forloop.last %}<span class="text-muted">Latest</span>{% endif %}
-                                                    </c-panel-definition-row>
-                                                </c-panel-table-card>
-                                            {% endfor %}
-                                        </c-slot>
-                                    </c-panel-table>
-                                </div>
-                            {% endfor %}
-                        </div>
+                                    </c-slot>
+                                </c-panel-table>
+                            </div>
+                        {% endfor %}
                     </section>
-                </li>
+                {% endif %}
             {% endfor %}
-        </ul>
+        </div>
     {% else %}
         <c-panel-empty-state message="Not registered on any courses yet." />
     {% endif %}
