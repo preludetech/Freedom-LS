@@ -324,6 +324,49 @@ def test_all_matching_confirm_form_carries_mode_and_excluded(
     assert "This will affect 2 stub models." in response.content.decode()
 
 
+def test_an_in_request_confirmation_marks_its_form_and_names_a_status_line(
+    mock_site_context: Site,
+) -> None:
+    stub = make_stub(name="row-0")
+
+    response = fetch(
+        _action_path(stub.pk),
+        method="post",
+        data={"keys": [str(stub.pk)]},
+        htmx=True,
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (form,) = document.cssselect("form[data-runs-in-request]")
+    assert form.get("hx-disabled-elt") == "find button[type='submit']"
+    (status,) = document.cssselect("[role='status']")
+    assert status.get("id") == "bulk-run-status"
+    assert (status.text or "").strip() == ""
+    (cancel,) = document.cssselect("footer button[x-on\\:click='cancel']")
+    assert cancel.get("aria-describedby") == "bulk-run-status"
+    (close,) = document.cssselect("header button[aria-label='Close']")
+    assert close.get("aria-describedby") == "bulk-run-status"
+
+
+def test_a_background_confirmation_has_no_marker_status_or_description(
+    mock_site_context: Site, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(StubBulkAction, "runs_in_background", lambda *_: True)
+    stub = make_stub(name="row-0")
+
+    response = fetch(
+        _action_path(stub.pk),
+        method="post",
+        data={"keys": [str(stub.pk)]},
+        htmx=True,
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert not document.cssselect("form[data-runs-in-request]")
+    assert not document.cssselect("[role='status']")
+    assert not document.cssselect("[aria-describedby='bulk-run-status']")
+
+
 def test_all_matching_confirmed_post_changes_only_unexcluded_rows(
     mock_site_context: Site,
 ) -> None:

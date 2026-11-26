@@ -243,6 +243,19 @@ document.addEventListener("alpine:init", () => {
         _trigger: null,
         _handlers: [],
         dirty: false,
+        // True while a confirm that runs in the request is under way: the
+        // dialog cannot be closed, because closing would not stop the run.
+        running: false,
+        _runXhr: null,
+        runningMessage() {
+            // Filled only while a run is under way, so a screen reader announces it then.
+            return this.running ? "This is running and can't be stopped. Wait for it to finish." : "";
+        },
+        // Only the confirm of a run that happens in the request locks the dialog;
+        // the picker's refresh requests and the page's polls come from other elements.
+        _isInRequestRun(elt) {
+            return Boolean(elt.matches?.("form[data-runs-in-request]")) && this._body.contains(elt);
+        },
         init() {
             this._dialog = this.$el;
             this._body = document.getElementById("app-modal-body");
@@ -259,6 +272,22 @@ document.addEventListener("alpine:init", () => {
                     this._body.innerHTML = "";
                     this._trigger = event.detail.elt;
                 }
+            });
+
+            // htmx:afterRequest fires for success, errors, timeouts and network
+            // failures alike, so it is the one place the lock is released.
+            trackListener(this._handlers, document, "htmx:beforeRequest", (event) => {
+                if (!this._isInRequestRun(event.detail.elt)) return;
+                this._runXhr = event.detail.xhr;
+                this.running = true;
+            });
+            // The response swaps the form out before this fires, and htmx then
+            // reports the swap target as the element, so the run is matched by
+            // its request rather than by the form.
+            trackListener(this._handlers, document, "htmx:afterRequest", (event) => {
+                if (event.detail.xhr !== this._runXhr) return;
+                this._runXhr = null;
+                this.running = false;
             });
 
             // A history restore's swap carries no target in its detail.
@@ -285,6 +314,8 @@ document.addEventListener("alpine:init", () => {
                 this._hideDiscardPrompt();
                 this._tracker.snapshot();
                 this.dirty = false;
+                this.running = false;
+                this._runXhr = null;
                 // A result announced in this open is not re-read on the next.
                 // A host that shadows modal_host.html may lack the region.
                 const status = document.getElementById("app-modal-status");
@@ -304,6 +335,10 @@ document.addEventListener("alpine:init", () => {
             // listener below, because a second uncancelled Esc would close
             // the dialog despite this handler.
             trackListener(this._handlers, this._dialog, "cancel", (event) => {
+                if (this.running) {
+                    event.preventDefault();
+                    return;
+                }
                 if (!this.dirty) return;
                 event.preventDefault();
                 this._showDiscardPrompt();
@@ -316,10 +351,10 @@ document.addEventListener("alpine:init", () => {
             // ever made for a dirty form.
             trackListener(this._handlers, document, "keydown", (event) => {
                 if (event.key !== "Escape" || event.defaultPrevented) return;
-                if (!this._dialog.open || !this.dirty) return;
+                if (!this._dialog.open || !(this.dirty || this.running)) return;
                 if (document.querySelector("dialog[open]:modal") !== this._dialog) return;
                 event.preventDefault();
-                this._showDiscardPrompt();
+                if (!this.running) this._showDiscardPrompt();
             });
 
             // A click on the ::backdrop targets the dialog element itself, but
@@ -491,6 +526,10 @@ document.addEventListener("alpine:init", () => {
     // dialog reference — whichever component's init() ran last — until each
     // of _dialog/_body/_trigger/_handlers below got its own "qv" name.
     Alpine.data("quickView", () => ({
+        // Never true here. The shared dialog footer and close button bind
+        // `disabled` to `running`, and the CSP build throws on a name no
+        // scope declares, so every host those components render in owns one.
+        running: false,
         _qvTrigger: null,
         _shownUrl: null,
         _stale: false,

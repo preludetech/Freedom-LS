@@ -59,6 +59,10 @@ document.addEventListener("alpine:init", () => {
     // "close" event syncs it back and returns focus to the toggle.
     Alpine.data("sidePanel", () => ({
         open: false,
+        // Never true here. The shared dialog footer and close button bind
+        // `disabled` to `running`, and the CSP build throws on a name no
+        // scope declares, so every host those components render in owns one.
+        running: false,
         isMobile: false,
         // Declared here (not just assigned in init()) so each instance owns
         // its own property from the start. Alpine's merge-proxy `set` trap

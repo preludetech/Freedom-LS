@@ -4,6 +4,7 @@
           hx-post="{{ action_url }}{{ qs }}"
           hx-target="#app-modal-body"
           hx-swap="innerHTML"
+          {% if runs_in_request %}data-runs-in-request{% endif %}
           hx-disabled-elt="find button[type='submit']">
         {% csrf_token %}
         {% include "panel_framework/partials/bulk_selection_inputs.html" %}

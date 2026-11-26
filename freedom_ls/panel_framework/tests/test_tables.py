@@ -2002,7 +2002,9 @@ APPLIED_FILTER: list[str] = [
     'hx-target="#stub-table"] Reset',
     'button [aria-label="Close" class="-my-2 -me-3 flex size-11 shrink-0 cursor-pointer '
     "items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 "
-    'hover:text-on-surface" type="button" x-on:click="requestClose"]',
+    "hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-50 "
+    'disabled:hover:bg-transparent" type="button" x-bind:disabled="running" '
+    'x-on:click="requestClose"]',
     'svg [aria-hidden="true" class="inline size-5" data-icon="close" height="24" viewbox="0 0 24 '
     '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
     'path [d="M6 18L18 6M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" '
@@ -2032,7 +2034,7 @@ APPLIED_FILTER: list[str] = [
     'border-t border-border px-6 py-4 max-sm:flex-wrap sticky bottom-0 z-10 mt-auto -mx-4 -mb-4" '
     'data-modal-footer=""]',
     'div [class="shrink-0"]',
-    'button [class="panel-btn panel-btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
+    'button [class="panel-btn panel-btn-secondary" data-variant="secondary" type="button" x-bind:disabled="running" x-on:click="close"] '
     "Cancel",
     'div [class="flex min-w-0 grow flex-wrap items-center justify-end gap-3"]',
     'button [class="panel-btn panel-btn-primary" data-variant="primary" type="submit"] Show results',
@@ -2191,7 +2193,9 @@ NO_FILTER_APPLIED: list[str] = [
     'hx-target="#stub-table"] Reset',
     'button [aria-label="Close" class="-my-2 -me-3 flex size-11 shrink-0 cursor-pointer '
     "items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 "
-    'hover:text-on-surface" type="button" x-on:click="requestClose"]',
+    "hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-50 "
+    'disabled:hover:bg-transparent" type="button" x-bind:disabled="running" '
+    'x-on:click="requestClose"]',
     'svg [aria-hidden="true" class="inline size-5" data-icon="close" height="24" viewbox="0 0 24 '
     '24" width="24" xmlns="http://www.w3.org/2000/svg"]',
     'path [d="M6 18L18 6M6 6l12 12" fill="none" stroke="currentColor" stroke-linecap="round" '
@@ -2221,7 +2225,7 @@ NO_FILTER_APPLIED: list[str] = [
     'border-t border-border px-6 py-4 max-sm:flex-wrap sticky bottom-0 z-10 mt-auto -mx-4 -mb-4" '
     'data-modal-footer=""]',
     'div [class="shrink-0"]',
-    'button [class="panel-btn panel-btn-secondary" data-variant="secondary" type="button" x-on:click="close"] '
+    'button [class="panel-btn panel-btn-secondary" data-variant="secondary" type="button" x-bind:disabled="running" x-on:click="close"] '
     "Cancel",
     'div [class="flex min-w-0 grow flex-wrap items-center justify-end gap-3"]',
     'button [class="panel-btn panel-btn-primary" data-variant="primary" type="submit"] Show results',

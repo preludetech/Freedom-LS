@@ -32,6 +32,16 @@ def test_cancel_attribute_sets_the_label() -> None:
     assert _cancel(_render('cancel="Close"')).text.strip() == "Close"
 
 
+def test_the_cancel_button_is_disabled_while_the_dialog_is_running() -> None:
+    cancel = _cancel(_render())
+
+    assert cancel.get("x-bind:disabled") == "running"
+
+
+def test_the_cancel_link_has_no_disabled_binding() -> None:
+    assert _cancel(_render('cancel_href="/people/"')).get("x-bind:disabled") is None
+
+
 def test_cancel_href_renders_a_link_with_no_click_handler() -> None:
     cancel = _cancel(_render('cancel_href="/people/"'))
 

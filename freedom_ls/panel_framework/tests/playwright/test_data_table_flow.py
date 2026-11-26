@@ -12,7 +12,7 @@ from contextlib import contextmanager
 
 import pytest
 import pytest_django.live_server_helper
-from playwright.sync_api import Browser, Locator, Page, ViewportSize, expect
+from playwright.sync_api import Browser, Locator, Page, Route, ViewportSize, expect
 
 from django.contrib.sites.models import Site
 
@@ -312,6 +312,35 @@ def test_data_table_flow(
     modal.get_by_role("button", name="Cancel").click()
     expect(modal).to_be_hidden()
     assert not StubModel.objects.filter(is_active=False).exists()
+
+    # While the confirm is in flight the dialog cannot be dismissed; a 422
+    # unlocks it and shows the error.
+    page.get_by_role("button", name="Mark processed").click()
+    expect(modal).to_be_visible()
+    held: list[Route] = []
+    page.route("**/__actions/**", lambda route: held.append(route))
+    modal.get_by_role("button", name="Mark processed").click()
+    expect(modal.locator("#bulk-run-status")).to_have_text(
+        "This is running and can't be stopped. Wait for it to finish."
+    )
+    expect(modal.get_by_role("button", name="Cancel")).to_be_disabled()
+    expect(modal.get_by_role("button", name="Close", exact=True).first).to_be_disabled()
+    page.keyboard.press("Escape")
+    page.keyboard.press("Escape")
+    expect(modal).to_be_visible()
+    # Releasing the held request with a wrong expected count makes the server
+    # answer 422 with the whole confirmation again.
+    stale_post = re.sub(
+        r"expected_count=\d+", "expected_count=99", held[0].request.post_data or ""
+    )
+    held[0].continue_(post_data=stale_post)
+    expect(
+        modal.get_by_text("The selection changed since you opened this.")
+    ).to_be_visible()
+    expect(modal.get_by_role("button", name="Close", exact=True).first).to_be_enabled()
+    page.unroute("**/__actions/**")
+    page.keyboard.press("Escape")
+    expect(modal).to_be_hidden()
 
     page.get_by_role("button", name="Mark processed").click()
     expect(modal).to_be_visible()

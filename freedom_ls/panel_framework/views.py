@@ -781,6 +781,9 @@ class _BulkConfirmation:
     #: change, or when the action's form has no valid choice yet. An `error`
     #: takes its place.
     disabled_reason: str = ""
+    #: True when the confirmed run happens inside the request, so the dialog
+    #: locks until it ends; a background run returns at once.
+    runs_in_request: bool = False
 
     def context(self) -> dict[str, object]:
         title_count = self.count if self.changed_count is None else self.changed_count
@@ -799,6 +802,7 @@ class _BulkConfirmation:
             "confirm_disabled": self.confirm_disabled or bool(self.error),
             "confirm_disabled_reason": self.error or self.disabled_reason,
             "form": self.form,
+            "runs_in_request": self.runs_in_request,
         }
 
 
@@ -1092,6 +1096,7 @@ def _handle_bulk_action(
             form=picker,
             cleaned_data=cleaned_data,
             changed_count=changed_count,
+            runs_in_request=not in_background,
             disabled_reason=(
                 _nothing_to_change_reason(queryset.model, count)
                 if changed_count == 0 and count

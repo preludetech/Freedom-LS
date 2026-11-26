@@ -10,7 +10,10 @@ by `cancel_click`. That is `cancel` by default, which closes without the
 dirty-form guard, since pressing Cancel is a deliberate choice to drop the
 input; `keepEditing` serves the discard prompt. `cancel_click` is always a
 literal in a template, never filled from context, and `cancel_href` only
-ever receives a URL the server built. `focus_cancel` makes the button take
+ever receives a URL the server built. The Cancel button binds `disabled` to the host's `running`, which is
+true while a confirm that runs in the request is under way; a host without
+that property leaves it enabled, and the link form has no binding.
+`focus_cancel` makes the button take
 initial focus and `cancel_describedby` names the element describing it. The default slot holds the actions, right aligned with the
 primary last, and wraps onto its own row below sm when it does not fit.
 It stays in view because only the body between it and the header scrolls.
@@ -28,7 +31,7 @@ already close it. The shape, spacing and `justify-between` are the same.
         {% elif cancel_href %}
             <c-panel-button variant="secondary" href="{{ cancel_href }}" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-panel-button>
         {% else %}
-            <c-panel-button type="button" variant="secondary" x-on:click="{{ cancel_click }}" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-panel-button>
+            <c-panel-button type="button" variant="secondary" x-on:click="{{ cancel_click }}" x-bind:disabled="running" autofocus="{{ focus_cancel }}" aria_describedby="{{ cancel_describedby }}">{{ cancel }}</c-panel-button>
         {% endif %}
     </div>
     <div class="flex min-w-0 grow flex-wrap items-center justify-end gap-3">{% if stepping %}{{ next }}{% else %}{{ slot }}{% endif %}</div>

@@ -21,8 +21,9 @@ GOLDEN_FORM_WITHOUT_FILE_FIELD = """
 
     <button type="button"
             x-on:click="requestClose"
+            x-bind:disabled="running"
             aria-label="Close"
-            class="-my-2 -me-3 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
+            class="-my-2 -me-3 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-on-surface disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent">
 
 
 
@@ -94,7 +95,7 @@ GOLDEN_FORM_WITHOUT_FILE_FIELD = """
 
 data-variant="secondary"
 class="panel-btn panel-btn-secondary "
-x-on:click="cancel"
+x-on:click="cancel" x-bind:disabled="running"
 >
 
 Cancel

@@ -10,15 +10,16 @@ and passes page_url: Cancel and the close control are then links back to it.
 {% if page_url %}
 <c-modal-header close_href="{{ page_url }}{{ qs }}">{{ title }}</c-modal-header>
 {% else %}
-<c-modal-header>{{ title }}</c-modal-header>
+<c-modal-header describedby="{% if runs_in_request %}bulk-run-status{% endif %}">{{ title }}</c-modal-header>
 {% endif %}
 
 <c-modal-body>
 {% if form %}{% include "panel_framework/partials/bulk_picker.html" %}{% endif %}
 {% include "panel_framework/partials/bulk_confirmation_message.html" %}
 {% if confirm_disabled_reason %}<p id="bulk-confirm-reason" class="text-muted">{{ confirm_disabled_reason }}</p>{% endif %}
+{% if runs_in_request %}<p id="bulk-run-status" role="status" x-text="runningMessage"></p>{% endif %}
 </c-modal-body>
 
-<c-modal-footer cancel_href="{% if page_url %}{{ page_url }}{{ qs }}{% endif %}" focus_cancel="{% if not page_url %}true{% endif %}">
+<c-modal-footer cancel_href="{% if page_url %}{{ page_url }}{{ qs }}{% endif %}" focus_cancel="{% if not page_url %}true{% endif %}" cancel_describedby="{% if runs_in_request %}bulk-run-status{% endif %}">
     {% include "panel_framework/partials/bulk_confirmation_form.html" %}
 </c-modal-footer>

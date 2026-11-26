@@ -33,3 +33,13 @@ def test_close_href_reaches_the_close_control() -> None:
 
 def test_without_close_href_the_close_control_asks_the_host_to_close() -> None:
     assert _render().find("button").get("x-on:click") == "requestClose"
+
+
+def test_describedby_reaches_the_close_button() -> None:
+    close = _render('describedby="run-status"').find("button")
+
+    assert close.get("aria-describedby") == "run-status"
+
+
+def test_without_describedby_the_close_button_has_no_description() -> None:
+    assert _render().find("button").get("aria-describedby") is None
