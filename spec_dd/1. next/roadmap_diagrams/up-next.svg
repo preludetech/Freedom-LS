@@ -62,7 +62,7 @@
 <path d="M362.0,248.0 H360.0 A6,6 0 0 0 354.0,254.0 V292.0 A6,6 0 0 0 360.0,298.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="270.0" fill="#111827">sacaa-compliance-assessment-</text>
 <text x="370.0" y="285.0" fill="#111827">controls-1-score-moderation</text>
-<rect x="24.0" y="412.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<rect x="24.0" y="412.5" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,412.5 H30.0 A6,6 0 0 0 24.0,418.5 V456.5 A6,6 0 0 0 30.0,462.5 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="434.5" fill="#111827">sacaa-compliance-assessment-</text>
 <text x="40.0" y="449.5" fill="#111827">controls-3-test-time-limit</text>

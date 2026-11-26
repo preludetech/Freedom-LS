@@ -12,6 +12,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### In progress
 
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA compliance)
+- 🔴 High · `sacaa-compliance-assessment-controls-3-test-time-limit` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
@@ -20,7 +21,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### Ready to start
 
 - 🔴 High · `sacaa-compliance-assessment-controls-2-attempt-limits` (SACAA compliance)
-- 🔴 High · `sacaa-compliance-assessment-controls-3-test-time-limit` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-assessment-controls-7-course-restart` (SACAA compliance)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
@@ -86,7 +86,7 @@ Learner record retention, question versions and access, and assessment controls,
 - `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
 - `sacaa-compliance-assessment-controls-1-score-moderation` — **blocked** by `sacaa-compliance-content-versions-and-access-4-question-access` — A moderator overrides a learner's mark on one quiz question with a reason; the system mark is kept.
 - `sacaa-compliance-assessment-controls-2-attempt-limits` — **ready** — Quizzes cap attempts and set escalating waits between failed attempts, enforced at the start gate.
-- `sacaa-compliance-assessment-controls-3-test-time-limit` — **ready** — Quizzes get a time limit with a countdown; expired attempts are submitted and marked, with a recorded reason.
+- `sacaa-compliance-assessment-controls-3-test-time-limit` — **in progress** — Quizzes get a time limit with a countdown; expired attempts are submitted and marked, with a recorded reason.
 - `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — **ready** — Topics, forms and course parts require interaction every N minutes, warn, then exit to the dashboard or log out.
 - `sacaa-compliance-assessment-controls-5-test-disturbance` — **blocked** by `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Leaving a quiz (logout, session end, auto exit, leave and return) auto-fails or auto-marks the attempt.
 - `sacaa-compliance-assessment-controls-6-minimum-learning-time` — **blocked** by `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Active learning time is recorded; topics, course parts and quizzes require a minimum before learners move on.
