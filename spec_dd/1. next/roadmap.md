@@ -66,6 +66,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `learner-interface-features-2-test-out` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-6-revision-dashboard` (Learner interface features)
+- ⚪ Priority not set · `demo-cohorts-seed-command` (Tooling and operations)
 
 ### Waiting on a collision
 
@@ -328,12 +329,13 @@ Where signups come from, and what visitors are told about tracking.
 - `landing-page-component-kit` — **ready** — Theme-role cotton components and layouts for building course and campaign landing pages.
 - `lead-capture-forms` — **ready** — Site-aware enquiry forms storing leads with first-touch attribution, with staff notification emails and CSV export.
 - `referral-tracking-labelled-referer-hosts` — **blocked** by `referral-tracking-external-referer-first-touch` — Staff label unknown referer hosts in the admin so the channel classifier counts them correctly.
+- `admin-leads-list-and-export` — **blocked** by `lead-capture-forms` — Staff list everyone who showed interest, one row per email, filtered by date and channel, with CSV export.
 
 ![Referral tracking and marketing](roadmap_diagrams/referral-tracking-and-marketing.svg)
 
 **Notes**
 - `referral-tracking-external-referer-first-touch` must agree with the existing attribution touch list.
-- The `referral-tracking-*` specs and `landing-page-component-kit` are pull-ins from First-Class-LMS. `landing-page-component-kit` first needs a decision on whether FLS owns marketing pages.
+- The `referral-tracking-*` specs, `landing-page-component-kit` and `admin-leads-list-and-export` are pull-ins from First-Class-LMS. `landing-page-component-kit` first needs a decision on whether FLS owns marketing pages.
 
 ## Tooling and operations
 
@@ -346,11 +348,12 @@ Developer tooling, deployment and downstream fixes.
 - `forced-site-name-for-host-based-site-lookup` — **ready** — `FORCE_SITE_NAME` reaches host-based site lookup in development, so every dev port works.
 - `audit-log-describe-test-flake` — **ready** — Find and fix why the audit-log describe test fails in loaded full runs but passes alone.
 - `dev-site-bootstrap-command` — **ready** — A development command that creates the forced-name dev Site and a verified dev superuser.
+- `demo-cohorts-seed-command` — **ready** — A development command that fills a site with deterministic demo cohorts and learners for demos.
 
 ![Tooling and operations](roadmap_diagrams/tooling-and-operations.svg)
 
 **Notes**
-- `housekeeping-sentry-cron-checkin`, `forced-site-name-for-host-based-site-lookup` and `dev-site-bootstrap-command` are pull-ins from First-Class-LMS.
+- `housekeeping-sentry-cron-checkin`, `forced-site-name-for-host-based-site-lookup`, `dev-site-bootstrap-command` and `demo-cohorts-seed-command` are pull-ins from First-Class-LMS.
 
 ## Semantic icons extraction
 

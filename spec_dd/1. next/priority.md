@@ -47,3 +47,5 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 - `learner-interface-features`
 - `referral-tracking-labelled-referer-hosts`
+- `admin-leads-list-and-export`
+- `demo-cohorts-seed-command`
