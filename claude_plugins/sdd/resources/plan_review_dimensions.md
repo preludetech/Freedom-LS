@@ -6,14 +6,18 @@ clear fix are those in the preamble of `spec_review_dimensions.md`; the worker r
 the spec. A `new_threats` finding is always a judgement call written as a `> **Security concern:**`;
 every other row's judgement call is a `> **Review concern:**`.
 
+In a plan review, a judgement call is only a finding the user has to settle: product behaviour the
+spec leaves open, or a security trade-off. How the plan is cut into slices, ordered or coded is the
+planner's decision, so a finding about it is always a clear fix, with the planner choosing the fix.
+
 | id | checks | evidence it may cite | clear fixes |
 | --- | --- | --- | --- |
 | `success_criteria` | every spec success criterion is met by a plan step | the criterion and the step | a criterion with no step, when an existing step covers it once named; otherwise judgement |
-| `vertical_slices` | each slice runs end to end and is tested; the first is the thinnest; no step groups by layer | the slice text | none; all judgement |
+| `vertical_slices` | each slice runs end to end and is tested; the first is the thinnest; no step groups by layer | the slice text | every finding: split, merge, reorder or thin the slices until the rule holds; the planner picks the arrangement |
 | `skills` | no step contradicts a skill the brief names by path | the skill line | the contradicting line replaced by the skill's rule when the skill states one |
 | `generic_plugin` | no project name, path, app or value in a plugin whose README says it is generic | the README and the config file | moving the value into the project's config section |
 | `junk_files` | no step leaves a file that needs manual cleanup | the step | a missing delete-by-name step |
-| `clean_code` | proposed code is clean and simple | the snippet | none; all judgement |
+| `clean_code` | proposed code is clean and simple | the snippet | the simpler code, when it does the same thing |
 | `comments` | no proposed comment or docstring points at the spec, plan, a slice, a phase, the QA plan or a section number | the snippet line, checked against `${CLAUDE_PLUGIN_ROOT}/skills/planning-references-in-code/SKILL.md` | the pointer replaced by the fact it stood for |
 | `vocabulary` | every noun and identifier matches the spec's vocabulary and the codebase's | the spec or source line | a term replaced by the spec's or source's term |
 | `parallel_safety` | every slice has `Builds on:` and `Touches:`; two slices with no `Builds on:` path between them have disjoint `Touches:`; the migration, manifest and lockfile rules in `plan_from_spec.md` Step 3 | the two slices' lines | a missing line; a missing `Builds on:` entry where the overlap is literal |
