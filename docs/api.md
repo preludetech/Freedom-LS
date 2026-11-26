@@ -401,6 +401,7 @@ Removing or renaming a field, or changing what one means, waits for `/api/v2/`.
 | `email_verified` | boolean | Whether the sign-in address has been verified. |
 | `created_at` | string (ISO 8601) | When the account was created. |
 | `last_login` | string (ISO 8601) or `null` | `null` if the user has never signed in. |
+| `last_active` | string (ISO 8601) or `null` | When the user last made a signed-in request, written at most once every 5 minutes (`LAST_ACTIVE_WRITE_SECONDS`). `null` if never recorded. Does not move `updated_at`. |
 | `updated_at` | string (ISO 8601) | When the row last changed. Drives paging and `updated_since`. |
 
 Passwords, superuser status, groups and permissions are never returned.
@@ -413,6 +414,9 @@ user's email addresses, so `email_verified` changes reach an incremental sync.
 Signing in does **not** move it. `last_login` changes on every sign-in, and counting those would
 send most of your users on every run. An incremental sync therefore sees a fresh `last_login`
 only when something else about the user changes; a full pull always has the current value.
+
+The same goes for `last_active`: it is written without a save, so it never moves `updated_at` and an
+incremental sync sees a fresh value only when something else about the user changes.
 
 ## Learner course registrations
 
