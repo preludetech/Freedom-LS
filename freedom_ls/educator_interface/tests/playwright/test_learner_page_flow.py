@@ -223,6 +223,7 @@ def test_an_attempt_opens_from_the_courses_tab_to_its_paper_and_back(
     answer.selected_options.add(right)
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
+    assign_role(grantor, educator_user, "question_bank_viewer", organisation)
 
     courses_url = interface_url(
         live_server, organisation.slug, f"learners/{learner.pk}/__tabs/courses"

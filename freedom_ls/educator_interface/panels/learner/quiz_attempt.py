@@ -14,8 +14,12 @@ from uuid import UUID
 from django.db.models import F, Model, prefetch_related_objects
 from django.http import HttpRequest
 
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
+from freedom_ls.educator_interface.panels.common.question_detail import (
+    question_detail_withheld_note,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
     OrganisationSectionConfig,
@@ -39,11 +43,13 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.queries import stored_score_outdated
 from freedom_ls.form_engine.scoring import is_quiz_answer_correct
+from freedom_ls.learner_management.capabilities import record_question_view
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import learners_visible_to
 from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.learner_progress.queries import LearnerRegistrationProgress
-from freedom_ls.panel_framework.panels import InstanceDetailsPanel, Panel, PanelStack
+from freedom_ls.panel_framework.lazy_panels import LazyBodyPanel
+from freedom_ls.panel_framework.panels import InstanceDetailsPanel, PanelStack
 from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.views import HeaderStat, InstanceView, ListViewConfig
 from freedom_ls.reports.gather import attempt_number_of, score_attempt
@@ -278,18 +284,39 @@ def quiz_attempt_paper_context(sitting: FormProgress) -> dict[str, object]:
     }
 
 
-class QuizAttemptPaperPanel(Panel):
+class QuizAttemptPaperPanel(LazyBodyPanel):
     """The paper as this sitting was served, with the learner's answers and
-    how each question is marked now."""
+    how each question is marked now.
+
+    The paper loads only on the page's own htmx request, and each load is
+    recorded against the sitting and the learner, so the paper is never
+    computed for anyone who may not see it.
+    """
 
     model = FormProgress
     title = "Paper"
-    template_name = "educator_interface/panels/quiz_attempt_paper.html"
+    load_label = "Load the paper"
+    region_template_name = "educator_interface/panels/quiz_attempt_paper_region.html"
+    skeleton_lines = 8
 
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        context.update(quiz_attempt_paper_context(cast(FormProgress, self.instance)))
-        return context
+    def get_loaded_context(self) -> dict[str, object]:
+        sitting = cast(FormProgress, self.instance)
+        learner = quiz_attempt_facts(sitting).learner
+        note = question_detail_withheld_note(self.request, learner.organisation)
+        if note:
+            return {"question_detail_note": note}
+        record_question_view(
+            actor=cast(User, self.request.user),
+            target=sitting,
+            target_label=QuizAttemptConfig.get_instance_label(sitting),
+            organisation=learner.organisation,
+            subjects=[learner],
+            details={
+                "surface": "attempt_review",
+                "forms": [{"id": str(sitting.form.pk), "title": sitting.form.title}],
+            },
+        )
+        return quiz_attempt_paper_context(sitting)
 
 
 class QuizAttemptStack(PanelStack):

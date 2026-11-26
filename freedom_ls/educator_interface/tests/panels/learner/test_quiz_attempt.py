@@ -17,6 +17,8 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
+from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
@@ -28,8 +30,10 @@ from freedom_ls.educator_interface.panels.learner.quiz_attempt import (
 from freedom_ls.educator_interface.tests.helpers import (
     _get_document,
     _get_quick_view,
+    _grant,
     _header_of,
     _interface_url,
+    _learner_page,
     organisation_admin_viewer,
 )
 from freedom_ls.form_engine.factories import (
@@ -506,12 +510,41 @@ def _quiz() -> Form:
     return cast(Form, FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50))
 
 
+def _paper_url(organisation: Organisation, sitting: FormProgress) -> str:
+    return _interface_url(
+        organisation.slug, f"quiz-attempts/{sitting.pk}/__panels/paper"
+    )
+
+
+def _holder_client(
+    organisation: Organisation, logged_in_client: Callable[[User], Client]
+) -> Client:
+    """A client for an organisation admin who also holds the question bank
+    viewer role."""
+    viewer = organisation_admin_viewer(organisation)
+    _grant(viewer, "question_bank_viewer", organisation)
+    return logged_in_client(viewer)
+
+
+def _paper_region(
+    client: Client, organisation: Organisation, sitting: FormProgress
+) -> lxml.html.HtmlElement:
+    """The paper as the htmx fetch the skeleton makes returns it."""
+    response = client.get(
+        f"{_paper_url(organisation, sitting)}?loaded=1", HTTP_HX_REQUEST="true"
+    )
+    assert response.status_code == 200
+    return lxml.html.fromstring(response.content.decode())
+
+
 def _paper_text(
     client: Client, organisation: Organisation, sitting: FormProgress
 ) -> str:
-    return _text(
-        _page(client, organisation, sitting).cssselect("section[data-panel='paper']")[0]
-    )
+    return _text(_paper_region(client, organisation, sitting))
+
+
+def _question_views() -> list[AuditLogEntry]:
+    return list(AuditLogEntry.unscoped.filter(action="question.viewed"))
 
 
 def test_the_paper_follows_the_served_order_and_leaves_out_what_was_not_served(
@@ -537,7 +570,7 @@ def test_the_paper_follows_the_served_order_and_leaves_out_what_was_not_served(
     _answer(sitting, q_a, a_1)
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert text.index("Page 1 of 2: Beta page") < text.index("Question C")
@@ -572,7 +605,7 @@ def test_a_sitting_without_a_served_paper_says_it_predates_the_record(
     )
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert "This attempt predates the record of the served order." in text
@@ -596,7 +629,7 @@ def test_a_served_item_deleted_since_shows_the_missing_note_and_no_stale_score_n
     q_b.delete()
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert "have since been deleted from the quiz" in text
@@ -633,7 +666,7 @@ def test_each_question_shows_its_verdict(
     _answer(sitting, question, *[options[index] for index in chosen])
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert shown in text
@@ -659,7 +692,7 @@ def test_a_free_text_question_shows_the_answer_and_not_marked(
     )
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert "Because lift" in text
@@ -696,9 +729,9 @@ def test_the_paper_has_no_form_fields(
         form_progress=sitting, question=free_text, text_answer="Because lift"
     )
 
-    (paper,) = _page(
-        _admin_client(organisation, logged_in_client), organisation, sitting
-    ).cssselect("section[data-panel='paper']")
+    paper = _paper_region(
+        _holder_client(organisation, logged_in_client), organisation, sitting
+    )
 
     assert paper.cssselect("input, select, textarea") == []
 
@@ -725,7 +758,7 @@ def test_a_correct_option_changed_after_submission_shows_the_stale_score_note(
     two.save()
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert "This quiz has changed since the attempt was marked." in text
@@ -750,7 +783,7 @@ def test_a_correct_option_added_after_submission_marks_the_question_incorrect(
     QuestionOptionFactory(question=question, text="A three", correct=True, order=2)
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert "This quiz has changed since the attempt was marked." in text
@@ -801,11 +834,10 @@ def test_an_option_added_after_submission_is_listed_last_and_labelled(
     _answer(sitting, question, one)
     QuestionOptionFactory(question=question, text="A three", correct=True, order=2)
 
-    document = _page(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+    paper = _paper_region(
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
-    (paper,) = document.cssselect("section[data-panel='paper']")
     assert [
         " ".join(row.text_content().split())
         for row in paper.cssselect("[data-testid='answer-option']")
@@ -848,18 +880,16 @@ def test_a_thirty_question_paper_costs_no_more_queries_than_a_three_question_one
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     organisation = OrganisationFactory()
-    client = _admin_client(organisation, logged_in_client)
+    client = _holder_client(organisation, logged_in_client)
     small = _sized_sitting(organisation, 1, 3)
     large = _sized_sitting(organisation, 3, 10)
     with CaptureQueriesContext(connection) as baseline:
-        client.get(_interface_url(organisation.slug, f"quiz-attempts/{small.pk}"))
+        _paper_region(client, organisation, small)
 
     with django_assert_max_num_queries(len(baseline)):
-        response = client.get(
-            _interface_url(organisation.slug, f"quiz-attempts/{large.pk}")
-        )
+        region = _paper_region(client, organisation, large)
 
-    assert response.status_code == 200
+    assert "Question 2-9" in region.text_content()
 
 
 def test_the_quick_view_shows_the_title_the_subtitle_six_rows_and_no_link_in_its_body(
@@ -922,3 +952,153 @@ def test_a_quick_view_request_that_is_not_htmx_redirects_to_the_page(
 
     assert response.status_code == 302
     assert response["Location"] == page
+
+
+def _gated_sitting(organisation: Organisation) -> tuple[FormProgress, Form]:
+    form = _quiz()
+    page = _form_page(form=form, order=1)
+    question, options = _question(
+        page, "Secret question", 1, [("Hidden option", True), ("Other option", False)]
+    )
+    sitting = _paper_sitting(
+        organisation,
+        form,
+        served_paper=served_paper_of([(page, [question])], {question: options}),
+    )
+    _answer(sitting, question, options[0])
+    return sitting, form
+
+
+def test_the_pages_first_render_holds_the_skeleton_and_no_question_text_for_a_holder(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting, _ = _gated_sitting(organisation)
+
+    response = _holder_client(organisation, logged_in_client).get(
+        _interface_url(organisation.slug, f"quiz-attempts/{sitting.pk}")
+    )
+
+    content = response.content.decode()
+    assert "Load the paper" in content
+    assert "Secret question" not in content
+    assert "Hidden option" not in content
+    assert _question_views() == []
+
+
+def test_a_holders_htmx_load_shows_the_paper_and_logs_one_view(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting, form = _gated_sitting(organisation)
+
+    text = _paper_text(
+        _holder_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    (entry,) = _question_views()
+    assert "Secret question" in text
+    assert "Hidden option" in text
+    assert entry.target == sitting
+    assert entry.organisation == organisation
+    assert subject_key(sitting.course_attempt.course_progress.learner) in entry.subjects
+    assert entry.details == {
+        "surface": "attempt_review",
+        "forms": [{"id": str(form.pk), "title": form.title}],
+    }
+
+
+def test_the_logged_view_is_listed_on_the_learners_history_tab(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting, _ = _gated_sitting(organisation)
+    client = _holder_client(organisation, logged_in_client)
+    _paper_region(client, organisation, sitting)
+
+    history = _learner_page(
+        client, sitting.course_attempt.course_progress.learner, "history"
+    ).text_content()
+
+    assert "Question detail viewed" in history
+
+
+def test_a_sitting_of_a_learner_in_another_organisation_does_not_open_under_this_one(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting, _ = _gated_sitting(OrganisationFactory())
+
+    response = _holder_client(organisation, logged_in_client).get(
+        f"{_paper_url(organisation, sitting)}?loaded=1", HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
+    assert _question_views() == []
+
+
+def test_a_non_holder_sees_the_hidden_note_and_nothing_is_logged(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting, _ = _gated_sitting(organisation)
+
+    text = _paper_text(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert "Question detail is hidden" in text
+    assert "Secret question" not in text
+    assert "Hidden option" not in text
+    assert _question_views() == []
+
+
+def test_a_plain_get_by_a_holder_shows_the_javascript_note_and_logs_nothing(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting, _ = _gated_sitting(organisation)
+
+    response = _holder_client(organisation, logged_in_client).get(
+        f"{_paper_url(organisation, sitting)}?loaded=1"
+    )
+
+    content = response.content.decode()
+    assert "only with JavaScript" in content
+    assert "Secret question" not in content
+    assert _question_views() == []
+
+
+def test_a_superuser_sees_the_paper_and_it_is_logged(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting, _ = _gated_sitting(organisation)
+
+    text = _paper_text(
+        logged_in_client(cast(User, UserFactory(superuser=True))),
+        organisation,
+        sitting,
+    )
+
+    assert "Secret question" in text
+    assert len(_question_views()) == 1
+
+
+def test_the_header_stats_and_summary_are_the_same_for_a_holder_and_a_non_holder(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting, _ = _gated_sitting(organisation)
+
+    holder_page = _page(
+        _holder_client(organisation, logged_in_client), organisation, sitting
+    )
+    admin_page = _page(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert _text(_header_of(holder_page)) == _text(_header_of(admin_page))
+    assert _text(holder_page.cssselect("section[data-panel='summary']")[0]) == _text(
+        admin_page.cssselect("section[data-panel='summary']")[0]
+    )
