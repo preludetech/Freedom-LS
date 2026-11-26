@@ -32,7 +32,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`, remove the dialog-footer full-size exception (Triggers text and table row: full size only from `md` up; the "What enforces it" test names and Playwright line; the Visual checklist line); add the spaced course rows exception to the list-value spacing rule; document the dialog `running` lock; document `<c-panel-progress-bar size="small">`; add the exception that a quick view trigger may sit in `<c-panel-list-row>`'s trailing slot (spec "Documentation and downstream", §5, §6, §7)
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, add to the `appModal` inventory row that `running` locks Cancel, the close button and Esc during an in-request bulk run (spec §6)
 - [x] (cmd) Run `/sdd:document`: in `freedom_ls/panel_framework/HOST_CONTRACT.md`, replace the 44px dialog-footer height rule with the small-on-a-phone button rule (spec §7 and "Documentation and downstream")
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
 
