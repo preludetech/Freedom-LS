@@ -10,7 +10,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -23,6 +23,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) In `claude_plugins/fls-dev/skills/alpine-js/SKILL.md`, add a row for the `examCountdown` component to the registered-components inventory (app `learner_interface`, used in `learner_interface/course_form_page.html`: the runner's countdown, its 5-minute and 1-minute warnings and the time-up post at 0:00), from spec section "Learner interface"
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
