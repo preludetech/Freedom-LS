@@ -20,11 +20,11 @@ from django.utils.cache import patch_cache_control
 from freedom_ls.api.authentication import host_site
 from freedom_ls.api.models import ApiKey
 from freedom_ls.api.scopes import ApiScope
-from freedom_ls.api_admin.audit import acting_user, key_details
+from freedom_ls.api_admin.audit import key_details
 from freedom_ls.api_admin.filters import ApiKeyStatusFilter
 from freedom_ls.api_admin.forms import ApiKeyAddForm
 from freedom_ls.api_admin.views import revoke_view
-from freedom_ls.audit_log.writer import record_entry
+from freedom_ls.audit_log.writer import acting_user, record_entry
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_page_context
 
 

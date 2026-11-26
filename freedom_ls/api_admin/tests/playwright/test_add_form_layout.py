@@ -7,11 +7,11 @@ from allauth.account.models import EmailAddress
 from playwright.sync_api import Page
 from pytest_django.live_server_helper import LiveServer
 
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.tests.playwright_fixtures import sign_in
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
@@ -24,9 +24,11 @@ pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
 
 @pytest.fixture
-def admin_user(db: None, live_server_site: Site, mock_site_context: Site) -> User:
+def admin_user(
+    db: None, live_server_site: Site, mock_site_context: Site
+) -> AbstractBaseUser:
     """A fresh, email-verified superuser."""
-    user: User = UserFactory(superuser=True)
+    user: AbstractBaseUser = UserFactory(superuser=True)
     EmailAddress.objects.get_or_create(
         user=user,
         email=user.email,
@@ -36,7 +38,7 @@ def admin_user(db: None, live_server_site: Site, mock_site_context: Site) -> Use
 
 
 def test_api_key_add_form_flow(
-    live_server: LiveServer, page: Page, admin_user: User
+    live_server: LiveServer, page: Page, admin_user: AbstractBaseUser
 ) -> None:
     """The add form fits every viewport, shows scope labels in full and wraps the issued key.
 

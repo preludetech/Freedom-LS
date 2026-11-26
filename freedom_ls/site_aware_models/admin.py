@@ -8,8 +8,9 @@ from unfold.contrib.import_export.forms import ExportForm
 from django.contrib import admin
 from django.contrib.admin.exceptions import NotRegistered
 from django.contrib.sites.models import Site
+from django.core.exceptions import ValidationError
 from django.db.models import Model
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
@@ -123,6 +124,24 @@ def admin_page_context(
         "model_admin": model_admin,
         "title": title,
     }
+
+
+def ids_from(request: HttpRequest, model: type[Model]) -> list[object]:
+    """The primary keys named by `ids`, a comma-separated list in POST or GET.
+
+    A part that is not a valid key for the model is a 404, so a hand-typed
+    URL never reaches the database with a malformed value.
+    """
+    source = request.POST if request.method == "POST" else request.GET
+    pk_field = model._meta.pk
+    try:
+        return [
+            pk_field.to_python(part)
+            for part in source.get("ids", "").split(",")
+            if part
+        ]
+    except ValidationError as exc:
+        raise Http404 from exc
 
 
 def admin_change_link(

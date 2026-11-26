@@ -13,6 +13,8 @@ from django.http import HttpRequest
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.accounts.admin import UserAdmin as AccountsUserAdmin
+from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.enums import FormStrategy
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.site_aware_models.admin import ReadOnlyAdminMixin, SiteAwareModelAdmin
@@ -21,7 +23,18 @@ from freedom_ls.site_aware_models.admin_filters import (
     InclusiveRangeDateTimeFilter,
 )
 
+from .force_delete_admin import ForceDeleteAdminMixin
 from .models import CourseFormAttempt, CourseProgress, TopicProgress
+
+admin.site.unregister(User)
+
+
+@admin.register(User)
+class UserAdmin(ForceDeleteAdminMixin, AccountsUserAdmin):
+    """The accounts user admin plus force delete, registered here because
+    force delete reaches course progress, which accounts cannot import."""
+
+    actions_detail = ["force_delete_one"]
 
 
 class TopicCompletionFilter(CompletionListFilter):

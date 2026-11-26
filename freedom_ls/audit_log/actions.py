@@ -276,6 +276,7 @@ FLS_AUDIT_ACTIONS: tuple[AuditAction, ...] = (
     AuditAction("api_key.issued", "API key issued"),
     AuditAction("api_key.revoked", "API key revoked"),
     AuditAction("audit_log.exported", "Audit log exported", _describe_export),
+    AuditAction("user.deleted", "User force deleted"),
 )
 
 

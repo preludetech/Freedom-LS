@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from uuid import UUID
-
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin
 from django.core.exceptions import PermissionDenied
@@ -14,9 +12,9 @@ from django.utils import timezone
 from django.utils.translation import ngettext
 
 from freedom_ls.api.models import ApiKey
-from freedom_ls.api_admin.audit import acting_user, key_details
-from freedom_ls.audit_log.writer import record_entry
-from freedom_ls.site_aware_models.admin import admin_page_context
+from freedom_ls.api_admin.audit import key_details
+from freedom_ls.audit_log.writer import acting_user, record_entry
+from freedom_ls.site_aware_models.admin import admin_page_context, ids_from
 
 
 def revoke_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpResponse:
@@ -30,7 +28,9 @@ def revoke_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpRespons
         raise PermissionDenied
     # The admin queryset is filtered to the host's site, so another site's
     # key is a 404 whichever way its id arrives.
-    keys = list(model_admin.get_queryset(request).filter(pk__in=_ids_from(request)))
+    keys = list(
+        model_admin.get_queryset(request).filter(pk__in=ids_from(request, ApiKey))
+    )
     if not keys:
         raise Http404
     if request.method == "POST":
@@ -58,14 +58,6 @@ def revoke_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpRespons
         **admin_page_context(request, model_admin, "Revoke API keys"),
     }
     return TemplateResponse(request, "admin/api_admin/revoke_confirm.html", context)
-
-
-def _ids_from(request: HttpRequest) -> list[UUID]:
-    source = request.POST if request.method == "POST" else request.GET
-    try:
-        return [UUID(part) for part in source.get("ids", "").split(",") if part]
-    except ValueError as exc:
-        raise Http404 from exc
 
 
 def _revoke(request: HttpRequest, keys: list[ApiKey]) -> int:

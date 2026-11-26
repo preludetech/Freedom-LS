@@ -19,9 +19,10 @@ from .models import LegalConsent, SiteSignupPolicy, User
 from .resources import UserResource
 
 # Admins for these models deny delete on their own pages so nobody can thin
-# out an audit trail row by row. Erasing an account is the one path that must
-# take those rows with it (their FKs to User cascade), so the User admin
-# vouches for them. An app that owns such a model adds it here from its admin
+# out an audit trail row by row. Force deleting a user is the one path that
+# must take those rows with it (their FKs to User cascade), so it allows the
+# models in this set; any other model whose admin refuses delete blocks a
+# force delete. An app that owns such a model adds it here from its admin
 # module.
 USER_ERASURE_CASCADE_MODELS: set[type[Model]] = {LegalConsent}
 
@@ -191,16 +192,12 @@ class UserAdmin(SiteAwareExportModelAdmin):
         defaults.update(kwargs)
         return super().get_form(request, obj, **defaults)
 
-    def get_deleted_objects(
-        self, objs: QuerySet[User] | list[User], request: HttpRequest
-    ) -> tuple[list[object], dict[str, int], set[str], list[object]]:
-        to_delete, model_count, perms_needed, protected = super().get_deleted_objects(
-            objs, request
-        )
-        perms_needed.difference_update(
-            str(model._meta.verbose_name) for model in USER_ERASURE_CASCADE_MODELS
-        )
-        return to_delete, model_count, perms_needed, protected
+    def has_delete_permission(
+        self, request: HttpRequest, obj: User | None = None
+    ) -> bool:
+        # Records must be kept, so a user is deactivated. Erasure is force
+        # delete, which a superuser runs with a reason.
+        return False
 
 
 # @admin.register(SiteGroup)

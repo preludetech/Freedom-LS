@@ -5,8 +5,6 @@
 # the check as stale.
 
 # accounts
-freedom_ls.accounts.tests.test_admin -> freedom_ls.referral_tracking.factories
-freedom_ls.accounts.tests.test_admin -> freedom_ls.referral_tracking.models
 freedom_ls.accounts.tests.test_legal_doc_view -> freedom_ls.icons.loader
 freedom_ls.accounts.tests.management.commands.test_setup_initial_prod_data -> freedom_ls.organisations.models
 

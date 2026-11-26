@@ -1,12 +1,14 @@
 """Tests for GuardedSiteAwareModelAdmin."""
 
+import uuid
+
 import pytest
 
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
 from django.db.models import Model
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 from django.test import RequestFactory
 from django.urls import reverse
 
@@ -16,6 +18,7 @@ from freedom_ls.site_aware_models.admin import (
     GuardedSiteAwareModelAdmin,
     ReadOnlyAdminMixin,
     admin_change_link,
+    ids_from,
 )
 from freedom_ls.site_aware_models.factories import SiteTimeZoneConfigFactory
 from freedom_ls.site_aware_models.models import SiteTimeZoneConfig
@@ -162,3 +165,29 @@ class TestReadOnlyAdminMixin:
         self, read_only_admin: ReadOnlyAdminMixin, superuser_request: HttpRequest
     ) -> None:
         assert read_only_admin.has_delete_permission(superuser_request) is False
+
+
+def test_ids_from_converts_integer_keys_from_get():
+    request = RequestFactory().get("/", {"ids": "3,14"})
+
+    assert ids_from(request, User) == [3, 14]
+
+
+def test_ids_from_converts_uuid_keys_from_post():
+    first, second = uuid.uuid4(), uuid.uuid4()
+    request = RequestFactory().post("/", {"ids": f"{first},{second}"})
+
+    assert ids_from(request, Cohort) == [first, second]
+
+
+def test_ids_from_ignores_empty_parts():
+    request = RequestFactory().get("/", {"ids": "3,,"})
+
+    assert ids_from(request, User) == [3]
+
+
+def test_ids_from_malformed_key_is_a_404():
+    request = RequestFactory().get("/", {"ids": "not-a-number"})
+
+    with pytest.raises(Http404):
+        ids_from(request, User)

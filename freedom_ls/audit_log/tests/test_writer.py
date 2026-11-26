@@ -2,13 +2,17 @@ import uuid
 
 import pytest
 
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
+from django.core.exceptions import PermissionDenied
+from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import REASON_LENGTH, AuditLogEntry
 from freedom_ls.audit_log.writer import (
     RUN_LABEL_LENGTH,
     RUN_ROWS_KEPT,
+    acting_user,
     record_entry,
     record_run_summary,
     subject_key,
@@ -225,3 +229,20 @@ def test_a_run_summary_with_a_non_summary_action_raises(mock_site_context):
         _summary(OrganisationFactory(), action="cohort.created")
 
     assert AuditLogEntry.unscoped.count() == 0
+
+
+@pytest.mark.django_db
+def test_acting_user_is_the_signed_in_user(mock_site_context):
+    user = UserFactory()
+    request = RequestFactory().get("/")
+    request.user = user
+
+    assert acting_user(request) == user
+
+
+def test_acting_user_refuses_an_anonymous_request():
+    request = RequestFactory().get("/")
+    request.user = AnonymousUser()
+
+    with pytest.raises(PermissionDenied):
+        acting_user(request)

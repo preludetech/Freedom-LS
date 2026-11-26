@@ -5,9 +5,12 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from uuid import UUID
 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
+from django.core.exceptions import PermissionDenied
 from django.db.models import Model
+from django.http import HttpRequest
 
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.actions import SUMMARY_ACTIONS, validate_action
@@ -18,6 +21,14 @@ from freedom_ls.site_aware_models.models import SiteAwareModelBase, site_of
 
 RUN_ROWS_KEPT = 50
 RUN_LABEL_LENGTH = 255
+
+
+def acting_user(request: HttpRequest) -> User:
+    """The signed-in user making an admin request, as the audit log's actor."""
+    actor = request.user
+    if not isinstance(actor, get_user_model()):
+        raise PermissionDenied("Only a signed-in user can do this.")
+    return actor
 
 
 def subject_key(obj: Model) -> str:

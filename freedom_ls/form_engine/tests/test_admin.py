@@ -262,30 +262,6 @@ def test_the_form_progress_change_page_renders_each_questions_text(
 
 
 @pytest.mark.django_db
-def test_erasing_a_user_with_a_form_progress_lists_the_missing_permission(
-    staff_client: Client,
-) -> None:
-    progress = FormProgressFactory()
-    url = reverse("admin:freedom_ls_accounts_user_delete", args=[progress.user.pk])
-
-    response = staff_client.get(url)
-
-    assert response.context["perms_lacking"]
-
-
-@pytest.mark.django_db
-def test_erasing_a_user_with_a_form_progress_leaves_the_user(
-    staff_client: Client,
-) -> None:
-    progress = FormProgressFactory()
-    url = reverse("admin:freedom_ls_accounts_user_delete", args=[progress.user.pk])
-
-    staff_client.post(url, {"post": "yes"})
-
-    assert type(progress.user).objects.filter(pk=progress.user.pk).exists()
-
-
-@pytest.mark.django_db
 def test_the_admin_index_lists_no_answer_data_without_permission(
     no_permission_client,
 ):

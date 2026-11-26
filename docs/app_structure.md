@@ -62,7 +62,6 @@ flowchart TB
     accounts --> webhooks
     api --> base
     api --> site_aware_models
-    api_admin --> accounts
     api_admin --> api
     api_admin --> audit_log
     api_admin --> site_aware_models
@@ -190,6 +189,7 @@ flowchart TB
     learner_management --> webhooks
     learner_progress --> accounts
     learner_progress --> api
+    learner_progress --> audit_log
     learner_progress --> comms
     learner_progress --> content_engine
     learner_progress --> form_engine
@@ -273,7 +273,7 @@ flowchart TB
     webhooks --> site_aware_models
     accounts -.-> icons
     accounts -.-> organisations
-    accounts -.-> referral_tracking
+    api_admin -.-> accounts
     base -.-> accounts
     base -.-> content_engine
     base -.-> organisations
@@ -322,9 +322,9 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | api, base, mail, markdown_rendering, panel_framework, site_aware_models, webhooks | icons, organisations, referral_tracking |
+| accounts | api, base, mail, markdown_rendering, panel_framework, site_aware_models, webhooks | icons, organisations |
 | api | base, site_aware_models | — |
-| api_admin | accounts, api, audit_log, site_aware_models | — |
+| api_admin | api, audit_log, site_aware_models | accounts |
 | audit_log | accounts, base, organisations, site_aware_models | — |
 | base | learner_management, site_aware_models | accounts, content_engine, organisations, panel_framework, role_based_permissions |
 | blog | base, content_engine | — |
@@ -346,7 +346,7 @@ flowchart TB
 | icons | — | — |
 | learner_interface | accounts, base, content_base, content_engine, course_access, course_interest, course_recommendations, deadlines, form_engine, learner_management, learner_progress, organisations, referral_tracking, revision, site_aware_models, webhooks | course_applications, markdown_rendering |
 | learner_management | accounts, api, audit_log, base, content_engine, organisations, panel_framework, role_based_permissions, site_aware_models, webhooks | — |
-| learner_progress | accounts, api, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
+| learner_progress | accounts, api, audit_log, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | — |
 | mail | base | accounts, deployment |
 | markdown_rendering | base | content_engine |
 | messaging_policy | accounts, base, comms, learner_management, organisations, role_based_permissions, site_aware_models | — |
