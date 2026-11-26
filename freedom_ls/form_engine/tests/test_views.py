@@ -1026,11 +1026,6 @@ def test_a_retired_question_on_a_pinned_paper_still_accepts_a_file(
     assert response.status_code == 200
 
 
-# ---------------------------------------------------------------------------
-# The admin download route
-# ---------------------------------------------------------------------------
-
-
 def _admin_download_url(answer_file: QuestionAnswerFile) -> str:
     return reverse(
         "admin:freedom_ls_form_engine_questionanswerfile_download",
