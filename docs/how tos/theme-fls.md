@@ -342,8 +342,8 @@ rebrand stays green.
 | `learner_interface/partials/course_list.html` | `id="learning-history"` | the completed-courses section |
 | `learner_interface/partials/course_list.html` | `data-testid="in-progress-empty-no-registrations"` | empty state for a learner who never registered |
 | `learner_interface/partials/course_list.html` | `data-testid="in-progress-empty-with-history"` | empty state for a learner whose registrations are all complete |
-| `reports/partials/*.html` | `data-empty-state="<slot>"` | each degenerate-case line (`cover-courses`, `summary-tables`, `course-learners`, `learner-details`, `confusions`, `course-items`) |
-| `reports/partials/learner_detail.html` | `data-subhead="quiz-attempts"` / `"wrong-answers"` | the two per-learner sub-headings |
+| `reports/partials/*.html` | `data-empty-state="<slot>"` | each degenerate-case line (`cover-courses`, `summary-tables`, `course-learners`, `learner-details`, `course-items`) |
+| `reports/partials/learner_detail.html` | `data-subhead="quiz-attempts"` | the per-learner sub-heading |
 | `reports/partials/methodology.html` | `data-methodology-rule="<slug>"` | one per stated rule; reword or translate freely, but a report that drops rules is not defensible to the educator reading it |
 | `reports/partials/title_page.html` | `data-meta="organisation"` | the cover's organisation row |
 
