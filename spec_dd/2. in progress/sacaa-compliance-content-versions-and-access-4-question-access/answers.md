@@ -10,3 +10,9 @@ Asked by `/sdd:start` before the spec was written.
 - Q: Should a refused request for question detail (a quiz preview or a PDF download) write an audit entry? → A: No. Only views are logged. (asked up front)
 - Q: The educator quiz attempt review (`panels/learner/quiz_attempt.py`) already shows the answer key with no permission and no log; gate it here or leave it to spec 5? → A: Gate it here, with the same permission and the same audit entry. Spec 5 adds only the answered-version display. (asked up front)
 - Q: Who can grant the new role from the Staff section? → A: Site admins and organisation admins, like the other organisation roles. (asked up front)
+
+Asked by `/sdd:spec_from_idea` after the review wave. These supersede the two PDF answers above.
+
+- Q: Without the permission, should the cohort report drop its whole quiz confusions section, or keep per-question counts? → A: Drop quiz question detail from PDF reports completely, for everyone. Educators see questions and how learners struggled with them only in the educator interface. Previously generated PDFs are left as they are: no flag, no migration, no deletion, no download gate.
+- Q: Does "drop from reports" cover the PDF only, or the on-screen Report tab too? → A: PDF only. The on-screen Report tab keeps its quiz confusions section, gated and logged.
+- Q: When a holder views a quiz in a course shared from another organisation, which organisation's Audit log shows the entry? → A: The viewer's organisation only.
