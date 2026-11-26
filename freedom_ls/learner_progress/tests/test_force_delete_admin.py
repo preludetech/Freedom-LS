@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from urllib.parse import parse_qs
 
 import pytest
 
 from django.contrib.auth.models import Permission
+from django.db.models import Model
 from django.test import Client
 from django.urls import reverse
 
@@ -15,6 +17,7 @@ from freedom_ls.accounts.factories import LegalConsentFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import REASON_LENGTH, AuditLogEntry
 from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_progress.factories import CourseFormAttemptFactory
 from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.tests.factories import SiteFactory
@@ -341,3 +344,49 @@ def test_page_counts_a_course_form_attempt_once_and_post_deletes_it(
     assert response.status_code == 302
     assert not CourseFormAttempt._base_manager.filter(pk=attempt.pk).exists()
     assert not User.objects.filter(pk=user.pk).exists()
+
+
+def _stub_unlinked(monkeypatch, count: int) -> list[list[User]]:
+    """Register a collector that reports `count` learners and records its calls."""
+    calls: list[list[User]] = []
+
+    def collect(users: Sequence[User]) -> tuple[type[Model], int]:
+        calls.append(list(users))
+        return Learner, count
+
+    monkeypatch.setattr(accounts_admin, "USER_ERASURE_UNLINKED_RECORDS", [collect])
+    return calls
+
+
+def test_page_lists_unlinked_rows_with_their_count(staff_client, monkeypatch) -> None:
+    user = UserFactory()
+    calls = _stub_unlinked(monkeypatch, 4)
+
+    response = staff_client.get(_url(user))
+
+    body = response.content.decode()
+    assert calls[0] == [user]
+    assert "Also erased, found by email address" in body
+    assert "learners (4)" in body
+
+
+def test_page_does_not_list_an_unlinked_model_with_a_zero_count(
+    staff_client, monkeypatch
+) -> None:
+    user = UserFactory()
+    _stub_unlinked(monkeypatch, 0)
+
+    response = staff_client.get(_url(user))
+
+    assert "found by email address" not in response.content.decode()
+
+
+def test_post_records_the_unlinked_counts_in_the_entry(
+    staff_client, monkeypatch
+) -> None:
+    user = UserFactory()
+    _stub_unlinked(monkeypatch, 4)
+
+    staff_client.post(_url(user), {"ids": str(user.pk), "reason": "Why"})
+
+    assert AuditLogEntry.unscoped.get().details["unlinked"] == {"learners": 4}

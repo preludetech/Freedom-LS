@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from unfold.contrib.filters.admin import RelatedDropdownFilter
 
 from django.contrib import admin
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.utils import formats, timezone
 from django.utils.safestring import SafeString
 
-from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
+from freedom_ls.accounts.admin import (
+    USER_ERASURE_CASCADE_MODELS,
+    USER_ERASURE_UNLINKED_RECORDS,
+)
+from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.admin import answers_context
 from freedom_ls.site_aware_models.admin import (
     SiteAwareExportModelAdmin,
@@ -19,7 +25,7 @@ from freedom_ls.site_aware_models.admin import (
 )
 from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 
-from .erasure import erase_anonymous_applicant
+from .erasure import erase_anonymous_applicant, unclaimed_applicants_with_address
 from .models import AnonymousApplicant, CourseApplication
 from .resources import CourseApplicationResource
 
@@ -28,6 +34,17 @@ from .resources import CourseApplicationResource
 # admin only vouches for the models named here.
 USER_ERASURE_CASCADE_MODELS.add(CourseApplication)
 USER_ERASURE_CASCADE_MODELS.add(AnonymousApplicant)
+
+
+def _unclaimed_applicants(users: Sequence[User]) -> tuple[type[Model], int]:
+    return AnonymousApplicant, sum(
+        unclaimed_applicants_with_address(user).count() for user in users
+    )
+
+
+# The user's own pre-delete receiver erases these applicants by address, and no
+# foreign key from the user reaches them.
+USER_ERASURE_UNLINKED_RECORDS.append(_unclaimed_applicants)
 
 
 class EmailVerifiedFilter(admin.SimpleListFilter):
@@ -199,8 +216,8 @@ class AnonymousApplicantAdmin(SiteAwareModelAdmin):
     Deleting an applicant takes their application, sitting, answers and stored
     files with it, which is how a right-to-erasure request for an address that
     never became an account is carried out. A claimed applicant is protected:
-    its application, answers and files belong to a user account now, and the
-    admin can't erase that account while it holds form progress.
+    its application, answers and files belong to a user account now, and only a
+    superuser's force delete of that user erases them.
     """
 
     list_display = [
@@ -269,8 +286,8 @@ class AnonymousApplicantAdmin(SiteAwareModelAdmin):
         # page lists the application the erasure takes along.
         perms_needed.discard(str(CourseApplication._meta.verbose_name))
         claimed = [
-            f"{applicant} (claimed): the records belong to a user account,"
-            " which the admin can't erase"
+            f"{applicant} (claimed): the records belong to a user account;"
+            " a superuser can force delete that user to erase them"
             for applicant in applicants
             if applicant.claimed_at is not None
         ]

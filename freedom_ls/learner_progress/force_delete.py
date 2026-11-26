@@ -7,7 +7,7 @@ The page that asks for confirmation and the delete itself both go through
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.admin.utils import NestedObjects
@@ -38,6 +38,7 @@ class ForceDeleteRows:
 class ForceDeletePlan:
     objects: dict[type[Model], set[Model]]
     blocking_models: tuple[str, ...]
+    unlinked: dict[type[Model], int] = field(default_factory=dict)
 
     def counts(self) -> dict[str, int]:
         """Row count per model, keyed by plural verbose name and sorted by it."""
@@ -46,6 +47,10 @@ class ForceDeletePlan:
             for model, rows in self.objects.items()
         }
         return dict(sorted(counts.items()))
+
+    def unlinked_counts(self) -> dict[str, int]:
+        """Rows no foreign key reaches, per plural verbose name, sorted by it."""
+        return _by_name(self.unlinked)
 
     def listing(self) -> list[ForceDeleteRows]:
         """Every model's rows, sorted by model name, for the page to list."""
@@ -71,6 +76,27 @@ class ForceDeleteBlockedError(Exception):
     def __init__(self, blocking_models: tuple[str, ...]) -> None:
         super().__init__(", ".join(blocking_models))
         self.blocking_models = blocking_models
+
+
+def _by_name(counts: dict[type[Model], int]) -> dict[str, int]:
+    named = {str(model._meta.verbose_name_plural): n for model, n in counts.items()}
+    return dict(sorted(named.items()))
+
+
+def unlinked_rows(users: Sequence[User]) -> dict[type[Model], int]:
+    """How many rows no foreign key reaches go with these users, per model.
+
+    Zero counts are dropped. The collectors in `USER_ERASURE_UNLINKED_RECORDS`
+    find rows by something other than a foreign key, such as an email address.
+    """
+    counts: dict[type[Model], int] = {}
+    if not users:
+        return counts
+    for collect_unlinked in accounts_admin.USER_ERASURE_UNLINKED_RECORDS:
+        model, count = collect_unlinked(users)
+        if count:
+            counts[model] = counts.get(model, 0) + count
+    return counts
 
 
 def _collect(roots: Sequence[Model], using: str) -> NestedObjects:
@@ -100,6 +126,7 @@ def build_plan(
     progress_roots: Sequence[Model],
     request: HttpRequest,
     admin_site: AdminSite,
+    unlinked_for: Sequence[User] = (),
 ) -> ForceDeletePlan:
     """Collect every row a force delete takes, and the models that stop it.
 
@@ -107,6 +134,8 @@ def build_plan(
     course progress records, one from the targets. Whatever the second reports
     as protected is dropped when the first holds it; the rest blocks. A model
     outside `USER_ERASURE_CASCADE_MODELS` whose admin refuses delete blocks too.
+    `unlinked_for` names the users whose unlinked rows are counted; rows no
+    foreign key reaches are not in `objects`, and a learner force delete has none.
     """
     # The view returns 404 before this for an empty selection.
     using = router.db_for_write(type(targets[0]))
@@ -130,7 +159,11 @@ def build_plan(
             continue
         if _admin_refuses_delete(model, rows, request, admin_site):
             blocking.add(str(model._meta.verbose_name))
-    return ForceDeletePlan(objects=objects, blocking_models=tuple(sorted(blocking)))
+    return ForceDeletePlan(
+        objects=objects,
+        blocking_models=tuple(sorted(blocking)),
+        unlinked=unlinked_rows(unlinked_for),
+    )
 
 
 def learner_progress_roots(learners: Sequence[Learner]) -> list[Model]:
@@ -171,6 +204,11 @@ def counts_for(
     return {**plan.counts()}
 
 
+def unlinked_counts_for(user: User) -> dict[str, JSONValue]:
+    """The rows no foreign key reaches that go with this one user, per model."""
+    return {**_by_name(unlinked_rows([user]))}
+
+
 def force_delete_users(
     users: Sequence[User],
     *,
@@ -202,6 +240,7 @@ def force_delete_users(
             progress_roots=learner_progress_roots(learners),
             request=request,
             admin_site=admin_site,
+            unlinked_for=locked,
         )
         if not plan.can_run:
             raise ForceDeleteBlockedError(plan.blocking_models)
@@ -224,6 +263,7 @@ def force_delete_users(
                         request=request,
                         admin_site=admin_site,
                     ),
+                    "unlinked": unlinked_counts_for(user),
                     "organisations": [
                         *sorted({learner.organisation.name for learner in own_learners})
                     ],

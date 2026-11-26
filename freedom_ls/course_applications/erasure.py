@@ -2,7 +2,24 @@
 
 from __future__ import annotations
 
+from django.db.models import QuerySet
+
+from freedom_ls.accounts.models import User
 from freedom_ls.course_applications.models import AnonymousApplicant
+
+
+def unclaimed_applicants_with_address(user: User) -> QuerySet[AnonymousApplicant]:
+    """The unclaimed applicants who applied with this user's email address.
+
+    The cascade from a user only reaches applicants a claim linked to the
+    account. Ones the same address applied with and never claimed are tied to
+    the person by nothing but that address, so they are found by it, on the
+    user's own site. _base_manager: inside a request the default manager
+    filters on the request's site, not the user's.
+    """
+    return AnonymousApplicant._base_manager.filter(
+        site_id=user.site_id, email=user.email.lower(), user__isnull=True
+    )
 
 
 def erase_anonymous_applicant(applicant: AnonymousApplicant) -> None:

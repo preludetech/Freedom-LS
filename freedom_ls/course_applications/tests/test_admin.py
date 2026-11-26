@@ -869,3 +869,75 @@ def test_applicant_course_filter_returns_only_that_courses_applicants(
 
     assert response.status_code == 200
     assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]
+
+
+FORCE_DELETE_USERS = "admin:freedom_ls_accounts_user_force_delete"
+
+
+def _unclaimed_for(email: str):
+    unverified = unverified_application_with_file()
+    unverified.applicant.email = email
+    unverified.applicant.save()
+    return unverified
+
+
+def _force_delete_url(user: User) -> str:
+    return f"{reverse(FORCE_DELETE_USERS)}?ids={user.pk}"
+
+
+def test_force_delete_page_lists_the_unclaimed_applicant_with_its_count(staff_client):
+    user = UserFactory(email="ada@example.com")
+    _unclaimed_for("ada@example.com")
+
+    response = staff_client.get(_force_delete_url(user))
+
+    body = response.content.decode()
+    assert "Also erased, found by email address" in body
+    assert "anonymous applicants (1)" in body
+
+
+def test_force_delete_erases_the_unclaimed_applicant_application_and_sitting(
+    staff_client,
+):
+    user = UserFactory(email="ada@example.com")
+    unverified = _unclaimed_for("ada@example.com")
+
+    staff_client.post(
+        _force_delete_url(user), {"ids": str(user.pk), "reason": "Erasure requested"}
+    )
+
+    assert not AnonymousApplicant.objects.filter(pk=unverified.applicant.pk).exists()
+    assert not CourseApplication.objects.filter(pk=unverified.application.pk).exists()
+    assert not FormProgress.objects.filter(pk=unverified.sitting.pk).exists()
+
+
+def test_force_delete_counts_a_claimed_applicant_of_the_address_through_the_cascade(
+    staff_client,
+):
+    user = UserFactory(email="ada@example.com")
+    claimed = _claimed(unverified_application_with_file())
+    claimed.applicant.user = user
+    claimed.applicant.email = "ada@example.com"
+    claimed.applicant.save()
+
+    response = staff_client.get(_force_delete_url(user))
+
+    plan = response.context["plan"]
+    assert plan.counts()["anonymous applicants"] == 1
+    assert plan.unlinked == {}
+    assert "found by email address" not in response.content.decode()
+
+
+def test_claimed_applicant_delete_confirmation_says_a_superuser_can_force_delete_the_user(
+    staff_client,
+):
+    claimed = _claimed(unverified_application_with_file())
+
+    response = staff_client.post(
+        reverse(APPLICANT_CHANGELIST),
+        {"action": "delete_selected", "_selected_action": [str(claimed.applicant.pk)]},
+    )
+
+    body = response.content.decode()
+    assert "a superuser can force delete that user" in body
+    assert "which the admin can't erase" not in body

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import cast
 
@@ -353,3 +354,79 @@ def test_a_failure_part_way_rolls_back_every_row_and_entry(
     assert LegalConsent._base_manager.filter(user=first).exists()
     assert Learner._base_manager.filter(user=first).exists()
     assert not AuditLogEntry.unscoped.exists()
+
+
+def _stub_unlinked(monkeypatch, count: int) -> list[list[User]]:
+    """Register a collector that reports `count` learners and records its calls."""
+    calls: list[list[User]] = []
+
+    def collect(users: Sequence[User]) -> tuple[type[Model], int]:
+        calls.append(list(users))
+        return Learner, count
+
+    monkeypatch.setattr(accounts_admin, "USER_ERASURE_UNLINKED_RECORDS", [collect])
+    return calls
+
+
+def test_plan_counts_unlinked_rows_for_the_users_it_is_given(
+    mock_site_context, request_for, monkeypatch
+) -> None:
+    user: User = UserFactory()
+    calls = _stub_unlinked(monkeypatch, 3)
+
+    plan = build_plan(
+        targets=[user],
+        progress_roots=[],
+        request=request_for,
+        admin_site=admin.site,
+        unlinked_for=[user],
+    )
+
+    assert calls == [[user]]
+    assert plan.unlinked_counts() == {"learners": 3}
+
+
+def test_plan_drops_an_unlinked_model_with_a_zero_count(
+    mock_site_context, request_for, monkeypatch
+) -> None:
+    user: User = UserFactory()
+    _stub_unlinked(monkeypatch, 0)
+
+    plan = build_plan(
+        targets=[user],
+        progress_roots=[],
+        request=request_for,
+        admin_site=admin.site,
+        unlinked_for=[user],
+    )
+
+    assert plan.unlinked == {}
+
+
+def test_plan_without_unlinked_users_calls_no_collector(
+    mock_site_context, request_for, monkeypatch
+) -> None:
+    user: User = UserFactory()
+    calls = _stub_unlinked(monkeypatch, 3)
+
+    plan = _plan(user, request_for)
+
+    assert calls == []
+    assert plan.unlinked == {}
+
+
+def test_force_delete_records_unlinked_counts_in_the_entry(
+    mock_site_context, request_for, actor, monkeypatch
+) -> None:
+    user: User = UserFactory()
+    _stub_unlinked(monkeypatch, 2)
+
+    force_delete_users(
+        [user],
+        actor=actor,
+        reason="Erasure requested",
+        request=request_for,
+        admin_site=admin.site,
+    )
+
+    assert AuditLogEntry.unscoped.get().details["unlinked"] == {"learners": 2}

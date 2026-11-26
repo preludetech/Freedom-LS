@@ -1,4 +1,5 @@
 import contextlib
+from collections.abc import Callable, Sequence
 
 from allauth.account.admin import EmailAddressAdmin
 from allauth.account.models import EmailAddress
@@ -25,6 +26,14 @@ from .resources import UserResource
 # force delete. An app that owns such a model adds it here from its admin
 # module.
 USER_ERASURE_CASCADE_MODELS: set[type[Model]] = {LegalConsent}
+
+#: Records a user force delete erases that no foreign key reaches, so no
+#: collector lists them. Each callable takes the users and returns the model
+#: and how many of its rows go. An app whose signal receivers erase such
+#: records appends here from its admin module.
+USER_ERASURE_UNLINKED_RECORDS: list[
+    Callable[[Sequence[User]], tuple[type[Model], int]]
+] = []
 
 # Unregister Django's default Group
 with contextlib.suppress(NotRegistered):

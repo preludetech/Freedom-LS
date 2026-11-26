@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from dataclasses import replace
 from functools import partial
 from typing import cast
 from urllib.parse import urlencode
@@ -23,6 +24,7 @@ from django.template.response import TemplateResponse
 from django.urls import URLPattern, path, reverse
 from django.utils.translation import ngettext
 
+from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import REASON_LENGTH
 from freedom_ls.audit_log.writer import acting_user
 from freedom_ls.learner_progress.force_delete import (
@@ -127,7 +129,7 @@ def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpR
             )
         except ForceDeleteBlockedError as blocked:
             # A model began to block between the page and the post.
-            plan = ForceDeletePlan(plan.objects, blocked.blocking_models)
+            plan = replace(plan, blocking_models=blocked.blocking_models)
         else:
             model_admin.message_user(
                 request,
@@ -161,13 +163,14 @@ def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpR
 
 
 def _plan_for(
-    users: Sequence[Model], request: HttpRequest, admin_site: AdminSite
+    users: Sequence[User], request: HttpRequest, admin_site: AdminSite
 ) -> ForceDeletePlan:
     return build_plan(
         targets=users,
         progress_roots=user_progress_roots(users),
         request=request,
         admin_site=admin_site,
+        unlinked_for=users,
     )
 
 

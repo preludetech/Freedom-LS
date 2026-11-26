@@ -9,7 +9,10 @@ import pytest
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.course_applications.erasure import erase_anonymous_applicant
+from freedom_ls.course_applications.erasure import (
+    erase_anonymous_applicant,
+    unclaimed_applicants_with_address,
+)
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.course_applications.tests.helpers import (
@@ -64,3 +67,29 @@ def test_erasing_a_claimed_applicant_is_refused(mock_site_context):
         erase_anonymous_applicant(unverified.applicant)
 
     assert CourseApplication.objects.filter(pk=unverified.application.pk).exists()
+
+
+def test_unclaimed_applicants_with_address_matches_regardless_of_case(
+    mock_site_context,
+):
+    user = UserFactory(email="Ada@Example.com")
+    unverified = unverified_application_with_file()
+    unverified.applicant.email = "ada@example.com"
+    unverified.applicant.save()
+
+    found = unclaimed_applicants_with_address(user)
+
+    assert list(found) == [unverified.applicant]
+
+
+def test_unclaimed_applicants_with_address_leaves_out_a_claimed_applicant(
+    mock_site_context,
+):
+    user = UserFactory(email="ada@example.com")
+    unverified = unverified_application_with_file()
+    unverified.applicant.email = "ada@example.com"
+    unverified.applicant.user = user
+    unverified.applicant.claimed_at = timezone.now()
+    unverified.applicant.save()
+
+    assert not unclaimed_applicants_with_address(user).exists()

@@ -25,7 +25,10 @@ from freedom_ls.course_applications.claims import (
     attach_to_user,
     convert_attached_application,
 )
-from freedom_ls.course_applications.erasure import erase_anonymous_applicant
+from freedom_ls.course_applications.erasure import (
+    erase_anonymous_applicant,
+    unclaimed_applicants_with_address,
+)
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.models import (
     FormProgress,
@@ -137,16 +140,10 @@ def erase_unclaimed_applicants_with_the_users_address(
 ) -> None:
     """Erasing a person means their unclaimed applications too.
 
-    The cascade only reaches applicants a claim linked to the account. Ones
-    the same address applied with and never claimed are tied to the person by
-    nothing but that address, so they are found by it here, on the user's own
-    site. _base_manager: inside a request the default manager filters on the
-    request's site, not the user's.
+    The cascade only reaches applicants a claim linked to the account; the
+    ones found by the user's address are erased here.
     """
-    applicants = AnonymousApplicant._base_manager.filter(
-        site_id=instance.site_id, email=instance.email.lower(), user__isnull=True
-    )
-    for applicant in applicants:
+    for applicant in unclaimed_applicants_with_address(instance):
         erase_anonymous_applicant(applicant)
 
 

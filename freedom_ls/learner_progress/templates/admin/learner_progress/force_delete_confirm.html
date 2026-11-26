@@ -39,6 +39,17 @@
             </div>
         </section>
 
+        {% if plan.unlinked %}
+            <section class="mt-6" id="found-by-email">
+                <h2 class="font-semibold">Also erased, found by email address</h2>
+                <ul class="mt-2 list-disc pl-6">
+                    {% for name, count in plan.unlinked_counts.items %}
+                        <li>{{ name }} ({{ count }})</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
+
         {% if plan.can_run %}
             <form method="post" class="mt-8 flex flex-col gap-4" id="force-delete-form">
                 {% csrf_token %}
