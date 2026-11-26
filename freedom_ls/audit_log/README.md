@@ -107,6 +107,7 @@ action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 | `application.rejected` | Application rejected | Applications | application | the course | `from`, `to` |
 | `bulk_action.completed` | Bulk action completed | Other | organisation | | `counts`, `rows`, `truncated`, `bulk_action` |
 | `import.committed` | Import committed | Other | organisation | | `counts`, `rows`, `truncated` |
+| `question.viewed` | Question detail viewed | Other | per surface: the course (`preview`), the cohort (`cohort_report`), the quiz attempt (`attempt_review`) | the learner (`attempt_review` only) | `surface` (`preview`, `cohort_report`, `attempt_review`), `forms` (`id` and `title` of each quiz; one for `preview` and `attempt_review`, every quiz with a question shown for `cohort_report`), `page` (`id`, `number`; `preview` only) |
 | `audit_log.exported` | Audit log exported | Other | organisation | | `scope` (`organisation`, `learner`, `cohort`), `scope_label`, `count`, `filters` |
 | `user.deleted` | User force deleted | Other | user | the user's learners | `counts`, `unlinked`, `organisations`; the entry has no organisation |
 
