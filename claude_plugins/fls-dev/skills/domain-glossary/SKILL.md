@@ -25,6 +25,8 @@ right and this file needs fixing.
 | `Topic` | `topics.py` | A page of markdown content a learner reads. |
 | `Activity` | `topics.py` | Like a `Topic`, plus a difficulty `level`. Not currently used by FLS courses. |
 | `Form` | `form_engine/models.py` | A form or quiz, lives in the `form_engine` app. `FormPage`, `FormContent`, `FormQuestion`, `QuestionOption` hang off it. |
+| **question detail** (coined) | `content_engine` `view_course_questions` | Quiz question text, option text, which options are correct, wrong-option counts, and a learner's chosen options on a quiz question. Only holders of `view_course_questions` see it in the educator interface, and each view writes a `question.viewed` audit entry. A quiz is a `Form` whose `strategy` is `FormStrategy.QUIZ`. |
+| **question bank viewer** (coined) | `role_based_permissions/roles.py` | The organisation role `question_bank_viewer`, the only base role holding `view_course_questions`. It lets its holder see question detail. |
 | `ContentCollectionItem` | `courses.py` | **The through model.** One row links a `collection` to a `child`, with an `order` and the placement's due keys (`due_date`, `due_time`, `due_days_after_registration`, `no_due_date`). |
 | `CoursePartChildDueDate` | `courses.py` | The due date one **part placement** sets for one child of its part. One row per (`part_collection_item`, `collection_item`). A part's own rows are shared by every course that places the part, so a value that differs per course lives here. |
 | **placement** | `ContentCollectionItem` | One child at one position in one collection: the row itself, not a new model. A **part placement** is one whose collection is a `Course` and whose child is a `CoursePart`. |
@@ -198,7 +200,7 @@ fails a code that steps outside this section.
 
 The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membership`, `registration`
 (a `LearnerCourseRegistration`), `cohort_registration`, `role`, `staff_member` (a `StaffMember`),
-`user`, `course`, `bulk_action`, `import`, `conversation`, `api_key` (an `ApiKey`), `deadline` (a deadline extension), `audit_log` (the log the `AuditLogEntry` rows make up), `application` (a `CourseApplication`). The verb comes from this list and nowhere else:
+`user`, `course`, `bulk_action`, `import`, `conversation`, `api_key` (an `ApiKey`), `deadline` (a deadline extension), `audit_log` (the log the `AuditLogEntry` rows make up), `application` (a `CourseApplication`), `question` (question detail of one or more quizzes, read rather than changed). The verb comes from this list and nowhere else:
 
 | Verb | Means | Not |
 | --- | --- | --- |
@@ -208,7 +210,7 @@ The noun is a glossary noun in snake_case: `learner`, `cohort`, `cohort_membersh
 | `removed` | An association row was deleted: `cohort_membership.removed`, `role.removed` (a role row deleted with its cohort), `learner.removed` (a **force delete** of a `Learner`, labelled "Learner force deleted"). | |
 | `deleted` | A standalone object was deleted: `cohort.deleted`, `user.deleted` (a **force delete** of a `User`, labelled "User force deleted"). | |
 | `assigned` | A role was given to a user. Its opposite is `role.deactivated`. | `granted` |
-| `viewed` | Something was read, not changed: `conversation.viewed`, a conversation opened under oversight. Only for a read worth auditing. | `opened`, `accessed`, `read` |
+| `viewed` | Something was read, not changed: `conversation.viewed`, a conversation opened under oversight; `question.viewed`, question detail shown to a holder of `view_course_questions`. Only for a read worth auditing. | `opened`, `accessed`, `read` |
 | `issued` | An API key was created and its key text shown once: `api_key.issued`. | `generated`, `minted` |
 | `revoked` | An API key was ended for good: `api_key.revoked`. One-way and never cleared, unlike `deactivated`, which a `reactivated` undoes. | `deactivated`, `cancelled`, `disabled` |
 | `paused` / `resumed` | A `CoursePause` opened / ended on a `CourseProgress`: `course.paused`, `course.resumed`. | `suspended`, `unsuspended`, `held` |
