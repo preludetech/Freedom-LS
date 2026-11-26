@@ -17,12 +17,16 @@ from freedom_ls.educator_interface.avatars import learner_avatars
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
 )
+from freedom_ls.educator_interface.panels.common.question_detail import (
+    question_detail_withheld_note,
+)
 from freedom_ls.educator_interface.panels.common.report import (
     report_over_limit_message,
 )
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
+from freedom_ls.learner_management.capabilities import record_question_view
 from freedom_ls.learner_management.models import (
     Cohort,
 )
@@ -231,10 +235,40 @@ class CohortReportBodyPanel(LazyBodyPanel):
 
     def get_loaded_context(self) -> dict[str, object]:
         refresh = self.request.GET.get(REFRESH_PARAM) == "1"
-        data = cached_cohort_report(cast(Cohort, self.instance), refresh=refresh)
+        cohort = cast(Cohort, self.instance)
+        data = cached_cohort_report(cohort, refresh=refresh)
+        note = question_detail_withheld_note(self.request, cohort.organisation)
+        if note:
+            # The cache holds one permission-neutral entry per cohort, so the
+            # question detail is stripped here, before anything reaches a
+            # template.
+            data = dataclasses.replace(
+                data,
+                courses=[
+                    dataclasses.replace(section, confusions_by_quiz={})
+                    for section in data.courses
+                ],
+            )
+        confusions = _quiz_confusions(data)
+        if not note and confusions:
+            record_question_view(
+                actor=cast(User, self.request.user),
+                target=cohort,
+                target_label=cohort.name,
+                organisation=cohort.organisation,
+                details={
+                    "surface": "cohort_report",
+                    "forms": [
+                        {"id": str(card.quiz.form_id), "title": card.quiz.title}
+                        for card in confusions
+                    ],
+                },
+            )
         return {
             "data": data,
-            "confusions": _quiz_confusions(data),
+            "confusions": confusions,
+            "question_detail": not note,
+            "question_detail_note": note,
             # The attention list and the summary tables can name different
             # learners, so one lookup covers both.
             "avatars": learner_avatars(

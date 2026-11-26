@@ -6,7 +6,8 @@ The Report tab body: the PDF's sections in the PDF's order, from the same
 gathered data. Per-learner detail and wrong answers are left to the PDF.
 Required context when loaded: data (CohortReportData), confusions (the quizzes
 with incorrect answers), avatars (each listed learner's avatar by learner id),
-refresh_url.
+refresh_url, question_detail (whether the quiz confusions may show),
+question_detail_note (what to show in their place when they may not).
 {% endcomment %}
 
 {% block loaded_body %}
@@ -116,6 +117,7 @@ refresh_url.
 
         <section aria-labelledby="report-confusions-title" class="space-y-3">
             <c-panel-heading id="report-confusions-title">Quiz confusions across the cohort</c-panel-heading>
+            {% if question_detail %}
             <div class="space-y-8">
             {% for card in confusions %}
                 <section aria-labelledby="report-confusion-{{ forloop.counter }}-title" class="space-y-3">
@@ -152,6 +154,9 @@ refresh_url.
                 <c-panel-empty-state message="No quiz in this report has any incorrect answers to analyse." />
             {% endfor %}
             </div>
+            {% else %}
+                <c-panel-callout tone="info">{{ question_detail_note }}</c-panel-callout>
+            {% endif %}
         </section>
     </div>
 {% endblock loaded_body %}

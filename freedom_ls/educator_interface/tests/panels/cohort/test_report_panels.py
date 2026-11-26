@@ -18,7 +18,7 @@ from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.db import connection
 from django.http import HttpResponse
-from django.test import Client, override_settings
+from django.test import Client, RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -26,14 +26,24 @@ from django.utils import timezone
 import freedom_ls.educator_interface
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.panels.cohort.config import CohortConfig
+from freedom_ls.educator_interface.panels.cohort.report_panels import (
+    CohortReportBodyPanel,
+)
+from freedom_ls.educator_interface.panels.common.question_detail import (
+    QUESTION_DETAIL_HIDDEN_NOTE,
+    QUESTION_DETAIL_NEEDS_JAVASCRIPT_NOTE,
+)
 from freedom_ls.educator_interface.tests.helpers import (
     _cohort_page,
+    _grant,
     _org_admin,
     _pdf_url,
     _ready_report,
@@ -47,11 +57,14 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.gather import gather_cohort_report_data
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.report_data import (
     MIN_RESPONDENTS_FOR_PERCENTAGE,
+    CohortReportData,
     ConfusionBlock,
     CorrectOption,
     LearnerRow,
@@ -808,6 +821,17 @@ class TestNeedsAttentionPictures:
         assert _avatar_slot(row) == _avatar_slot(table_row)
 
 
+def _question_holder(organisation: Organisation) -> User:
+    """A staff member of `organisation` who may see question detail."""
+    holder = _org_admin(organisation)
+    _grant(holder, "question_bank_viewer", organisation)
+    return holder
+
+
+def _question_views() -> list[AuditLogEntry]:
+    return list(AuditLogEntry.unscoped.filter(action="question.viewed"))
+
+
 def _body_url(organisation_slug: str, cohort_pk: object) -> str:
     return reverse(
         "educator_interface:interface",
@@ -931,7 +955,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         quiz = QuizColumn(
             form_id=uuid4(), title="Orbit Quiz", abbreviation="OQ", pass_percentage=50
         )
@@ -982,7 +1006,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
 
         region = _body_region(
             client, _body_url(cohort.organisation.slug, cohort.pk), query="x=1"
@@ -996,7 +1020,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = _seeded_report_cohort()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
@@ -1020,7 +1044,7 @@ class TestCohortReportBody:
     ) -> None:
         """Course summaries and quiz confusions were bordered cards inside the panel."""
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         _seed_report_cache(cohort, _confusion())
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
@@ -1156,7 +1180,7 @@ class TestCohortReportBody:
         membership = CohortMembership.objects.get(
             cohort=cohort, learner__user__first_name="Ada"
         )
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
@@ -1171,7 +1195,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = _seeded_report_cohort()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
@@ -1185,7 +1209,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = _seeded_report_cohort()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         url = _body_url(cohort.organisation.slug, cohort.pk)
         cache.set(
             _cache_key(cohort.site_id, cohort.pk, "report"),
@@ -1202,7 +1226,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = _seeded_report_cohort()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
@@ -1215,7 +1239,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         _seed_report_cache(cohort, _confusion())
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
@@ -1229,7 +1253,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         _seed_report_cache(
             cohort,
             _confusion(
@@ -1250,7 +1274,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         _seed_report_cache(
             cohort,
             _confusion(
@@ -1271,7 +1295,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = _seeded_report_cohort()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
@@ -1285,7 +1309,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = _seeded_report_cohort()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
@@ -1299,7 +1323,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         _seed_quizzes_by_course(
             cohort, {"Algebra": "Checkpoint", "Geometry": "Checkpoint"}
         )
@@ -1315,7 +1339,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         _seed_quizzes_by_course(
             cohort, {"Algebra": "Algebra Checkpoint", "Geometry": "Geometry Checkpoint"}
         )
@@ -1331,11 +1355,205 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = _seeded_report_cohort()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
 
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
         assert "Wrong answers" not in region.text_content()
+
+
+_QUESTION_TEXT = "What is an orbit?"
+_OPTION_TEXTS = ("A closed path around a body", "A straight line")
+
+
+def _seed_quiz_with_a_wrong_answer(cohort: Cohort) -> QuizColumn:
+    """Cache a report whose one quiz has a wrong answer, so a load needs no gather."""
+    _seed_report_cache(cohort, _confusion())
+    cached = cache.get(_cache_key(cohort.site_id, cohort.pk, "report"))
+    (quiz,) = cached.courses[0].quizzes
+    return cast(QuizColumn, quiz)
+
+
+def _assert_no_question_text(text: str) -> None:
+    assert _QUESTION_TEXT not in text
+    assert all(option not in text for option in _OPTION_TEXTS)
+
+
+@pytest.mark.django_db
+class TestCohortReportQuestionDetail:
+    @pytest.fixture(autouse=True)
+    def _empty_cache(self) -> Iterator[None]:
+        cache.clear()
+        yield
+        cache.clear()
+
+    def test_a_holders_load_shows_the_confusions_and_writes_one_entry(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        quiz = _seed_quiz_with_a_wrong_answer(cohort)
+        client = logged_in_client(_question_holder(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        (entry,) = _question_views()
+        assert _QUESTION_TEXT in region.text_content()
+        assert (
+            entry.target,
+            entry.organisation,
+            entry.details,
+        ) == (
+            cohort,
+            cohort.organisation,
+            {
+                "surface": "cohort_report",
+                "forms": [{"id": str(quiz.form_id), "title": "Orbit Quiz"}],
+            },
+        )
+
+    def test_a_second_load_by_a_holder_writes_a_second_entry(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        _seed_quiz_with_a_wrong_answer(cohort)
+        client = logged_in_client(_question_holder(cohort.organisation))
+        url = _body_url(cohort.organisation.slug, cohort.pk)
+        _body_region(client, url)
+
+        _body_region(client, url)
+
+        assert len(_question_views()) == 2
+
+    def test_a_refresh_by_a_holder_writes_an_entry(
+        self,
+        logged_in_client: Callable[[AbstractBaseUser], Client],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        cohort = CohortFactory()
+        _seed_quiz_with_a_wrong_answer(cohort)
+        cached = cache.get(_cache_key(cohort.site_id, cohort.pk, "report"))
+        # A refresh regathers from the database, which holds no quiz here.
+        monkeypatch.setattr(
+            "freedom_ls.reports.screen_cache.gather_cohort_report_data",
+            lambda *args, **kwargs: cached,
+        )
+        client = logged_in_client(_question_holder(cohort.organisation))
+        url = _body_url(cohort.organisation.slug, cohort.pk)
+        _body_region(client, url)
+
+        _body_region(client, url, query="loaded=1&refresh=1")
+
+        assert len(_question_views()) == 2
+
+    def test_a_holders_load_of_a_cohort_without_incorrect_answers_writes_no_entry(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = _seeded_report_cohort()
+        client = logged_in_client(_question_holder(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert (
+            "No quiz in this report has any incorrect answers to analyse."
+            in region.text_content()
+        )
+        assert _question_views() == []
+
+    def test_a_non_holder_sees_the_hidden_note_and_the_scores_but_no_question_text(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        _seed_quiz_with_a_wrong_answer(cohort)
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        text = " ".join(region.text_content().split())
+        assert QUESTION_DETAIL_HIDDEN_NOTE in text
+        _assert_no_question_text(text)
+        assert "Cohort at a glance" in text
+        assert "Astronomy" in text
+        assert _question_views() == []
+
+    def test_a_holders_plain_request_gets_the_javascript_note_and_no_entry(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        _seed_quiz_with_a_wrong_answer(cohort)
+        client = logged_in_client(_question_holder(cohort.organisation))
+
+        response = client.get(
+            f"{_body_url(cohort.organisation.slug, cohort.pk)}?loaded=1"
+        )
+
+        text = " ".join(response.content.decode().split())
+        assert QUESTION_DETAIL_NEEDS_JAVASCRIPT_NOTE in text
+        _assert_no_question_text(text)
+        assert _question_views() == []
+
+    def test_a_non_holder_after_a_holders_load_gets_no_question_text_from_the_cache(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        _seed_quiz_with_a_wrong_answer(cohort)
+        url = _body_url(cohort.organisation.slug, cohort.pk)
+        holder_region = _body_region(
+            logged_in_client(_question_holder(cohort.organisation)), url
+        )
+
+        region = _body_region(logged_in_client(_org_admin(cohort.organisation)), url)
+
+        assert _QUESTION_TEXT in holder_region.text_content()
+        _assert_no_question_text(region.text_content())
+
+    def test_the_loaded_context_of_a_non_holder_has_no_confusions_in_any_section(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        _seed_quiz_with_a_wrong_answer(cohort)
+        request = RequestFactory().get("/x?loaded=1", HTTP_HX_REQUEST="true")
+        request.user = _org_admin(cohort.organisation)
+        panel = CohortReportBodyPanel(
+            PanelContext(
+                request=request,
+                instance=cohort,
+                base_url="/x",
+                name="body",
+                config=CohortConfig,
+            )
+        )
+
+        data = cast(CohortReportData, panel.get_loaded_context()["data"])
+
+        assert [section.confusions_by_quiz for section in data.courses] == [{}]
+
+    def test_a_cohort_of_another_organisation_does_not_open_under_this_one(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        other = OrganisationFactory()
+        client = logged_in_client(_question_holder(other))
+
+        response = client.get(
+            f"{_body_url(other.slug, cohort.pk)}?loaded=1", HTTP_HX_REQUEST="true"
+        )
+
+        assert response.status_code == 404
+        assert _question_views() == []
+
+    def test_a_cohort_admin_role_alone_does_not_show_question_detail(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        _seed_quiz_with_a_wrong_answer(cohort)
+        user = cast(User, UserFactory(staff=True))
+        _grant(user, "cohort_admin", cohort)
+        client = logged_in_client(user)
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        assert QUESTION_DETAIL_HIDDEN_NOTE in " ".join(region.text_content().split())
+        assert _question_views() == []
 
 
 _NEW_REPORTING_FILES = [
