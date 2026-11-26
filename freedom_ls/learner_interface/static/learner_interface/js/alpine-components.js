@@ -450,7 +450,10 @@ document.addEventListener("alpine:init", () => {
     //
     // Usage:
     //   x-data="examCountdown"  data-remaining-seconds="{N}"  data-time-up-url="{url}"
-    //   on the top bar container, so warnings can later share this scope.
+    //   on the top bar container, so the warnings share this scope. A data-warnings
+    //   attribute turns on the 5 and 1 minute warnings, whose callouts carry
+    //   x-ref="fiveMinuteWarning" / "oneMinuteWarning" and whose text is announced
+    //   once through the politeWarning / assertiveWarning live regions.
     //
     // The server decides when time is up; this only posts the open page to the
     // time-up URL once the countdown reaches zero. A page restored from the
@@ -458,6 +461,13 @@ document.addEventListener("alpine:init", () => {
     Alpine.data("examCountdown", () => ({
         text: "",
         submitted: false,
+        showFiveMinuteWarning: false,
+        showOneMinuteWarning: false,
+        politeWarning: "",
+        assertiveWarning: "",
+        _warns: false,
+        _fiveMinuteAnnounced: false,
+        _oneMinuteAnnounced: false,
         _startRemaining: 0,
         _timeUpUrl: "",
         _perfStart: 0,
@@ -468,6 +478,7 @@ document.addEventListener("alpine:init", () => {
         init() {
             this._startRemaining = Number(this.$el.dataset.remainingSeconds);
             this._timeUpUrl = this.$el.dataset.timeUpUrl;
+            this._warns = this.$el.dataset.warnings !== undefined;
             this._perfStart = performance.now();
             this._dateStart = Date.now();
             this._onVisibility = () => this.tick();
@@ -477,6 +488,11 @@ document.addEventListener("alpine:init", () => {
             };
             document.addEventListener("visibilitychange", this._onVisibility);
             window.addEventListener("pageshow", this._onPageShow);
+            // A page that loads already under a threshold shows its warning
+            // silently: the learner was not watching the clock cross it.
+            const left = this.remaining();
+            this._fiveMinuteAnnounced = left <= 300;
+            this._oneMinuteAnnounced = left <= 60;
             this.tick();
             this._interval = setInterval(() => this.tick(), 1000);
         },
@@ -493,7 +509,25 @@ document.addEventListener("alpine:init", () => {
         tick() {
             const left = this.remaining();
             this.text = this._format(Math.floor(left));
+            if (this._warns) this._warn(left);
             if (left <= 0 && !this.submitted) this.submitTimeUp();
+        },
+        // Each warning is announced once, in the live region matching its urgency.
+        _warn(left) {
+            const one = left <= 60;
+            this.showOneMinuteWarning = one;
+            this.showFiveMinuteWarning = left <= 300 && !one;
+            if (left <= 300 && !this._fiveMinuteAnnounced) {
+                this._fiveMinuteAnnounced = true;
+                this.politeWarning = this._copy("fiveMinuteWarning");
+            }
+            if (one && !this._oneMinuteAnnounced) {
+                this._oneMinuteAnnounced = true;
+                this.assertiveWarning = this._copy("oneMinuteWarning");
+            }
+        },
+        _copy(ref) {
+            return this.$refs[ref].textContent.replace(/\s+/g, " ").trim();
         },
         _format(seconds) {
             const h = Math.floor(seconds / 3600);

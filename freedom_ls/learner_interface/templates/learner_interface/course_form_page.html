@@ -75,6 +75,7 @@ examRunnerForm scope (no intermediate x-data between them).
              x-data="examCountdown"
              data-remaining-seconds="{{ remaining_seconds }}"
              data-time-up-url="{{ submit_and_exit_url }}"
+             {% if form.time_limit_minutes > 5 %}data-warnings{% endif %}
              {% endif %}>
 
             {% comment %}Runner bar: 3-column — exit X (left), form title (centre), answered count (right){% endcomment %}
@@ -135,7 +136,7 @@ examRunnerForm scope (no intermediate x-data between them).
                                         </p>
                                     {% else %}
                                         <p class="text-on-surface">
-                                            Your progress is saved — you can resume later.
+                                            {% if remaining_seconds is not None %}Your answers are saved. The time limit keeps running while you are away.{% else %}Your progress is saved — you can resume later.{% endif %}
                                         </p>
                                     {% endif %}
                                 </div>
@@ -232,6 +233,34 @@ examRunnerForm scope (no intermediate x-data between them).
                 {% endif %}
 
             </div>
+
+            {% if remaining_seconds is not None and form.time_limit_minutes > 5 %}
+                {% comment %}
+                Both warnings read as ordinary page text (a warning callout is not an
+                alert). The two live regions below exist at load and start empty, so
+                the announcement is the text the countdown writes into them.
+                {% endcomment %}
+                <c-callout tone="warning"
+                           class="mx-4 my-2"
+                           x-show="showFiveMinuteWarning"
+                           x-cloak
+                           x-transition
+                           x-ref="fiveMinuteWarning"
+                           data-testid="five-minute-warning">
+                    5 minutes left. When time runs out, your quiz is submitted with your saved answers.
+                </c-callout>
+                <c-callout tone="warning"
+                           class="mx-4 my-2"
+                           x-show="showOneMinuteWarning"
+                           x-cloak
+                           x-transition
+                           x-ref="oneMinuteWarning"
+                           data-testid="one-minute-warning">
+                    1 minute left. This page is saved and submitted when time runs out.
+                </c-callout>
+                <div class="sr-only" aria-live="polite" x-text="politeWarning" data-testid="polite-warning"></div>
+                <div class="sr-only" aria-live="assertive" x-text="assertiveWarning" data-testid="assertive-warning"></div>
+            {% endif %}
 
         </div>
         {% comment %}End sticky top bar{% endcomment %}

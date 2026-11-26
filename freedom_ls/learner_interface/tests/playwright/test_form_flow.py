@@ -737,13 +737,13 @@ def test_a_declaration_quiz_asks_for_a_signature_before_page_one(
     expect(page.get_by_text("Which option is right?")).to_be_visible()
 
 
-def _timed_quiz_course() -> Course:
-    """A one-minute quiz with two required multiple-choice questions."""
+def _timed_quiz_course(limit_minutes: int = 1) -> Course:
+    """A timed quiz with two required multiple-choice questions."""
     form = FormFactory(
         title="Timed Quiz",
         strategy=FormStrategy.QUIZ,
         quiz_pass_percentage=50,
-        time_limit_minutes=1,
+        time_limit_minutes=limit_minutes,
     )
     form_page = FormPageFactory(form=form, title="Page 1", order=0)
     for order, (question_text, option) in enumerate(
@@ -790,3 +790,56 @@ def test_a_timed_quiz_submits_itself_when_the_countdown_reaches_zero(
     expect(page.get_by_text("Time ran out")).to_be_visible()
     stored = FormProgress.objects.get(user=logged_in_user)
     assert stored.answers.count() == 1
+
+
+def _start_timed_quiz_with_seconds_left(
+    page: Page,
+    live_server: LiveServer,
+    user: User,
+    course: Course,
+    seconds_left: int,
+) -> None:
+    register_user_for_course(course, user)
+    navigate_to_form(page, live_server, course)
+    start_form(page)
+    sitting = FormProgress.objects.select_related("form").get(user=user)
+    limit_seconds = sitting.form.time_limit_minutes * 60
+    FormProgress.objects.filter(pk=sitting.pk).update(
+        start_time=timezone.now() - timedelta(seconds=limit_seconds - seconds_left)
+    )
+    page.reload()
+
+
+def test_a_page_loaded_under_a_minute_out_shows_the_one_minute_warning_silently(
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _timed_quiz_course(limit_minutes=10)
+
+    _start_timed_quiz_with_seconds_left(page, live_server, logged_in_user, course, 40)
+
+    expect(page.get_by_test_id("one-minute-warning")).to_be_visible()
+    expect(page.get_by_test_id("five-minute-warning")).to_be_hidden()
+    expect(page.get_by_test_id("polite-warning")).to_have_text("")
+    expect(page.get_by_test_id("assertive-warning")).to_have_text("")
+
+
+def test_the_one_minute_warning_is_announced_when_the_countdown_crosses_it(
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _timed_quiz_course(limit_minutes=10)
+
+    _start_timed_quiz_with_seconds_left(page, live_server, logged_in_user, course, 63)
+
+    expect(page.get_by_test_id("five-minute-warning")).to_be_visible()
+    expect(page.get_by_test_id("one-minute-warning")).to_be_hidden()
+    expect(page.get_by_test_id("assertive-warning")).to_have_text("")
+    expect(page.get_by_test_id("one-minute-warning")).to_be_visible(timeout=10000)
+    expect(page.get_by_test_id("assertive-warning")).to_have_text(
+        "1 minute left. This page is saved and submitted when time runs out."
+    )

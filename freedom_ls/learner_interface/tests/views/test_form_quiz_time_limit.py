@@ -822,3 +822,90 @@ def test_an_untimed_runner_page_has_no_timer(
 
     assert 'role="timer"' not in html
     assert "data-remaining-seconds" not in html
+
+
+def _runner_html_for_limit(
+    client: Client, limit: int | None, submit_on_exit: bool
+) -> str:
+    user: User = UserFactory()
+    form, _ = _paged_quiz(limit=limit, submit_on_exit=submit_on_exit)
+    course = course_with_form(form)
+    course_progress_record(course, user, created_at=REGISTERED_AT)
+    client.force_login(user)
+    _open_sitting(course, user, form)
+
+    with time_machine.travel(STARTED_AT, tick=False):
+        return _runner_page(client, course).content.decode()
+
+
+FIVE_MINUTE_COPY = "5 minutes left. When time runs out, your quiz is submitted with your saved answers."
+ONE_MINUTE_COPY = "1 minute left. This page is saved and submitted when time runs out."
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("limit", [6, 30])
+def test_a_limit_over_five_minutes_renders_both_warnings(
+    mock_site_context: object, client: Client, limit: int
+) -> None:
+    html = _runner_html_for_limit(client, limit, submit_on_exit=True)
+
+    assert FIVE_MINUTE_COPY in html
+    assert ONE_MINUTE_COPY in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("limit", [6, 30])
+def test_a_limit_over_five_minutes_renders_both_live_regions_empty(
+    mock_site_context: object, client: Client, limit: int
+) -> None:
+    html = _runner_html_for_limit(client, limit, submit_on_exit=True)
+
+    assert 'x-text="politeWarning"' in html
+    assert 'x-text="assertiveWarning"' in html
+    assert "data-warnings" in html
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("limit", [1, 5])
+def test_a_limit_of_five_minutes_or_less_renders_no_warnings(
+    mock_site_context: object, client: Client, limit: int
+) -> None:
+    html = _runner_html_for_limit(client, limit, submit_on_exit=True)
+
+    assert FIVE_MINUTE_COPY not in html
+    assert ONE_MINUTE_COPY not in html
+    assert "politeWarning" not in html
+    assert "data-warnings" not in html
+
+
+@pytest.mark.django_db
+def test_the_exit_dialog_of_a_timed_save_on_exit_quiz_says_the_clock_keeps_running(
+    mock_site_context: object, client: Client
+) -> None:
+    html = _runner_html_for_limit(client, 30, submit_on_exit=False)
+
+    assert (
+        "Your answers are saved. The time limit keeps running while you are away."
+        in html
+    )
+    assert "you can resume later" not in html
+
+
+@pytest.mark.django_db
+def test_the_exit_dialog_of_an_untimed_save_on_exit_quiz_is_unchanged(
+    mock_site_context: object, client: Client
+) -> None:
+    html = _runner_html_for_limit(client, None, submit_on_exit=False)
+
+    assert "Your progress is saved — you can resume later." in html
+    assert "keeps running" not in html
+
+
+@pytest.mark.django_db
+def test_the_exit_dialog_of_a_timed_submit_on_exit_quiz_still_says_it_submits(
+    mock_site_context: object, client: Client
+) -> None:
+    html = _runner_html_for_limit(client, 30, submit_on_exit=True)
+
+    assert "Leaving now will submit your answers" in html
+    assert "keeps running" not in html
