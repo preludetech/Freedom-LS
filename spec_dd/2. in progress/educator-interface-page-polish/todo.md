@@ -15,10 +15,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 3. Implementation and QA
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Decide whether the dashboard's plain-text course name can happen: `courses_visible_to` includes every course a visible cohort is registered for, so the test for a course outside it fakes `courses_visible_to` (freedom_ls/educator_interface/tests/panels/dashboard/test_panels.py). Keep the branch and the faked test, or drop the plain-text branch.
+- [ ] (user) Decide on dialog footer button width on a phone: the touch-target sweep in freedom_ls/educator_interface/tests/playwright/test_touch_targets.py no longer requires footer buttons to be 44px wide, because a short label such as "Add" gives a 42px button. Keep the exemption, or set a minimum width on footer buttons.
+- [ ] (user) Review how the code differs from the plan: `build_course_catalogue` replaces each registration's `course` with one shared instance per course; `quickView` and `sidePanel` gained `running: false` because the CSP Alpine build fails on an undeclared `running`; the bulk-dialog lock tracks the request's xhr because htmx's `afterRequest` reports the swap target, not the form.
 
 ## 4. Documentation and pull request
 
