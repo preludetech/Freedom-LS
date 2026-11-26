@@ -18,14 +18,34 @@ instance pages that puts each action here:
 | Thing shown | Control beside it |
 |---|---|
 | A learner's Cohorts panel (Overview tab) | Add to cohort, Remove, Move |
-| A learner's Courses tab | Register for a course |
+| A learner's Courses tab | Register for a course (footer) |
 | A learner's Courses tab quiz attempts table | The attempt number opens the attempt (quick view; full attempt review page) |
 | A learner's Course registrations list (Overview tab) | Deactivate / Reactivate a registration |
 | A course's Cohort registrations panel (Overview tab) | Register (footer), Deactivate (row) |
 | A course's Direct registrations panel (Overview tab) | Register (footer), Deactivate and Reactivate (row) |
 | A cohort's Settings tab | Three panels: Name (the name field, Save in the card footer), Staff (Add staff member; Change role and Remove from cohort on each person's row), Status (Deactivate / Reactivate, Delete) |
 | A cohort's Learners tab | Add learners, Remove, Move |
-| A learner's Settings tab | Two panels: Name (first and last name fields, Save in the card footer), Account (Resend setup email, Deactivate / Reactivate): the actions with no home of their own |
+| A learner's Settings tab | Two panels: Name (opens with a read-only Email row above the first and last name fields, Save in the card footer), Account (Resend setup email, Deactivate / Reactivate): the actions with no home of their own |
+
+## Learner Courses tab
+
+The Courses panel is a table with one row per registration (Course, Status, Progress, Items, Last
+completed), followed by one section per course that has completed items or quiz results. Each
+section is headed by its course title and holds the "Completed items (N)" disclosure and the quiz
+attempts tables. Sections are separated by space, not a bordered box, and a course with neither
+gets no section. The table shows as cards at 768, on a phone and beside an open quick view.
+
+## Dashboard
+
+Anything the dashboard names, the educator can reach in one click, and a named learner or cohort
+opens its quick view.
+
+- The Learners and Cohorts tiles link to their lists.
+- A cohort name links to the cohort page and has a quick view button beside it, in an attention
+  row and in the Cohort progress card. A learner name does the same.
+- A course name in an attention row links to the course page when the viewer can see that course,
+  and is plain text otherwise.
+- The callout naming a cohort left out of the figures links the cohort name.
 
 ## Staff roles
 
@@ -137,3 +157,8 @@ What QA checks in a screenshot of an educator page, on top of the panel framewor
   answer" in a thin-bordered box like a chosen option row (no thick start bar), and every choice
   question, a dropdown included, lists its options as rows. Each question heading is "n. text"
   with the id under it in small muted monospace.
+- Every name on the dashboard is a link: tiles, learner, cohort and (when visible) course names. A
+  learner or cohort name has a quick view button beside it, in the attention rows and in Cohort
+  progress.
+- A learner's Courses tab reads as a table of registrations, then a section per course below it,
+  not a bordered box per course. Settings > Name opens with an Email row above the name fields.
