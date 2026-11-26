@@ -893,7 +893,7 @@ def test_force_delete_page_lists_the_unclaimed_applicant_with_its_count(staff_cl
 
     body = response.content.decode()
     assert "Also erased, found by email address" in body
-    assert "anonymous applicants (1)" in body
+    assert "Anonymous applicants (1)" in body
 
 
 def test_force_delete_erases_the_unclaimed_applicant_application_and_sitting(
