@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('freedom_ls_content_engine', '0016_course_reference_part'),
+        ('freedom_ls_content_engine', '0017_activity_retired_at_article_retired_at_and_more'),
     ]
 
     operations = [

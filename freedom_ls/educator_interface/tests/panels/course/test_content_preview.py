@@ -2211,7 +2211,9 @@ def test_outline_rows_flag_a_retired_part_but_not_its_live_children(
         collection_object=part, child_object=TopicFactory(title="Kept"), order=0
     )
 
-    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == ["Old part"]
+    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == [
+        "Old part"
+    ]
 
 
 @pytest.mark.django_db
@@ -2221,7 +2223,9 @@ def test_outline_rows_flag_a_retired_form(mock_site_context: Site) -> None:
     FormPageFactory(form=form, order=0)
     ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
 
-    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == ["Old quiz"]
+    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == [
+        "Old quiz"
+    ]
 
 
 @pytest.mark.django_db
@@ -2234,7 +2238,9 @@ def test_outline_rows_flag_a_retired_form_page_but_not_its_form(
     retired(FormPageFactory(form=form, title="Old page", order=1))
     ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
 
-    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == ["Old page"]
+    assert _flagged_titles(outline_rows(course, may_view_questions=True)) == [
+        "Old page"
+    ]
 
 
 @pytest.mark.django_db
@@ -2252,7 +2258,10 @@ def test_reference_rows_flag_a_retired_part_and_a_retired_topic(
         order=0,
     )
 
-    assert _flagged_titles(reference_rows(course, may_view_questions=True)) == ["Old reference", "Old glossary"]
+    assert _flagged_titles(reference_rows(course, may_view_questions=True)) == [
+        "Old reference",
+        "Old glossary",
+    ]
 
 
 @pytest.mark.django_db
