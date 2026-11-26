@@ -1919,3 +1919,26 @@ def test_registering_a_table_and_name_twice_overwrites(
     register_bulk_action(Replacement)
 
     assert [type(a) for a in bulk_actions_for_table("permitted_stubs")] == [Replacement]
+
+
+def test_a_bulk_confirmation_form_holds_a_request_error_holder_with_the_run_message(
+    mock_site_context: Site,
+) -> None:
+    """A failed confirm request used to show nothing: the form had no error holder."""
+    stub = make_stub(name="row-0")
+
+    response = fetch(
+        _action_path(stub.pk),
+        method="post",
+        data={"keys": [str(stub.pk)]},
+        htmx=True,
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (holder,) = document.cssselect("form [data-request-error]")
+    assert holder.get("hidden") is not None
+    assert holder.get("tabindex") == "-1"
+    assert holder.get("data-request-error-message") == (
+        "This did not finish. Some changes may not have been made. "
+        "Reload the list to see which, then run it again."
+    )

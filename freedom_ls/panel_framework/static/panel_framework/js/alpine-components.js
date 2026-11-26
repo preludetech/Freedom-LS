@@ -59,14 +59,17 @@ function showRequestError(event) {
     if (xhr && (xhr.responseText || "").includes(TOAST_MARKER)) return;
     const message = document.createElement("p");
     message.setAttribute("role", "alert");
+    // A holder's own message wins: it knows what the failed request was.
     message.textContent =
-        status === 413 ? REQUEST_ERROR_TOO_LARGE : REQUEST_ERROR_GENERIC;
+        holder.dataset.requestErrorMessage ||
+        (status === 413 ? REQUEST_ERROR_TOO_LARGE : REQUEST_ERROR_GENERIC);
     holder.replaceChildren(message);
     holder.hidden = false;
     if (form.closest("dialog")) holder.focus();
 }
 document.addEventListener("htmx:responseError", showRequestError);
 document.addEventListener("htmx:sendError", showRequestError);
+document.addEventListener("htmx:timeout", showRequestError);
 
 // An unmarked 403 or 404 on an htmx request is a full page: the user has lost
 // access to what they are looking at, so the page reloads onto the page a

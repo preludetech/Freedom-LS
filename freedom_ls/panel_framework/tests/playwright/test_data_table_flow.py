@@ -342,6 +342,28 @@ def test_data_table_flow(
     page.keyboard.press("Escape")
     expect(modal).to_be_hidden()
 
+    # A server error on the confirm unlocks the dialog and says so in it.
+    page.get_by_role("button", name="Mark processed").click()
+    expect(modal).to_be_visible()
+    held.clear()
+    page.route("**/__actions/**", lambda route: held.append(route))
+    modal.get_by_role("button", name="Mark processed").click()
+    expect(modal.get_by_role("button", name="Cancel")).to_be_disabled()
+    expect(modal.locator("#bulk-run-status")).to_have_text(
+        "This is running and can't be stopped. Wait for it to finish."
+    )
+    held[0].fulfill(status=500, body="server error")
+    page.unroute("**/__actions/**")
+    expect(modal.get_by_role("alert")).to_have_text(
+        "This did not finish. Some changes may not have been made. "
+        "Reload the list to see which, then run it again."
+    )
+    expect(modal.get_by_role("alert")).to_be_visible()
+    expect(modal.get_by_role("button", name="Cancel")).to_be_enabled()
+    expect(modal.get_by_role("button", name="Close", exact=True).first).to_be_enabled()
+    page.keyboard.press("Escape")
+    expect(modal).to_be_hidden()
+
     page.get_by_role("button", name="Mark processed").click()
     expect(modal).to_be_visible()
     modal.get_by_role("button", name="Mark processed").click()
