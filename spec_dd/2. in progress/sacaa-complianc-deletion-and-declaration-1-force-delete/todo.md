@@ -30,7 +30,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) Run `/sdd:document`: in `docs/api.md`, add `last_active` to the user API's field table and say it does not move `updated_at` (spec "Documentation and downstream")
 - [x] (cmd) Run `/sdd:document`: in `freedom_ls/audit_log/README.md`, add `user.deleted` and `learner.removed` to the action table with label, group, target, subjects and details (spec "Audit log" and "Documentation and downstream")
 - [x] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`, add the two codes under "Changes" and define "force delete" and "last active" (spec "Terminology" and "Documentation and downstream")
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
 
