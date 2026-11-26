@@ -126,6 +126,8 @@ class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMi
         upload_to=profile_picture_upload_to,
     )
 
+    last_active = models.DateTimeField(null=True, blank=True, editable=False)
+
     USERNAME_FIELD = "email"
 
     class Meta:

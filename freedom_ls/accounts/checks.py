@@ -6,7 +6,10 @@ from collections.abc import Sequence
 from typing import Any
 
 from django.apps import AppConfig
+from django.conf import settings
 from django.core.checks import Error, Tags, Warning, register
+
+LAST_ACTIVE_MIDDLEWARE = "freedom_ls.accounts.middleware.LastActiveMiddleware"
 
 
 @register(Tags.compatibility)
@@ -143,3 +146,24 @@ def check_trusted_proxy_ip_header_is_not_a_meta_key(
         check_id="freedom_ls_accounts.E003",
         consequence="the client IP silently falls back to the connecting address.",
     )
+
+
+@register()
+def check_last_active_middleware(**kwargs: object) -> list[Error]:
+    """E004: Error when LastActiveMiddleware is missing from MIDDLEWARE.
+
+    Without it User.last_active is never written, and the educator-facing
+    last active column stays empty with nothing to say why.
+    """
+    if LAST_ACTIVE_MIDDLEWARE in settings.MIDDLEWARE:
+        return []
+    return [
+        Error(
+            f"{LAST_ACTIVE_MIDDLEWARE!r} is not registered in MIDDLEWARE.",
+            hint=(
+                f"Add {LAST_ACTIVE_MIDDLEWARE!r} to MIDDLEWARE, after "
+                "'django.contrib.auth.middleware.AuthenticationMiddleware'."
+            ),
+            id="freedom_ls_accounts.E004",
+        )
+    ]

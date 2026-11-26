@@ -11,6 +11,7 @@ class AccountsConfig(AppSettings):
     ALLOW_SIGN_UPS: bool
     LEGAL_DOCS_MANIFEST_PATH: str | None
     SETUP_EMAIL_RESEND_SECONDS: int
+    LAST_ACTIVE_WRITE_SECONDS: int
 
     declared_settings = {
         "TRUSTED_PROXY_IP_HEADER": Setting(default=None),
@@ -20,6 +21,7 @@ class AccountsConfig(AppSettings):
         "ALLOW_SIGN_UPS": Setting(default=True),
         "LEGAL_DOCS_MANIFEST_PATH": Setting(default=None),
         "SETUP_EMAIL_RESEND_SECONDS": Setting(default=900),
+        "LAST_ACTIVE_WRITE_SECONDS": Setting(default=300),
     }
 
 

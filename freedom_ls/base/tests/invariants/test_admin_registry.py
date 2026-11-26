@@ -21,7 +21,6 @@ FORM_DEFINITION_MODELS = [
 ]
 
 LEARNER_MANAGEMENT_MODELS = [
-    ("freedom_ls_learner_management", "Learner"),
     ("freedom_ls_learner_management", "Cohort"),
     ("freedom_ls_learner_management", "LearnerCourseRegistration"),
     ("freedom_ls_learner_management", "CohortCourseRegistration"),

@@ -193,6 +193,7 @@ MIDDLEWARE = [
     "freedom_ls.referral_tracking.middleware.AttributionCaptureMiddleware",
     # "config.site_urlconf_middleware.SiteURLConfMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "freedom_ls.accounts.middleware.LastActiveMiddleware",
     "freedom_ls.accounts.middleware.RegistrationCompletionMiddleware",
     "axes.middleware.AxesMiddleware",
 ]

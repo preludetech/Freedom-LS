@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.checks import registry
 from django.test import override_settings
 
 from freedom_ls.accounts.checks import (
     check_email_colour_tokens,
+    check_last_active_middleware,
     check_trusted_proxy_ip_header_is_not_a_meta_key,
 )
 
@@ -190,3 +192,20 @@ def test_unset_trusted_proxy_header_returns_no_errors() -> None:
         errors = check_trusted_proxy_ip_header_is_not_a_meta_key(None)
 
     assert errors == []
+
+
+def test_last_active_middleware_check_passes_when_registered() -> None:
+    assert check_last_active_middleware() == []
+
+
+def test_last_active_middleware_check_errors_when_missing() -> None:
+    middleware = [
+        entry
+        for entry in settings.MIDDLEWARE
+        if entry != "freedom_ls.accounts.middleware.LastActiveMiddleware"
+    ]
+
+    with override_settings(MIDDLEWARE=middleware):
+        errors = check_last_active_middleware()
+
+    assert [error.id for error in errors] == ["freedom_ls_accounts.E004"]

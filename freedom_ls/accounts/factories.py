@@ -6,6 +6,7 @@ import factory
 from allauth.account.models import EmailAddress
 
 from django.core.files.base import ContentFile
+from django.utils import timezone
 
 from freedom_ls.accounts.models import LegalConsent, SiteSignupPolicy, User
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
@@ -35,6 +36,8 @@ class UserFactory(SiteAwareFactory):
     email = factory.Sequence(lambda n: f"user{n}@example.com")
     is_active = True
     is_staff = False
+    # A fresh value keeps a test client's first request inside the write interval.
+    last_active = factory.LazyFunction(timezone.now)
 
     @factory.post_generation
     def password(

@@ -19,12 +19,18 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable
+from datetime import timedelta
 from typing import cast
 
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
 from django.urls import Resolver404, resolve, reverse
+from django.utils import timezone
+
+from .config import config
+from .models import User
 
 EXEMPT_URL_NAMES: frozenset[str] = frozenset(
     {
@@ -66,6 +72,32 @@ def _exempt_path_prefixes() -> tuple[str, ...]:
         _normalise(settings.STATIC_URL),
         _normalise(settings.MEDIA_URL),
     )
+
+
+class LastActiveMiddleware:
+    """Records when a signed-in person last used the site.
+
+    Only session sign-ins reach here as a user: API keys authenticate inside
+    the API view, after middleware, and set no request.user. At most one
+    write per interval per user; update() runs no save(), so updated_at (the
+    API's sync cursor) and post_save receivers stay still.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            now = timezone.now()
+            cutoff = now - timedelta(seconds=config.LAST_ACTIVE_WRITE_SECONDS)
+            if user.last_active is None or user.last_active < cutoff:
+                # The base manager: the request's site may not be set yet.
+                User._base_manager.filter(pk=user.pk).filter(
+                    Q(last_active__isnull=True) | Q(last_active__lt=cutoff)
+                ).update(last_active=now)
+                user.last_active = now
+        return self.get_response(request)
 
 
 CACHE_SESSION_KEY = "_registration_completion_state"

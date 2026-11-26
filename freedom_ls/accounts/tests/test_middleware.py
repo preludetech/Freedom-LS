@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
-import pytest
+from datetime import timedelta
 
-from django.test import Client
+import pytest
+import time_machine
+
+from django.db.models.signals import post_save
+from django.http import HttpRequest, HttpResponse
+from django.test import Client, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+from freedom_ls.accounts.middleware import LastActiveMiddleware
+from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests import _completion_view_fixtures as fixtures
+from freedom_ls.api.scopes import ApiScope
+from freedom_ls.api.tests.helpers import bearer_auth_for
 
 ALWAYS_INCOMPLETE_PATH = (
     "freedom_ls.accounts.tests._completion_view_fixtures.AlwaysIncompleteForm"
@@ -340,3 +350,120 @@ def test_completion_submit_clears_cache(mock_site_context, site, settings):
     # Assert: cache cleared — next request reaches the profile page.
     response = client.get(PERSONAL_DETAILS_URL)
     assert response.status_code == 200
+
+
+def _run_last_active(user: User | None) -> HttpRequest:
+    """Pass one request for `user` (anonymous when None) through the middleware."""
+    from django.contrib.auth.models import AnonymousUser
+
+    request = HttpRequest()
+    request.user = user if user is not None else AnonymousUser()
+    LastActiveMiddleware(lambda _request: HttpResponse())(request)
+    return request
+
+
+def _stored_last_active(user: User):
+    return User._base_manager.values_list("last_active", flat=True).get(pk=user.pk)
+
+
+@pytest.mark.django_db
+def test_last_active_null_value_is_written(mock_site_context):
+    user = UserFactory(last_active=None)
+
+    _run_last_active(user)
+
+    assert _stored_last_active(user) is not None
+    assert user.last_active == _stored_last_active(user)
+
+
+@pytest.mark.django_db
+def test_last_active_stale_value_is_moved(mock_site_context):
+    user = UserFactory(last_active=timezone.now() - timedelta(hours=1))
+    stale = _stored_last_active(user)
+
+    with time_machine.travel(timezone.now() + timedelta(seconds=10)):
+        _run_last_active(user)
+
+    assert _stored_last_active(user) > stale + timedelta(minutes=59)
+
+
+@pytest.mark.django_db
+def test_last_active_fresh_value_costs_no_query(
+    mock_site_context, django_assert_num_queries
+):
+    user = UserFactory(last_active=timezone.now())
+
+    with django_assert_num_queries(0):
+        _run_last_active(user)
+
+
+@pytest.mark.django_db
+def test_last_active_anonymous_request_writes_nothing(
+    mock_site_context, django_assert_num_queries
+):
+    with django_assert_num_queries(0):
+        _run_last_active(None)
+
+
+@pytest.mark.django_db
+def test_last_active_api_key_request_leaves_it_null(mock_site_context):
+    user = UserFactory(last_active=None)
+
+    response = Client().get(
+        reverse("api:user_list"), headers=bearer_auth_for(ApiScope.USERS)
+    )
+
+    assert response.status_code == 200
+    assert _stored_last_active(user) is None
+
+
+@pytest.mark.django_db
+def test_last_active_write_leaves_updated_at_and_last_login_alone(mock_site_context):
+    user = UserFactory(last_active=None)
+    before = User._base_manager.values_list("updated_at", "last_login").get(pk=user.pk)
+
+    _run_last_active(user)
+
+    after = User._base_manager.values_list("updated_at", "last_login").get(pk=user.pk)
+    assert after == before
+
+
+@pytest.mark.django_db
+def test_last_active_write_sends_no_post_save(mock_site_context):
+    user = UserFactory(last_active=None)
+    received: list[object] = []
+
+    def receiver(sender: object, **kwargs: object) -> None:
+        received.append(sender)
+
+    post_save.connect(receiver, sender=User)
+    try:
+        _run_last_active(user)
+    finally:
+        post_save.disconnect(receiver, sender=User)
+
+    assert received == []
+
+
+@pytest.mark.django_db
+def test_last_active_write_seconds_override_is_honoured(mock_site_context):
+    user = UserFactory(last_active=timezone.now() - timedelta(seconds=30))
+    before = _stored_last_active(user)
+
+    with override_settings(LAST_ACTIVE_WRITE_SECONDS=10):
+        _run_last_active(user)
+
+    assert _stored_last_active(user) > before
+
+
+@pytest.mark.django_db
+def test_last_active_is_written_through_the_middleware_stack(mock_site_context):
+    user = UserFactory(last_active=None)
+    client = Client()
+    client.force_login(user)
+
+    client.get(PERSONAL_DETAILS_URL)
+
+    last_active = _stored_last_active(user)
+    assert last_active is not None
+    assert timezone.now() - last_active < timedelta(seconds=300)
