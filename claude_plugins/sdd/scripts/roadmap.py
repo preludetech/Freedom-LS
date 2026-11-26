@@ -7,10 +7,12 @@ Usage:
 The roadmap's feature sections are the source. Each run:
 
 - sets every spec bullet's status from where its directory sits (in progress, ready, blocked),
-  drops bullets whose directory is done and drops done specs from every "blocked by" list;
+  drops bullets whose directory is done and drops done specs from every "blocked by" list
+  and every "Collides with" sentence;
 - retires a feature section that has no spec bullets left, archiving it to
   ``<parent>/spec-order.md`` for each parent it names;
-- regenerates the "Up next" section;
+- regenerates the "Up next" section, where a ready spec that collides with an in-progress one
+  is listed as waiting on that collision, not as ready to start;
 - reads the priority file (``priority.md`` beside the roadmap), creating it when missing, adds
   every roadmap item it lacks under "Priority not set" and drops entries for directories that are
   gone; works out each spec's effective priority (the highest of its own entry, its effort
@@ -19,7 +21,7 @@ The roadmap's feature sections are the source. Each run:
 - writes one SVG per feature, plus ``up-next.svg``, into ``<stem>_diagrams/``.
 
 Problems it cannot fix (directories with no bullet, bullets for directories that exist nowhere,
-unknown dependencies, cycles) are printed and make the exit status 1.
+unknown dependencies or collisions, cycles) are printed and make the exit status 1.
 
 The format is defined in ``claude_plugins/sdd/resources/roadmap_format.md``.
 """
@@ -46,6 +48,7 @@ PARENT_RE = re.compile(r"Parents?: (`[^`]+`(?:,? (?:and )?`[^`]+`)*)")
 BACKTICKED_RE = re.compile(r"`([^`]+)`")
 IMAGE_RE = re.compile(r"^!\[[^\]]*\]\([^)]*_diagrams/[^)]*\.svg\)$")
 PRECURSOR = "Before starting:"
+COLLIDES_RE = re.compile(r" ?Collides with (`[^`]+`(?:, `[^`]+`)*)\.")
 REMOVED = "\0removed"
 
 PRIORITY_FILE = "priority.md"
@@ -93,6 +96,7 @@ STYLES = {
     "in progress": ("#dbeafe", "#2563eb", ""),
     "ready": ("#dcfce7", "#16a34a", ""),
     "needs main": ("#fef3c7", "#d97706", ""),
+    "collides": ("#fce7f3", "#db2777", ""),
     "blocked": ("#f3f4f6", "#9ca3af", ""),
     "external": ("#ffffff", "#6b7280", "5 4"),
 }
@@ -100,6 +104,7 @@ LEGEND = [
     ("in progress", "in progress"),
     ("ready", "ready"),
     ("needs main", "needs work on main first"),
+    ("collides", "waiting on a collision"),
     ("blocked", "blocked"),
     ("external", "other feature"),
 ]
@@ -112,6 +117,21 @@ class Spec:
     deps: list[str]
     rest: str
     feature: str
+    waiting_on: list[str] = field(default_factory=list)
+
+    @property
+    def collides(self) -> list[str]:
+        match = COLLIDES_RE.search(self.rest)
+        return BACKTICKED_RE.findall(match.group(1)) if match else []
+
+    def set_collides(self, names: list[str]) -> None:
+        sentence = (
+            " Collides with " + ", ".join(f"`{n}`" for n in names) + "."
+            if names
+            else ""
+        )
+        if COLLIDES_RE.search(self.rest):
+            self.rest = COLLIDES_RE.sub(lambda _: sentence, self.rest, count=1)
 
     @property
     def precursor(self) -> str | None:
@@ -121,9 +141,12 @@ class Spec:
 
     @property
     def state(self) -> str:
-        """Display state: the status, with ready-plus-precursor shown as 'needs main'."""
+        """Display state: the status, with ready-plus-precursor shown as 'needs main' and
+        ready-but-colliding-with-an-in-progress-spec shown as 'collides'."""
         if self.status == "ready" and self.precursor:
             return "needs main"
+        if self.status == "ready" and self.waiting_on:
+            return "collides"
         return self.status
 
     def render(self) -> str:
@@ -684,6 +707,14 @@ def build_up_next(
     in_progress = [bullet(s) for s in specs if s.state == "in progress"]
     ready = [bullet(s) for s in specs if s.state == "ready"]
     needs = [bullet(s, f": {s.precursor}") for s in specs if s.state == "needs main"]
+    colliding = [
+        bullet(
+            s,
+            ": collides with in-progress " + ", ".join(f"`{d}`" for d in s.waiting_on),
+        )
+        for s in specs
+        if s.state == "collides"
+    ]
     legend = " · ".join(
         f"{priority.style(i)[1]} {h}" for i, h in enumerate(priority.headings)
     )
@@ -701,6 +732,10 @@ def build_up_next(
         "### Ready to start",
         "",
         *bullets(ready),
+        "",
+        "### Waiting on a collision",
+        "",
+        *bullets(colliding),
         "",
         "### Needs work on main first",
         "",
@@ -757,6 +792,10 @@ def main(argv: list[str]) -> int:
             for dep in spec.deps:
                 if dep not in waiting and dep not in in_progress:
                     problems.append(f"{name} is blocked by unknown directory: {dep}")
+            spec.set_collides([c for c in spec.collides if c not in done])
+            for other in spec.collides:
+                if other not in waiting and other not in in_progress:
+                    problems.append(f"{name} collides with unknown directory: {other}")
             if name in in_progress:
                 spec.status = "in progress"
             elif spec.deps:
@@ -802,6 +841,17 @@ def main(argv: list[str]) -> int:
         {d: [x for x in s.deps if x in specs] for d, s in specs.items()}
     ):
         problems.append("cycle: " + " -> ".join(cycle))
+    # A collision binds both sides, whichever bullet names it.
+    partners: dict[str, set[str]] = {d: set() for d in specs}
+    for spec in specs.values():
+        for other in spec.collides:
+            if other in specs:
+                partners[spec.dir].add(other)
+                partners[other].add(spec.dir)
+    for d, spec in specs.items():
+        spec.waiting_on = sorted(
+            p for p in partners[d] if specs[p].status == "in progress"
+        )
 
     # Priority.
     priority = read_priority(priority_path)

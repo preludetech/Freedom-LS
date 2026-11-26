@@ -19,7 +19,8 @@ continues is `/sdd:start` itself, run again.
 Run this before anything is spawned: its answer can be "stop".
 
 If `spec_dd/1. next/roadmap.md` exists and has a bullet for this spec (the line starting
-`` - `<spec directory name>` — ** ``), check its precursor first, then its blockers.
+`` - `<spec directory name>` — ** ``), check its precursor first, then its blockers, then its
+collisions.
 
 **Precursor.** A worktree branches off main, so work that has to happen on main comes first. The
 spec has a precursor if its bullet ends with a `Before starting:` sentence, or if the directory
@@ -32,7 +33,16 @@ cut.
 **Blockers.** Read the bullet's `blocked by` list. A blocker is met when a directory named
 `spec_dd/3. done/*_<name>` exists. For each unmet one, say where it stands (`ready`, `blocked` or
 `in progress` per its own bullet) and ask via `AskUserQuestion` whether to start anyway or stop.
-This is a warning, never a block. No roadmap, or no bullet: carry on without comment.
+This is a warning, never a block.
+
+**Collisions.** A collision partner is a spec this bullet's `Collides with` sentence names, or a
+spec whose own bullet names this one in its `Collides with` sentence. For each partner that is
+`in progress` (its directory is under `spec_dd/2. in progress/`), say so and ask via
+`AskUserQuestion`: "Stop until `<partner>` lands (Recommended)" or "Start anyway". The two edit
+the same code, so building them at once means a hard rebase later. If the answer is stop, stop
+here.
+
+No roadmap, or no bullet: carry on without comment.
 
 ## Step 1: Set up the todo list
 

@@ -68,6 +68,10 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-6-revision-dashboard` (Learner interface features)
 
+### Waiting on a collision
+
+None.
+
 ### Needs work on main first
 
 None.
@@ -83,9 +87,9 @@ Learner record retention, question versions and access, and assessment controls,
 - `sacaa-compliance-content-versions-and-access-3-question-versions` — **ready** — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
 - `sacaa-compliance-content-versions-and-access-4-question-access` — **in progress** — A new role may view course questions and answers in the educator interface; each view is audited; admin question pages go.
 - `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
-- `sacaa-compliance-assessment-controls-1-score-moderation` — **blocked** by `sacaa-compliance-content-versions-and-access-4-question-access` — A moderator overrides a learner's mark on one quiz question with a reason; the system mark is kept.
-- `sacaa-compliance-assessment-controls-2-attempt-limits` — **in progress** — Quizzes cap attempts and set escalating waits between failed attempts, enforced at the start gate.
-- `sacaa-compliance-assessment-controls-3-test-time-limit` — **in progress** — Quizzes get a time limit with a countdown; expired attempts are submitted and marked, with a recorded reason.
+- `sacaa-compliance-assessment-controls-1-score-moderation` — **blocked** by `sacaa-compliance-content-versions-and-access-4-question-access` — A moderator overrides a learner's mark on one quiz question with a reason; the system mark is kept. Collides with `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-5-answered-version-review`.
+- `sacaa-compliance-assessment-controls-2-attempt-limits` — **in progress** — Quizzes cap attempts and set escalating waits between failed attempts, enforced at the start gate. Collides with `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-5-test-disturbance`.
+- `sacaa-compliance-assessment-controls-3-test-time-limit` — **in progress** — Quizzes get a time limit with a countdown; expired attempts are submitted and marked, with a recorded reason. Collides with `sacaa-compliance-assessment-controls-5-test-disturbance`.
 - `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — **ready** — Topics, forms and course parts require interaction every N minutes, warn, then exit to the dashboard or log out.
 - `sacaa-compliance-assessment-controls-5-test-disturbance` — **blocked** by `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Leaving a quiz (logout, session end, auto exit, leave and return) auto-fails or auto-marks the attempt.
 - `sacaa-compliance-assessment-controls-6-minimum-learning-time` — **blocked** by `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Active learning time is recorded; topics, course parts and quizzes require a minimum before learners move on.
@@ -97,7 +101,7 @@ Learner record retention, question versions and access, and assessment controls,
 **Notes**
 - Build order: `sacaa-compliance-content-versions-and-access-3-question-versions` follows `sacaa-compliance-content-versions-and-access-2-retire-removed-content`; `sacaa-compliance-content-versions-and-access-5-answered-version-review` follows it and `sacaa-compliance-content-versions-and-access-4-question-access`.
 - Build order: `sacaa-compliance-assessment-controls-2-attempt-limits`, `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` and `sacaa-compliance-assessment-controls-7-course-restart` can start now; `sacaa-compliance-assessment-controls-1-score-moderation` follows `sacaa-compliance-content-versions-and-access-4-question-access`; `sacaa-compliance-assessment-controls-5-test-disturbance` follows `sacaa-compliance-assessment-controls-3-test-time-limit` and `sacaa-compliance-assessment-controls-4-inactivity-auto-exit`; `sacaa-compliance-assessment-controls-6-minimum-learning-time` follows `sacaa-compliance-assessment-controls-4-inactivity-auto-exit`.
-- Collisions: `sacaa-compliance-content-versions-and-access-2-retire-removed-content` and `sacaa-compliance-content-versions-and-access-3-question-versions` both change `content_save`. `sacaa-compliance-assessment-controls-2-attempt-limits`, `sacaa-compliance-assessment-controls-3-test-time-limit` and `sacaa-compliance-assessment-controls-5-test-disturbance` all edit `start_attempt`, `_form_start_gate` and the `Form` schema, so run them one at a time. `sacaa-compliance-assessment-controls-1-score-moderation` shares `compute_quiz_scores` and the attempt review panel with `sacaa-compliance-content-versions-and-access-3-question-versions` and `sacaa-compliance-content-versions-and-access-5-answered-version-review`.
+- Collisions share code: `sacaa-compliance-assessment-controls-2-attempt-limits`, `sacaa-compliance-assessment-controls-3-test-time-limit` and `sacaa-compliance-assessment-controls-5-test-disturbance` all edit `start_attempt`, `_form_start_gate` and the `Form` schema; `sacaa-compliance-assessment-controls-1-score-moderation` shares `compute_quiz_scores` and the attempt review panel with its partners.
 - Decided, retention: only superusers force delete, at any time, with a required reason in the audit log. It replaces the User admin's delete button and "delete selected" action. No retention-window gate, no automatic cleanup.
 - Decided, content: each source path is a git repo with a clean tree before `content_save`, and the commit hash is recorded. Retired content is served to no one and never deleted. Each `FormQuestion` change makes an immutable version; an attempt pins its versions at start.
 - Decided, access: a new organisation-scoped role views questions and answers in the educator interface, every view audited, superusers' included. The Django admin loses its question and option pages and QUIZ answer views.
@@ -135,7 +139,7 @@ Priority: 🔴 High
 Learners publish a profile to help them find work, and visitors browse an index of them. Parent: `learner-public-profile`.
 
 - `learner-public-profile-2-profile-and-page` — **ready** — Learners switch on a shareable public profile with blurb, work experience, place, open to work and links.
-- `learner-public-profile-3-completed-courses` — **blocked** by `learner-public-profile-2-profile-and-page` — Courses a learner completed on the site appear on their public profile. The learner can hide each one.
+- `learner-public-profile-3-completed-courses` — **blocked** by `learner-public-profile-2-profile-and-page` — Courses a learner completed on the site appear on their public profile. The learner can hide each one. Collides with `learner-public-profile-4-certificates`.
 - `learner-public-profile-4-certificates` — **blocked** by `learner-public-profile-2-profile-and-page` — Learners upload self-reported certificates. Organisation staff upload certificates on the educator-interface learner page.
 - `learner-public-profile-5-index` — **blocked** by `learner-public-profile-3-completed-courses` — A public index of switched-on profiles, named per site, with search, filters and sorts.
 - `learner-public-profile-6-index-access` — **blocked** by `learner-public-profile-5-index` — Placeholder: decide who may see the index in each concrete project. Before starting: settle the design with the product owner and rewrite this idea.
@@ -145,7 +149,7 @@ Learners publish a profile to help them find work, and visitors browse an index 
 
 **Notes**
 - Order: `learner-public-profile-2-profile-and-page` first. After it, `learner-public-profile-3-completed-courses` and `learner-public-profile-4-certificates` run in parallel, and `learner-public-profile-5-index` follows `learner-public-profile-3-completed-courses`.
-- Collisions: `learner-public-profile-3-completed-courses` and `learner-public-profile-4-certificates` both add sections to the profile page and the edit page.
+- Collision shares code: both add sections to the profile page and the edit page.
 - Decided: profiles are opt-in, off by default, with consent recorded. The learner's own link always works while the profile is on, and is a 404 when it is off. Only the index is ever restricted, and it is public for now.
 - Decided: per-site settings hold the feature switch (off by default) and its display name, e.g. "Talent Database". Place is a country select with a city select filtered by country, and the country autofills.
 - Decided: the picture is every user's avatar. Organisation-issued certificates are labelled as such and learner uploads as self-reported, with no moderation queue.
@@ -167,7 +171,7 @@ Applications become steps an applicant works through over weeks, decided by a de
 - `multi-step-course-applications-4-reopen-form` — **ready** — Applicants reopen their submitted application form, answers prefilled, until it is approved.
 - `multi-step-course-applications-5-requirements-and-resolver` — **blocked** by `multi-step-course-applications-4-reopen-form` — Applicants work through a requirements page; a deployment resolver, or the course's fixed list, decides the requirements.
 - `multi-step-course-applications-6-reviewer-verdicts` — **blocked** by `multi-step-course-applications-5-requirements-and-resolver`, `multi-step-course-applications-10-intake-courses` — Reviewers accept or turn down requirements with a reason, preview the consequence; requirements hold back approval or registration.
-- `multi-step-course-applications-7-upload-requirements` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — Applicants upload documents for requirements, re-upload when asked, and see past uploads; reviewers see every version.
+- `multi-step-course-applications-7-upload-requirements` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — Applicants upload documents for requirements, re-upload when asked, and see past uploads; reviewers see every version. Collides with `multi-step-course-applications-8-choices`.
 - `multi-step-course-applications-8-choices` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — The resolver offers either-or requirement groups; applicants switch options until one is accepted.
 - `multi-step-course-applications-9-help-requests` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — Applicants ask for a callback from any application page; reviewers are notified and a webhook feeds the CRM.
 - `multi-step-course-applications-10-intake-courses` — **blocked** by `multi-step-course-applications-3-approval-outcome` — Authors mark a course apply-only and list its onward courses; reviewers register approved applicants for them.
@@ -177,7 +181,7 @@ Applications become steps an applicant works through over weeks, decided by a de
 
 **Notes**
 - Order: `multi-step-course-applications-2-reviewers-and-inbox` and `multi-step-course-applications-4-reopen-form` run in parallel. `multi-step-course-applications-10-intake-courses` follows `multi-step-course-applications-3-approval-outcome`. `multi-step-course-applications-6-reviewer-verdicts` needs it and `multi-step-course-applications-5-requirements-and-resolver`; `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` follow it, and `multi-step-course-applications-9-help-requests` can start once `multi-step-course-applications-2-reviewers-and-inbox` lands.
-- Collisions: `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` both change the reconcile step and the requirements page; whichever lands second rebases.
+- Collision shares code: both change the reconcile step and the requirements page.
 - Decided: no workflow graph. The resolver is a pure function of the application's data, re-run after every event by one reconcile function; superseded requirements are kept.
 - Decided: states are `TextChoices` and service functions, no FSM library. Reviewer and system actions go in `audit_log`, never the applicant's name. No `changes_requested` or `under_review` states.
 - Decided: reviewers hold a new organisation role checked with `can()`; each inbox is per organisation; the Django admin stays read-only.
@@ -297,7 +301,7 @@ Notifications and direct messaging between learners and educators. Parent: `user
 - `user-communication-6-moderation` — **ready** — Users report messages or block users. Site admins work a report queue and hide messages. Nothing is hard deleted.
 - `user-communication-8-realtime` — **blocked** by `user-communication-6-moderation` — Optional Django Channels push for the unread badge and open threads. Off by default, with polling as the fallback.
 - `messaging-inbox-polish` — **ready** — Recipient search by email and cohort, one New message flow, staff and cohort chips, full educator conversation history.
-- `messaging-drafts` — **ready** — Unsent messages are saved as drafts, marked in the conversation list and refilled into the message box.
+- `messaging-drafts` — **ready** — Unsent messages are saved as drafts, marked in the conversation list and refilled into the message box. Collides with `messaging-inbox-polish`.
 - `user-communication-help-desk` — **ready** — Learners ask for help on specific content from the course player, into a shared queue educators pick up.
 
 ![User communication](roadmap_diagrams/user-communication.svg)
@@ -311,7 +315,7 @@ Notifications and direct messaging between learners and educators. Parent: `user
 - Open questions:
   - where the report queue lives (`user-communication-6-moderation`);
   - what a digest holds and where a user's timezone comes from (`user-communication-2-notification-email`).
-- Collision: `messaging-inbox-polish` and `messaging-drafts` both change the composer and conversation list templates.
+- Collision shares code: both change the composer and conversation list templates.
 - Out of scope: announcements, forums, group conversations, SMS and push, reply-by-email.
 
 ## Referral tracking and marketing
@@ -400,7 +404,7 @@ Cut the time and machine load of test runs so several worktrees can work at once
 - `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
 - `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
 - `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
-- `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing.
+- `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing. Collides with `faster-test-runs-9-machine-wide-test-run-limit`.
 - `faster-test-runs-13-checkpoint-shared-paths` — **ready** — A `finish_worktree` checkpoint tests main's change to a file the branch changed earlier as main's change.
 
 ![Faster test runs](roadmap_diagrams/faster-test-runs.svg)
@@ -410,7 +414,7 @@ Cut the time and machine load of test runs so several worktrees can work at once
 - `faster-test-runs-11-record-failed-full-runs` extends the record `faster-test-runs-12-reliable-full-run-record` makes reliable; `faster-test-runs-13-checkpoint-shared-paths` changes the test selector.
 - Suggested order by saving: `faster-test-runs-2-reuse-test-database` first, then the rest.
 - `faster-test-runs-7-claude-cloud-test-runs` waits on the others because the owner wants it only if they are not enough.
-- Collision: `faster-test-runs-12-reliable-full-run-record` may change the runner too, beside `faster-test-runs-9-machine-wide-test-run-limit`.
+- Collision shares code: both may change the test runner.
 - Decision: generic `sdd` and `ds` plugins stay generic; project values reach them through per-project configuration.
 - Decision: no spec reduces what is tested without naming the test that still covers it.
 - Assumption: every spec reports its before and after timings against `faster-test-runs/research_test_timings.md`.
@@ -446,7 +450,7 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `educator-interface-data-table-columns-and-filters` — **blocked** by `extract_panels_framework-5-package-and-install` — Data tables get a show and hide Columns control saved per user, and faster filter controls.
 - `educator-interface-contextual-help` — **blocked** by `extract_panels_framework-5-package-and-install` — A click, tap and keyboard help icon on panels, fields and buttons, with help text for educators.
 - `educator-interface-staff-invitations-and-cohort-staff` — **ready** — Staff page shows pending invitations and resends them; cohorts get a Staff tab anyone seeing the cohort can read.
-- `educator-interface-message-from-anywhere` — **blocked** by `educator-interface-staff-invitations-and-cohort-staff` — Educators start a conversation from the learner page header, the staff quick view and the cohort Staff tab.
+- `educator-interface-message-from-anywhere` — **blocked** by `educator-interface-staff-invitations-and-cohort-staff` — Educators start a conversation from the learner page header, the staff quick view and the cohort Staff tab. Collides with `educator-interface-page-polish`.
 - `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks where history starts.
 - `bulk-run-audit-summary` — **ready** — Bulk actions write one run summary with folded per-object entries in the Audit log, and take an optional reason.
 - `admin-dashboard-signal-cards` — **ready** — The admin index shows signup, registration, application and interest cards: last 7 days against the previous 7, newest entries.
@@ -459,6 +463,6 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - `admin-dashboard-signal-cards` and `staff-person-profile-by-email` are pull-ins from First-Class-LMS; `staff-person-profile-by-email` must settle its app and access first.
 - Access rules: anything outside the user's scope returns 404. An action the user has lost permission for returns 403 with a message. Controls the user can't use are hidden. No new dependencies.
 - `educator-interface-page-polish` and `educator-interface-staff-invitations-and-cohort-staff` run in parallel now; `educator-interface-data-table-columns-and-filters` and `educator-interface-contextual-help` wait for the panel framework package and land in it.
-- Collision: `educator-interface-page-polish` and `educator-interface-message-from-anywhere` both change the learner quick view and learner page; whichever lands second rebases.
+- Collision shares code: both change the learner quick view and learner page.
 - Designs needed before `/sdd:spec_from_idea`: every polish, columns, help, staff and message spec names its screens under Resources.
 - References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`. Polish research: `educator-interface-page-polish/research_comparable_systems.md`.

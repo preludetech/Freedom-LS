@@ -93,7 +93,9 @@ called out on its own line. With the `apply` argument, continue to S6. Otherwise
 
 Edit the roadmap per `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`: add and drop bullets,
 correct blockers, add a `##` feature section (heading, one-line intro, bullets) for a new feature,
-and tighten any notes that break the format rules. Then run:
+and tighten any notes that break the format rules. A note that names two or more specs as
+colliding moves onto their bullets as a `Collides with` sentence (see the format file); keep at
+most one short note saying what they share. Then run:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/roadmap.py "spec_dd/1. next/roadmap.md"
@@ -197,12 +199,14 @@ Write `.sdd-work/roadmap_cut_<dir>.md`:
 
 - The effort name and the parent directory.
 - For each child: its future directory name `<dir>-N-<slug>`, one-line scope, blockers (as
-  directory names, never numbers), and the `research_*.md` files that move into it.
+  directory names, never numbers), the children it collides with (two children that touch the
+  same files, written as a `Collides with` sentence on its bullet), and the `research_*.md` files
+  that move into it.
 - Research that stays in the parent because more than one child uses it.
 - Superseded drafts in the parent that the cut replaces, listed for the owner to confirm.
 - The feature's **Notes**, in the words the roadmap will carry and within the format file's
-  limit of about ten one-line bullets: build order and which children run in parallel, collisions
-  where two children touch the same files, decisions taken, assumptions the ideas make, open
+  limit of about ten one-line bullets: build order and which children run in parallel, what
+  colliding children share, decisions taken, assumptions the ideas make, open
   questions with the child that owns each, one line of out-of-scope and one line of references.
   Every spec is named by directory name. Detail beyond that goes in the ideas, which are
   decision-complete, or in a sibling file in the parent.

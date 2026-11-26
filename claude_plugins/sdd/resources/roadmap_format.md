@@ -3,7 +3,7 @@
 `spec_dd/1. next/roadmap.md` says what is being built next. It lists every spec in
 `spec_dd/1. next/` and `spec_dd/2. in progress/`, grouped by feature, with its state and a
 dependency diagram per feature, ordered by the priority file beside it (see "Priority"). `/sdd:roadmap` writes it. `protected/update_roadmap.md` removes a
-finished spec. `/sdd:start` reads a spec's blockers and precursor. `scripts/roadmap.py` normalises
+finished spec. `/sdd:start` reads a spec's precursor, blockers and collisions. `scripts/roadmap.py` normalises
 it and draws the diagrams.
 
 It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and is a different file.
@@ -24,14 +24,15 @@ It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and i
    ``Parents: `a`, `b`.``
 5. **The script owns the derived parts.** `python3 claude_plugins/sdd/scripts/roadmap.py
    "spec_dd/1. next/roadmap.md"` sets each bullet's status from its directory's location, drops
-   done specs from bullets and `blocked by` lists, maintains `priority.md`, orders the feature
+   done specs from bullets, `blocked by` lists and `Collides with` sentences, maintains `priority.md`, orders the feature
    sections and "Up next" by priority, writes each feature's `Priority:` line, regenerates "Up
    next", writes one SVG per feature (every feature, even one with a single spec) and
    `up-next.svg` into `spec_dd/1. next/roadmap_diagrams/` and retires an emptied feature. Run it
-   after every edit. Hand edits go in scopes, `blocked by` lists, precursors, feature intros,
-   notes and `priority.md`.
+   after every edit. Hand edits go in scopes, `blocked by` lists, `Collides with` sentences,
+   precursors, feature intros, notes and `priority.md`.
 6. **Notes stay lean.** At most about ten one-line bullets per feature: build order and which specs
-   run in parallel, collisions between specs, decisions and assumptions every spec in the feature
+   run in parallel, what colliding specs share (the collision itself is a `Collides with`
+   sentence on a bullet), decisions and assumptions every spec in the feature
    relies on, open questions with the spec that owns each, one line of out-of-scope and one line of
    references. Only what still matters to an unfinished spec. No restated scope, no history, no
    process narration.
@@ -85,13 +86,18 @@ complete.
 ## Bullet grammar
 
 ```
-- `<dir>` — **<status>**[ by `<dep>`, `<dep>`] — <scope>[ Before starting: <precursor>]
+- `<dir>` — **<status>**[ by `<dep>`, `<dep>`] — <scope>[ Collides with `<dir>`, `<dir>`.][ Before starting: <precursor>]
 ```
 
 - `<status>` is exactly `in progress`, `ready` or `blocked`. The script sets it.
 - `by` lists the dependencies that are not yet done, each a directory name in backticks. The
   script deletes a dependency once it is done, so the list is always the current blockers.
 - `<scope>` is one line, at most 20 words: what ships and for whom.
+- A collision is the sentence `Collides with `<dir>`, `<dir>`.` after the scope: specs that edit
+  the same code and must not be built at the same time. It binds both sides, so naming it on one
+  bullet is enough. The script drops a done spec from it and flags an unknown one. A `ready` spec
+  that collides with an `in progress` spec is listed under "Waiting on a collision", not "Ready to
+  start", and `/sdd:start` asks before starting it.
 - A precursor is the sentence starting `Before starting:` at the end of the bullet. A `ready` spec
   with one is listed under "Needs work on main first", not "Ready to start".
 - Notes bullets never start with `` `<dir>` — ** ``, so they are never mistaken for spec bullets.
