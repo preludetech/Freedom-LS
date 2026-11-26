@@ -173,7 +173,7 @@ which site a request belongs to. The host says so through a setting.
 
   | Place | Size | Variant |
   | --- | --- | --- |
-  | Dialog footer (`<c-modal-footer>`) | default | Cancel `secondary`; the one confirm `primary`, or `error` when it deletes |
+  | Dialog footer (`<c-modal-footer>`) | default from `md` up, small below | Cancel `secondary`; the one confirm `primary`, or `error` when it deletes |
   | Panel footer, page header, empty state | small | `primary` for the panel's one main create action; `secondary` for the rest |
   | Table row, card | small | `secondary`, a destructive action's trigger included; never `primary` or `error`: the red goes on its dialog's confirm |
   | Toolbar (Filter, Sort, Export), pager | small | `secondary` |
@@ -181,13 +181,13 @@ which site a request belongs to. The host says so through a setting.
   | Text action in content ("Edit", "Change", "Clear all") | small | `link` |
 
   Every trigger the framework renders is `size="small"` (`{% render_action %}`,
-  `<c-modal-trigger>`); the dialog footer's pair is the one full-size pair, because that is the
-  decision the dialog asks for. A panel holds at most one `primary` button outside a dialog.
+  `<c-modal-trigger>`). The dialog footer's pair is full size from `md` up and small below it. A
+  panel holds at most one `primary` button outside a dialog.
 - A button looks the same at every width. Below `md` the shared rule in
   `freedom_ls/panel_framework/css/panel_framework.css` gives every panel button an invisible 44px-tall hit area and leaves
-  its look alone, so a small button stays about 32px tall on a phone. The dialog footer's buttons
-  are the one exception: on a phone they are 44px tall, at the bottom of the sheet under the
-  thumb. A text field is 44px tall on a phone. No template adds a height to a button.
+  its look alone, so a small button stays about 32px tall on a phone, a dialog footer's included
+  (the footer's 16px padding holds the 6px the hit area reaches past the button). A text field is
+  44px tall on a phone. No template or button rule adds a height to a button.
 - Buttons in a table cell or a card sit inside `<c-data-table-actions>`, which owns the gap; the
   buttons carry no margins.
 - A table row's buttons sit in columns by what they act on. A button for one item in a cell sits
@@ -197,7 +197,9 @@ which site a request belongs to. The host says so through a setting.
   slot of `<c-panel-list-row>` or `<c-panel-table-card>`, under the title and detail, left edge on
   the title's left edge, inside `<c-data-table-actions>`. Each button is as wide as its label; none
   stretches to fill the line or shares a line with the detail. The row's trailing slot holds a
-  badge, figure or progress bar, never the entry's buttons. A desktop table row keeps its buttons
+  badge, figure or progress bar, never the entry's buttons. A quick view trigger
+  (`partials/quick_view_button.html`) is the one control that may sit there, beside the bar or
+  figure of a row that names a record. A desktop table row keeps its buttons
   in its actions cell.
 - On a card, a button for one item sits under that item, inside the item's block; the card never
   gathers every item's buttons under one shared label. Where the same label repeats for several
@@ -309,7 +311,9 @@ panel with framework actions that call the other app's forms and flows.
   labels line up.
 - A list of records in a panel is rows that share one shape: the name in `font-medium`, the
   detail under it in `text-sm text-muted` ("via Group A", "Individual"), the figure at the end in
-  `tabular-nums`. Values are never joined into a sentence with dashes, and one word names a
+  `tabular-nums`. A progress bar in a row is `<c-panel-progress-bar size="small">`: a thin bar, with
+  the percentage in a fixed-width, right-aligned span so the figures of stacked rows line up.
+  Values are never joined into a sentence with dashes, and one word names a
   relation everywhere ("via", never "via" in one place and "through" in another).
 - A numbered list with an action on each entry (the course outline) is a data table inside
   `.panel-data-table`: one `<tr>` per entry with its number, title and type in cells and its
@@ -406,6 +410,15 @@ panel with framework actions that call the other app's forms and flows.
   takes the results' place below it. An empty result list renders nothing.
 - The modal host and the side panel clip horizontal overflow and the title wraps, so a dialog
   stays inside the viewport at every width, 375px included, title and every button included.
+- A confirm that runs in the request (a bulk action on `BULK_BACKGROUND_THRESHOLD` rows or fewer, whose
+  form carries `data-runs-in-request`) locks the dialog: `appModal`'s `running` is true from the
+  request's start until `htmx:afterRequest` (any outcome) or the dialog's `close`. While it is
+  true, the footer Cancel (`<c-modal-footer>`) and the header close control
+  (`<c-panel-close-button>`) are disabled, Esc does nothing, and a `role="status"` line in the
+  body, `bulk-run-status`, reads "This is running and can't be stopped. Wait for it to finish."
+  Cancel and the close control name it with `cancel_describedby` and `describedby`. Every host
+  of those components declares `running` (the CSP Alpine build throws on an undeclared name), false
+  when it has no in-request run. The picker's refresh requests never set it.
 - A dialog's loading text ends in the ellipsis character "…", and its `hx-disabled-elt` is
   `find button[type='submit']`.
 - Every sheet and dialog shares one chrome: on a phone it rises from the bottom with rounded top
@@ -554,10 +567,13 @@ page of an app holds which action is that app's skill.
 - A list value in a details panel sits flush with its label: the bullets line up with the label's
   first letter. Override the base `ul` margin (`ml-0`) and keep wrapped lines under the text.
   Its items sit close together: override the base list spacing (`space-y-1`, `py-0` on each item).
+  The exception is a list of rows that each carry a title, a muted line and a bar (the learner
+  table's Courses cell): `space-y-2`, at least 8px, with no rule or box between rows.
 - On a phone a button is as wide as its label and as tall as at desktop; its 44px hit area is
   invisible (see Triggers and buttons).
 - Vertical space follows one scale, and the components own it:
-  - 4px (`space-y-1`) inside one field: the items of one list value.
+  - 4px (`space-y-1`) inside one field: the items of one list value (8px, `space-y-2`, for course
+    rows).
   - 12px (`gap-y-3`, `mt-3`) between the fields of a card or an inline
     `<c-panel-definition-list>`, and between a card's title block (name, email) and its fields.
   - 16px (`py-4`) above and below a card's content, with the list's rule between cards.
@@ -591,12 +607,13 @@ panel, modal, quick view or panel-partial template either), `test_every_dialog_l
 `test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_own_request`,
 `test_no_educator_module_sets_the_modal_trigger_template_by_hand`,
 `test_no_template_hand_writes_a_table_outside_the_table_components`,
-`test_no_button_hand_writes_a_touch_height`, `test_only_the_dialog_footer_makes_a_button_44px_tall_on_a_phone`
+`test_no_button_hand_writes_a_touch_height`, `test_no_panel_button_rule_sets_a_touch_height`,
 `test_every_expand_chevron_turns_when_its_control_opens` and
 `test_every_entry_trigger_names_its_entry` (every `<c-modal-trigger>` in
 `editable_list_entry_triggers.html` passes an `aria_label` naming its entry). In the browser,
 `educator_interface/tests/playwright/test_touch_targets.py` checks that a small button keeps its
-desktop height on a phone, that its hit area is 44px, and that a dialog footer's buttons are 44px tall.
+desktop height on a phone and that its hit area is 44px, a dialog footer's buttons included, with
+no overlap between them.
 Run that file after any change to a panel template.
 
 `freedom_ls/base/tests/invariants/test_app_templates_use_app_components.py`
@@ -658,7 +675,7 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - A link that acts as a control (a name, a back link, a row, "Edit", a choice in a filter menu)
   has the look of that control, with the prose underline absent.
 - Row, card, toolbar and pager buttons are the small size at every width, with no taller look on a
-  phone; only a dialog footer's buttons are full size, and 44px tall on a phone. Each button's
+  phone; a dialog footer's buttons are full size from `md` up and small below it. Each button's
   variant matches its place (outline in rows, cards, toolbar and pager, a Remove or Delete trigger
   included, never red; text-only in the selection bar). Buttons that sit together have a gap between them.
 - A list row's or card's Edit, Remove and other entry buttons sit in a footer under the entry's
@@ -679,6 +696,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   in a list row has a small name and a small avatar centred on the name's first line; a person's
   badges sit on a line under the name and email, their left edge on the name's left edge; an
   expanded row that names the parent row's person again shows the name with no second avatar.
+- A bulk confirm that runs in the request shows its Cancel and close control disabled and the
+  "This is running and can't be stopped" line until it ends; Esc does nothing meanwhile.
 - A dialog whose request fails (a 5xx, a network error, a timeout) shows a red alert line inside
   the dialog and unlocks; a failure is never silent.
 - A disclosure, filter chip or menu button shows the icon chevron, never the browser's triangle,
@@ -712,7 +731,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   the default; a list page starts at its heading and toolbar, with help in a dialog or the docs
   rather than a paragraph above the list.
 - A list value in a details panel has its bullets in line with the start of its label, and its
-  items sit close together, with less gap than between two rows.
+  items sit close together, with less gap than between two rows; the learner table's course rows
+  are spaced at least 8px, with their thin bars and percentages lined up.
 - A control sits beside the thing it changes; a Settings panel holds only actions that have no
   home beside the thing they change.
 - Each panel does one job: no panel holds a second heading for a different job, and no panel
