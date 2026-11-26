@@ -29,7 +29,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (cmd) In `claude_plugins/fls-dev/skills/educator-interface/SKILL.md` and `claude_plugins/fls-dev/skills/panel-framework/SKILL.md`: record that a quiz row of the course outline shows a disabled Preview with its reason to a viewer without the question bank viewer role, the one exception to "a row the viewer cannot act on leaves its buttons cell empty" (spec: Decisions, Disabled Preview on quiz rows)
 - [x] (cmd) In `docs/how tos/theme-fls.md`: drop the `confusions` empty-state slot and the `data-subhead="wrong-answers"` hook from the list of `reports/partials/` hooks, since the PDF no longer draws them (spec: Requirements, Cohort report PDF)
 - [x] (cmd) In `spec_dd/1. next/sacaa-compliance-content-versions-and-access-5-answered-version-review/idea.md` and the effort's notes in `spec_dd/1. next/roadmap.md`: say the attempt review is gated and logged by this spec, and that spec 5 reuses `can_view_course_questions`, `record_question_view` and the Paper panel gate and adds only the answered-version display (spec: Documentation and downstream)
-- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
+- [x] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
 
