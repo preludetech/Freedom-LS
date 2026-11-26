@@ -11,14 +11,18 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
+- 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access, via `sacaa-compliance-assessment-controls`)
 - 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA record retention and declarations)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
-- 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🟡 Low · `educator-interface-page-polish` (Educator interface)
 
 ### Ready to start
 
+- 🔴 High · `sacaa-compliance-assessment-controls-2-attempt-limits` (SACAA assessment controls)
+- 🔴 High · `sacaa-compliance-assessment-controls-3-test-time-limit` (SACAA assessment controls)
+- 🔴 High · `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` (SACAA assessment controls)
+- 🔴 High · `sacaa-compliance-assessment-controls-7-course-restart` (SACAA assessment controls)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
@@ -63,34 +67,12 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - ⚪ Priority not set · `learner-interface-features-2-test-out` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-5-protected-video` (Learner interface features)
 - ⚪ Priority not set · `learner-interface-features-6-revision-dashboard` (Learner interface features)
-- ⚪ Priority not set · `sacaa-compliance-assessment-controls-2-attempt-limits` (SACAA assessment controls)
-- ⚪ Priority not set · `sacaa-compliance-assessment-controls-3-test-time-limit` (SACAA assessment controls)
-- ⚪ Priority not set · `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` (SACAA assessment controls)
-- ⚪ Priority not set · `sacaa-compliance-assessment-controls-7-course-restart` (SACAA assessment controls)
 
 ### Needs work on main first
 
 None.
 
 ![Up next](roadmap_diagrams/up-next.svg)
-
-## SACAA record retention and declarations
-
-Priority: 🔴 High
-
-Keeping learner records for SACAA's five-year rule, and signed quiz declarations, for training organisations audited by SACAA. Parent: `sacaa-complianc-deletion-and-declaration`.
-
-- `sacaa-complianc-deletion-and-declaration-1-force-delete` — **in progress** — Admins can no longer delete users; superusers force delete a user or learner with a logged reason; users get a last-active time.
-
-![SACAA record retention and declarations](roadmap_diagrams/sacaa-record-retention-and-declarations.svg)
-
-**Notes**
-- Decided: only superusers force delete, at any time, with a required reason written to the audit log; no retention-window gate and no automatic cleanup.
-- Decided: force delete replaces the User admin's delete button and "delete selected" action as the one erasure path.
-- Assumption: force deleting a user removes every record today's user deletion removes, plus their course progress, which today blocks deletion (`PROTECT`).
-- Assumption: force deleting a learner removes that `Learner` and its registrations, cohort memberships and course progress in that organisation; the `User` stays.
-- Out of scope: locking progress, attempt and answer records in the admin; self-service account deletion.
-- References: CAR 141.01.17 five-year retention in `sacaa-compliance/research_sacaa_requirements.md`.
 
 ## SACAA content versions and access
 
@@ -116,6 +98,52 @@ Question versions, retired content, safer content saves and logged access to que
 - Assumption: a version covers question text, type, required, bounds and every option's text, value, order and correctness; `FormContent` and `FormPage` are not versioned.
 - Out of scope: `content_snapshots` (paused), versioning topics or courses, regrading, the learner's `quiz_show_incorrect` results.
 - References: `research_content_save_pipeline.md` and `research_question_versioning_prior_art.md`, both in the parent.
+
+## SACAA assessment controls
+
+Priority: 🔴 High
+
+Quiz time limits, attempt caps, moderated marks, inactivity exits, minimum learning time and course restarts, for SACAA-audited training organisations. Parent: `sacaa-compliance-assessment-controls`.
+
+- `sacaa-compliance-assessment-controls-1-score-moderation` — **blocked** by `sacaa-compliance-content-versions-and-access-4-question-access` — A moderator overrides a learner's mark on one quiz question with a reason; the system mark is kept.
+- `sacaa-compliance-assessment-controls-2-attempt-limits` — **ready** — Quizzes cap attempts and set escalating waits between failed attempts, enforced at the start gate.
+- `sacaa-compliance-assessment-controls-3-test-time-limit` — **ready** — Quizzes get a time limit with a countdown; expired attempts are submitted and marked, with a recorded reason.
+- `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — **ready** — Topics, forms and course parts require interaction every N minutes, warn, then exit to the dashboard or log out.
+- `sacaa-compliance-assessment-controls-5-test-disturbance` — **blocked** by `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Leaving a quiz (logout, session end, auto exit, leave and return) auto-fails or auto-marks the attempt.
+- `sacaa-compliance-assessment-controls-6-minimum-learning-time` — **blocked** by `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Active learning time is recorded; topics, course parts and quizzes require a minimum before learners move on.
+- `sacaa-compliance-assessment-controls-7-course-restart` — **ready** — Staff restart a learner's course with a reason; the earlier run is kept read-only.
+
+![SACAA assessment controls](roadmap_diagrams/sacaa-assessment-controls.svg)
+
+**Notes**
+- Build order: `sacaa-compliance-assessment-controls-1-score-moderation`, `sacaa-compliance-assessment-controls-2-attempt-limits`, `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` and `sacaa-compliance-assessment-controls-7-course-restart` run in parallel; `sacaa-compliance-assessment-controls-5-test-disturbance` follows `sacaa-compliance-assessment-controls-3-test-time-limit` and `sacaa-compliance-assessment-controls-4-inactivity-auto-exit`; `sacaa-compliance-assessment-controls-6-minimum-learning-time` follows `sacaa-compliance-assessment-controls-4-inactivity-auto-exit`.
+- Collisions: `sacaa-compliance-assessment-controls-2-attempt-limits`, `sacaa-compliance-assessment-controls-3-test-time-limit` and `sacaa-compliance-assessment-controls-5-test-disturbance` all edit `start_attempt`, `_form_start_gate` and the `Form` schema, so run them one at a time; `sacaa-compliance-assessment-controls-1-score-moderation` shares `compute_quiz_scores` and the attempt review panel with `sacaa-compliance-content-versions-and-access-3-question-versions` and `sacaa-compliance-content-versions-and-access-5-answered-version-review`.
+- Decided: every control is off by default and set in content front matter (form, topic, course part); a course part's setting applies to its children unless a child sets its own.
+- Decided: a moderated mark sits beside the system mark and never replaces it; moderating needs a new moderator permission plus question viewing.
+- Decided: a disturbance is logout, session end, inactivity auto exit, or leaving the test page and returning; tab switching does not count.
+- Decided: staff restart a course by hand; a quiz's attempt cap only locks that quiz; attempts count per `CourseProgress`, so a restart resets them.
+- Decided: an expired or disturbed attempt is completed with a recorded reason and counts as an attempt; an auto-fail stores 0 of `max_score`.
+- Assumption: a time limit runs on wall-clock time from attempt start, through leaving and course pauses; learning time counts active time only; the auto-exit warning has an "I'm still here" button (WCAG 2.2.1).
+- Out of scope: awarding a question to every attempt, focus-loss detection, per-cohort overrides, identity verification.
+- References: `sacaa-compliance-assessment-controls/research_regulation_and_prior_art.md` (SA-CATS 141 source not public), `research_attempts_and_scoring.md` and `research_learning_time_and_inactivity.md` in the parent.
+
+## SACAA record retention and declarations
+
+Priority: 🔴 High
+
+Keeping learner records for SACAA's five-year rule, and signed quiz declarations, for training organisations audited by SACAA. Parent: `sacaa-complianc-deletion-and-declaration`.
+
+- `sacaa-complianc-deletion-and-declaration-1-force-delete` — **in progress** — Admins can no longer delete users; superusers force delete a user or learner with a logged reason; users get a last-active time.
+
+![SACAA record retention and declarations](roadmap_diagrams/sacaa-record-retention-and-declarations.svg)
+
+**Notes**
+- Decided: only superusers force delete, at any time, with a required reason written to the audit log; no retention-window gate and no automatic cleanup.
+- Decided: force delete replaces the User admin's delete button and "delete selected" action as the one erasure path.
+- Assumption: force deleting a user removes every record today's user deletion removes, plus their course progress, which today blocks deletion (`PROTECT`).
+- Assumption: force deleting a learner removes that `Learner` and its registrations, cohort memberships and course progress in that organisation; the `User` stays.
+- Out of scope: locking progress, attempt and answer records in the admin; self-service account deletion.
+- References: CAR 141.01.17 five-year retention in `sacaa-compliance/research_sacaa_requirements.md`.
 
 ## Panel framework extraction
 
@@ -160,7 +188,7 @@ Learners publish a profile to help them find work, and visitors browse an index 
 - Decided: profiles are opt-in, off by default, with consent recorded. The learner's own link always works while the profile is on, and is a 404 when it is off. Only the index is ever restricted, and it is public for now.
 - Decided: per-site settings hold the feature switch (off by default) and its display name, e.g. "Talent Database". Place is a country select with a city select filtered by country, and the country autofills.
 - Decided: the picture is every user's avatar. Organisation-issued certificates are labelled as such and learner uploads as self-reported, with no moderation queue.
-- Decided: learner editing from `learner-public-profile-2-profile-and-page` on is panels in the account area (see "Account area on panels"). Profile pages and the index are `noindex`. Skills and per-field visibility are not in this effort.
+- Decided: learner editing from `learner-public-profile-2-profile-and-page` on is panels in the account area. Profile pages and the index are `noindex`. Skills and per-field visibility are not in this effort.
 - Open questions:
   - the city data source and the autofill source (`learner-public-profile-2-profile-and-page`);
   - the certificate storage alias (`learner-public-profile-4-certificates`).
@@ -188,7 +216,7 @@ Applications become steps an applicant works through over weeks, decided by a de
 
 **Notes**
 - Order: `multi-step-course-applications-2-reviewers-and-inbox` and `multi-step-course-applications-4-reopen-form` run in parallel. `multi-step-course-applications-10-intake-courses` follows `multi-step-course-applications-3-approval-outcome`. `multi-step-course-applications-6-reviewer-verdicts` needs it and `multi-step-course-applications-5-requirements-and-resolver`; `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` follow it, and `multi-step-course-applications-9-help-requests` can start once `multi-step-course-applications-2-reviewers-and-inbox` lands.
-- Collisions: `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` both change the reconcile step and the requirements page; whichever lands second rebases. `multi-step-course-applications-2-reviewers-and-inbox` adds `panels/applications/` and a line in `interface_config`, which the educator-interface refactor also edits.
+- Collisions: `multi-step-course-applications-7-upload-requirements` and `multi-step-course-applications-8-choices` both change the reconcile step and the requirements page; whichever lands second rebases.
 - Decided: no workflow graph. The resolver is a pure function of the application's data, re-run after every event by one reconcile function; superseded requirements are kept.
 - Decided: states are `TextChoices` and service functions, no FSM library. Reviewer and system actions go in `audit_log`, never the applicant's name. No `changes_requested` or `under_review` states.
 - Decided: reviewers hold a new organisation role checked with `can()`; each inbox is per organisation; the Django admin stays read-only.
@@ -473,31 +501,3 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 - Collision: `educator-interface-page-polish` and `educator-interface-message-from-anywhere` both change the learner quick view and learner page; whichever lands second rebases.
 - Designs needed before `/sdd:spec_from_idea`: every polish, columns, help, staff and message spec names its screens under Resources.
 - References: the mockups in `educator-interface-full-polish/Educator LMS Interface Design/` (layout only, not scope), and `brand-guidelines` and `fls-dev:panel-framework`. Polish research: `educator-interface-page-polish/research_comparable_systems.md`.
-
-## SACAA assessment controls
-
-Priority: ⚪ Priority not set
-
-Quiz time limits, attempt caps, moderated marks, inactivity exits, minimum learning time and course restarts, for SACAA-audited training organisations. Parent: `sacaa-compliance-assessment-controls`.
-
-- `sacaa-compliance-assessment-controls-1-score-moderation` — **blocked** by `sacaa-compliance-content-versions-and-access-4-question-access` — A moderator overrides a learner's mark on one quiz question with a reason; the system mark is kept.
-- `sacaa-compliance-assessment-controls-2-attempt-limits` — **ready** — Quizzes cap attempts and set escalating waits between failed attempts, enforced at the start gate.
-- `sacaa-compliance-assessment-controls-3-test-time-limit` — **ready** — Quizzes get a time limit with a countdown; expired attempts are submitted and marked, with a recorded reason.
-- `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — **ready** — Topics, forms and course parts require interaction every N minutes, warn, then exit to the dashboard or log out.
-- `sacaa-compliance-assessment-controls-5-test-disturbance` — **blocked** by `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Leaving a quiz (logout, session end, auto exit, leave and return) auto-fails or auto-marks the attempt.
-- `sacaa-compliance-assessment-controls-6-minimum-learning-time` — **blocked** by `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Active learning time is recorded; topics, course parts and quizzes require a minimum before learners move on.
-- `sacaa-compliance-assessment-controls-7-course-restart` — **ready** — Staff restart a learner's course with a reason; the earlier run is kept read-only.
-
-![SACAA assessment controls](roadmap_diagrams/sacaa-assessment-controls.svg)
-
-**Notes**
-- Build order: `sacaa-compliance-assessment-controls-1-score-moderation`, `sacaa-compliance-assessment-controls-2-attempt-limits`, `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` and `sacaa-compliance-assessment-controls-7-course-restart` run in parallel; `sacaa-compliance-assessment-controls-5-test-disturbance` follows `sacaa-compliance-assessment-controls-3-test-time-limit` and `sacaa-compliance-assessment-controls-4-inactivity-auto-exit`; `sacaa-compliance-assessment-controls-6-minimum-learning-time` follows `sacaa-compliance-assessment-controls-4-inactivity-auto-exit`.
-- Collisions: `sacaa-compliance-assessment-controls-2-attempt-limits`, `sacaa-compliance-assessment-controls-3-test-time-limit` and `sacaa-compliance-assessment-controls-5-test-disturbance` all edit `start_attempt`, `_form_start_gate` and the `Form` schema, so run them one at a time; `sacaa-compliance-assessment-controls-1-score-moderation` shares `compute_quiz_scores` and the attempt review panel with `sacaa-compliance-content-versions-and-access-3-question-versions` and `sacaa-compliance-content-versions-and-access-5-answered-version-review`.
-- Decided: every control is off by default and set in content front matter (form, topic, course part); a course part's setting applies to its children unless a child sets its own.
-- Decided: a moderated mark sits beside the system mark and never replaces it; moderating needs a new moderator permission plus question viewing.
-- Decided: a disturbance is logout, session end, inactivity auto exit, or leaving the test page and returning; tab switching does not count.
-- Decided: staff restart a course by hand; a quiz's attempt cap only locks that quiz; attempts count per `CourseProgress`, so a restart resets them.
-- Decided: an expired or disturbed attempt is completed with a recorded reason and counts as an attempt; an auto-fail stores 0 of `max_score`.
-- Assumption: a time limit runs on wall-clock time from attempt start, through leaving and course pauses; learning time counts active time only; the auto-exit warning has an "I'm still here" button (WCAG 2.2.1).
-- Out of scope: awarding a question to every attempt, focus-loss detection, per-cohort overrides, identity verification.
-- References: `sacaa-compliance-assessment-controls/research_regulation_and_prior_art.md` (SA-CATS 141 source not public), `research_attempts_and_scoring.md` and `research_learning_time_and_inactivity.md` in the parent.

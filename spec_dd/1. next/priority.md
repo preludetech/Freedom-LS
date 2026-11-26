@@ -8,6 +8,7 @@ adds anything missing under "Priority not set"; move it from there to the level 
 ## High
 
 - `reference-material-content`
+- `sacaa-compliance-assessment-controls`
 - `sacaa-complianc-deletion-and-declaration`
 - `sacaa-compliance-content-versions-and-access`
 - `extract_panels_framework`
@@ -46,4 +47,3 @@ adds anything missing under "Priority not set"; move it from there to the level 
 
 - `learner-interface-features`
 - `referral-tracking-labelled-referer-hosts`
-- `sacaa-compliance-assessment-controls`
