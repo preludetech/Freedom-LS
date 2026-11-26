@@ -538,7 +538,7 @@ def build_wrong_answers_by_learner_quiz(
                         (learner_id, form_id, question_id)
                     ].items()
                 ],
-                correct_option_texts=questions.correct_option_texts[question_id],
+                correct_options=questions.correct_options[question_id],
                 question_retired=questions.by_id[question_id].is_retired,
             )
         )
@@ -588,7 +588,7 @@ def build_confusion_block(
                 if show_percentage
                 else None,
                 distractors=distractors_by_question.get(question.id, []),
-                correct_option_texts=questions.correct_option_texts[question.id],
+                correct_options=questions.correct_options[question.id],
                 question_retired=question.is_retired,
             )
         )

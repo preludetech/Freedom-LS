@@ -114,7 +114,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
         <td>{{ wrong.question_text }}{% if wrong.question_retired %} <span class="chip chip-neutral">Retired</span>{% endif %}</td>
         <td class="numeric">×{{ wrong.times_wrong }}</td>
         <td>{% for option in wrong.selected_options %}<span class="chip {% if option.correct is True %}chip-success{% elif option.correct is False %}chip-error{% else %}chip-neutral{% endif %}"><span class="chip-glyph">{% if option.correct is True %}✓{% elif option.correct is False %}✗{% else %}○{% endif %}</span>{{ option.text }}{% if option.retired %} <span class="chip-count">Retired</span>{% endif %}{% if option.count > 1 %} <span class="chip-count">×{{ option.count }}</span>{% endif %}</span>{% empty %}<span class="no-answer">Not answered</span>{% endfor %}</td>
-        <td>{% for text in wrong.correct_option_texts %}<span class="chip chip-success"><span class="chip-glyph">✓</span>{{ text }}</span>{% endfor %}</td>
+        <td>{% for option in wrong.correct_options %}<span class="chip chip-success"><span class="chip-glyph">✓</span>{{ option.text }}{% if option.retired %} <span class="chip-count">Retired</span>{% endif %}</span>{% endfor %}</td>
       </tr>
       {% endfor %}
     </tbody>

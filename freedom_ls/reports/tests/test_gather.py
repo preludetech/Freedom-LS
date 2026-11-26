@@ -96,6 +96,7 @@ from freedom_ls.reports.indexes import (
 )
 from freedom_ls.reports.report_data import (
     AtRiskFlag,
+    CorrectOption,
     LearnerDetail,
     LearnerRow,
     LearnerSummary,
@@ -2172,7 +2173,21 @@ class TestBuildQuestionIndex:
 
         index = _a_question_index((question, options))
 
-        assert index.correct_option_texts[question.id] == ["Mars"]
+        assert index.correct_options[question.id] == [CorrectOption("Mars")]
+
+    def test_a_retired_correct_option_is_carried_marked_retired(self) -> None:
+        quiz = a_quiz()
+        question = a_question(quiz)
+        gone = an_option(question, "Earth", correct=True)
+        gone.retired_at = timezone.now()
+        options = [an_option(question, "Mars", correct=True), gone]
+
+        index = _a_question_index((question, options))
+
+        assert index.correct_options[question.id] == [
+            CorrectOption("Mars", retired=False),
+            CorrectOption("Earth", retired=True),
+        ]
 
     def test_questions_are_grouped_by_their_form(self) -> None:
         quiz = a_quiz()
@@ -2386,7 +2401,7 @@ class TestBuildWrongAnswersByUserQuiz:
             2,
         ]
 
-    def test_each_answer_carries_its_questions_correct_option_texts(self) -> None:
+    def test_each_answer_carries_its_questions_correct_options(self) -> None:
         quiz = a_quiz()
         question = a_question(quiz)
         options = [an_option(question, "Mars", correct=True)]
@@ -2406,7 +2421,7 @@ class TestBuildWrongAnswersByUserQuiz:
 
         assert answer.times_wrong == 2
         assert answer.selected_options == [SelectedOption("Sun", False, 2)]
-        assert answer.correct_option_texts == ["Mars"]
+        assert answer.correct_options == [CorrectOption("Mars")]
 
     def test_selected_options_carry_each_options_own_correctness(self) -> None:
         quiz = a_quiz()

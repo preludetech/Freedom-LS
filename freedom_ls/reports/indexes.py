@@ -52,7 +52,11 @@ from freedom_ls.learner_progress.models import CourseFormAttempt, TopicProgress
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.validators import MAX_BYTES, check_logo_safety
 from freedom_ls.reports.config import config
-from freedom_ls.reports.report_data import Distractor, ReportTooLargeError
+from freedom_ls.reports.report_data import (
+    CorrectOption,
+    Distractor,
+    ReportTooLargeError,
+)
 from freedom_ls.site_aware_models.models import site_display_name
 
 
@@ -168,7 +172,7 @@ class QuestionIndex:
     by_id: dict[UUID, FormQuestion]
     by_form: dict[UUID, list[FormQuestion]]
     options_by_question: dict[UUID, list[QuestionOption]]
-    correct_option_texts: dict[UUID, list[str]]
+    correct_options: dict[UUID, list[CorrectOption]]
     number_by_id: dict[UUID, int]
 
 
@@ -634,9 +638,9 @@ def build_question_index(
     on a retired page, among every question of its form, as
     `FormQuestion.question_number` does.
     """
-    correct_option_texts: dict[UUID, list[str]] = {
+    correct_options: dict[UUID, list[CorrectOption]] = {
         question.id: [
-            option.text
+            CorrectOption(option.text, retired=option.is_retired)
             for option in options_by_question[question.id]
             if option.correct is True
         ]
@@ -661,7 +665,7 @@ def build_question_index(
         by_id={question.id: question for question in questions},
         by_form=by_form,
         options_by_question=options_by_question,
-        correct_option_texts=correct_option_texts,
+        correct_options=correct_options,
         number_by_id=number_by_id,
     )
 

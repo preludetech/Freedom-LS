@@ -67,6 +67,7 @@ from freedom_ls.reports.render import (
     extract_theme_tokens,
     render_report_pdf,
 )
+from freedom_ls.reports.report_data import CorrectOption
 from freedom_ls.reports.tests.helpers import requires_tailwind_bundle
 from freedom_ls.reports.tests.report_data_builders import (
     GENERATED_AT,
@@ -966,7 +967,7 @@ class TestContents:
             show_percentage=False,
             wrong_percentage=None,
             distractors=[],
-            correct_option_texts=["A"],
+            correct_options=[CorrectOption("A")],
         )
         block = ConfusionBlock(questions=[confusion], shown=1, total=1)
         course = course_section_with_one_summary_table(
@@ -1205,7 +1206,7 @@ class TestLearnerDetail:
                             question_text="What is erosion?",
                             times_wrong=1,
                             selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_option_texts=["Option D"],
+                            correct_options=[CorrectOption("Option D")],
                         )
                     ],
                 )
@@ -1236,7 +1237,7 @@ class TestLearnerDetail:
                             question_text="What is erosion?",
                             times_wrong=1,
                             selected_options=[],
-                            correct_option_texts=["Option D"],
+                            correct_options=[CorrectOption("Option D")],
                         )
                     ],
                 )
@@ -1265,7 +1266,7 @@ class TestLearnerDetail:
                                 SelectedOption("Option C", False, 2),
                                 SelectedOption("Option A", False, 1),
                             ],
-                            correct_option_texts=["Option D"],
+                            correct_options=[CorrectOption("Option D")],
                         )
                     ],
                 )
@@ -1293,7 +1294,7 @@ class TestLearnerDetail:
                             question_text="What is erosion?",
                             times_wrong=1,
                             selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_option_texts=["Option D"],
+                            correct_options=[CorrectOption("Option D")],
                         )
                     ],
                 )
@@ -1326,7 +1327,10 @@ class TestLearnerDetail:
                                 SelectedOption("Option A", True, 1),
                                 SelectedOption("Option C", False, 1),
                             ],
-                            correct_option_texts=["Option A", "Option B"],
+                            correct_options=[
+                                CorrectOption("Option A"),
+                                CorrectOption("Option B"),
+                            ],
                         )
                     ],
                 )
@@ -1361,7 +1365,7 @@ class TestLearnerDetail:
                             question_text="Which two apply?",
                             times_wrong=1,
                             selected_options=[SelectedOption("Option E", None, 1)],
-                            correct_option_texts=["Option A"],
+                            correct_options=[CorrectOption("Option A")],
                         )
                     ],
                 )
@@ -1393,7 +1397,7 @@ class TestLearnerDetail:
                             question_text="Which two apply?",
                             times_wrong=1,
                             selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_option_texts=["Option A"],
+                            correct_options=[CorrectOption("Option A")],
                         )
                     ],
                 )
@@ -1461,7 +1465,7 @@ class TestLearnerDetail:
                             question_text="What is voltage?",
                             times_wrong=2,
                             selected_options=[SelectedOption("Option A", False, 1)],
-                            correct_option_texts=["Option B"],
+                            correct_options=[CorrectOption("Option B")],
                         )
                     ],
                 ),
@@ -1474,7 +1478,7 @@ class TestLearnerDetail:
                             question_text="What is erosion?",
                             times_wrong=1,
                             selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_option_texts=["Option D"],
+                            correct_options=[CorrectOption("Option D")],
                         )
                     ],
                 ),
@@ -1544,7 +1548,7 @@ class TestQuizConfusion:
             show_percentage=False,
             wrong_percentage=None,
             distractors=[("Option B", 3, False)],
-            correct_option_texts=["Option A"],
+            correct_options=[CorrectOption("Option A")],
         )
         block = ConfusionBlock(questions=[question], shown=1, total=1)
         quiz = QuizColumn(
@@ -1570,7 +1574,7 @@ class TestQuizConfusion:
             show_percentage=False,
             wrong_percentage=None,
             distractors=[("Option B", 1, False)],
-            correct_option_texts=["Option A"],
+            correct_options=[CorrectOption("Option A")],
         )
         block = ConfusionBlock(questions=[question], shown=1, total=1)
         quiz = QuizColumn(
@@ -1592,7 +1596,7 @@ class TestQuizConfusion:
             show_percentage=True,
             wrong_percentage=75,
             distractors=[("Option B", 12, False)],
-            correct_option_texts=["Option A"],
+            correct_options=[CorrectOption("Option A")],
         )
         block = ConfusionBlock(questions=[question], shown=1, total=1)
         quiz = QuizColumn(
@@ -1641,7 +1645,7 @@ class TestConfusions:
             show_percentage=False,
             wrong_percentage=None,
             distractors=[("Wrong option", 2, False)],
-            correct_option_texts=["Right option"],
+            correct_options=[CorrectOption("Right option")],
         )
         block_with_confusion = ConfusionBlock(questions=[confusion], shown=1, total=1)
         clean_block = ConfusionBlock(questions=[], shown=0, total=0)
@@ -1702,7 +1706,7 @@ class TestConfusions:
             show_percentage=False,
             wrong_percentage=None,
             distractors=[],
-            correct_option_texts=["Right option"],
+            correct_options=[CorrectOption("Right option")],
         )
         clean_section = course_section_with_one_summary_table(
             title="Clean course",
@@ -2116,7 +2120,7 @@ def _busy_report_data() -> CohortReportData:
                         question_text="What is an orbit?",
                         times_wrong=1,
                         selected_options=[SelectedOption("A straight line", False, 1)],
-                        correct_option_texts=["A closed path around a body"],
+                        correct_options=[CorrectOption("A closed path around a body")],
                     )
                 ],
             )
@@ -2501,7 +2505,7 @@ class TestRetiredOptionInTheConfusionsPartial:
             show_percentage=False,
             wrong_percentage=None,
             distractors=[("Jupiter", 2, True), ("Mars", 1, False)],
-            correct_option_texts=["Earth"],
+            correct_options=[CorrectOption("Earth")],
         )
 
         html = render_to_string(
@@ -2514,6 +2518,69 @@ class TestRetiredOptionInTheConfusionsPartial:
 
         assert html.count("Retired") == 1
         assert html.index("Jupiter") < html.index("Retired") < html.index("Mars")
+
+    def test_only_the_retired_correct_answer_is_marked(self) -> None:
+        """A retired correct option used to print like a live one, even for
+        sittings that were never offered it."""
+        quiz = QuizColumn(
+            form_id=uuid4(), title="Quiz", abbreviation="Q1", pass_percentage=50
+        )
+        confusion = QuizConfusion(
+            question_number=1,
+            question_text="Tricky?",
+            respondent_count=5,
+            wrong_count=3,
+            show_percentage=False,
+            wrong_percentage=None,
+            distractors=[("Mars", 1, False)],
+            correct_options=[
+                CorrectOption("Earth", retired=True),
+                CorrectOption("Terra"),
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/quiz_confusion.html",
+            {
+                "quiz": quiz,
+                "block": ConfusionBlock(questions=[confusion], shown=1, total=1),
+            },
+        )
+
+        assert html.count("Retired") == 1
+        assert html.index("Earth") < html.index("Retired") < html.index("Terra")
+
+
+class TestRetiredCorrectOptionInTheLearnerDetail:
+    def test_only_the_retired_correct_answer_is_marked(self) -> None:
+        learner = learner_detail(
+            has_any_progress=True,
+            wrong_answers=[
+                QuizWrongAnswers(
+                    form_id=uuid4(),
+                    title="Erosion Quiz",
+                    answers=[
+                        WrongAnswer(
+                            question_number=3,
+                            question_text="What is erosion?",
+                            times_wrong=1,
+                            selected_options=[SelectedOption("Option C", False, 1)],
+                            correct_options=[
+                                CorrectOption("Option D", retired=True),
+                                CorrectOption("Option E"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+
+        html = render_to_string(
+            "reports/partials/learner_detail.html", {"learner": learner}
+        )
+
+        assert html.count("Retired") == 1
+        assert html.index("Option D") < html.index("Retired") < html.index("Option E")
 
 
 @pytest.mark.weasyprint

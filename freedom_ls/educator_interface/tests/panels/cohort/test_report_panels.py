@@ -53,6 +53,7 @@ from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.report_data import (
     MIN_RESPONDENTS_FOR_PERCENTAGE,
     ConfusionBlock,
+    CorrectOption,
     LearnerRow,
     QuizColumn,
     QuizConfusion,
@@ -912,7 +913,7 @@ def _confusion(**overrides: object) -> QuizConfusion:
         "show_percentage": True,
         "wrong_percentage": 67,
         "distractors": [("A straight line", 5, False)],
-        "correct_option_texts": ["A closed path around a body"],
+        "correct_options": [CorrectOption("A closed path around a body")],
     }
     defaults.update(overrides)
     return QuizConfusion(**defaults)
@@ -1101,6 +1102,34 @@ class TestCohortReportBody:
 
         chips = region.cssselect(
             "section[aria-labelledby='report-confusions-title'] tbody td:nth-child(3) .flex > *"
+        )
+        assert [
+            bool(chip.cssselect("[data-testid='retired-badge']")) for chip in chips
+        ] == [
+            True,
+            False,
+        ]
+
+    def test_a_retired_correct_option_in_the_confusions_carries_a_retired_badge(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        """A retired correct option used to be listed like a live one."""
+        cohort = CohortFactory()
+        client = logged_in_client(_org_admin(cohort.organisation))
+        _seed_report_cache(
+            cohort,
+            _confusion(
+                correct_options=[
+                    CorrectOption("A closed path", retired=True),
+                    CorrectOption("An ellipse"),
+                ],
+            ),
+        )
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        chips = region.cssselect(
+            "section[aria-labelledby='report-confusions-title'] tbody td:nth-child(2) .flex > *"
         )
         assert [
             bool(chip.cssselect("[data-testid='retired-badge']")) for chip in chips

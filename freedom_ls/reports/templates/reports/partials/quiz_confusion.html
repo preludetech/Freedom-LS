@@ -27,7 +27,7 @@ the learner never saw.
         <td class="col-question-number">Q{{ question.question_number }}</td>
         <td class="confusion-question">
           {{ question.question_text }}{% if question.question_retired %} <span class="chip chip-neutral">Retired</span>{% endif %}
-          <span class="correct-answers">{% for text in question.correct_option_texts %}<span class="chip chip-success">{{ text }}</span>{% endfor %}</span>
+          <span class="correct-answers">{% for option in question.correct_options %}<span class="chip chip-success">{{ option.text }}{% if option.retired %} <span class="chip-count">Retired</span>{% endif %}</span>{% endfor %}</span>
         </td>
         <td class="confusion-distractors">{% for text, count, retired in question.distractors %}<span class="chip chip-error">{{ text }}{% if retired %} <span class="chip-count">Retired</span>{% endif %} <span class="chip-count">×{{ count }}</span></span>{% endfor %}</td>
         {% comment %}The bar is drawn only where a percentage is drawn. Below the

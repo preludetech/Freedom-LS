@@ -25,6 +25,7 @@ from freedom_ls.reports.gather import (
     SummaryRow,
     SummaryTable,
 )
+from freedom_ls.reports.report_data import CorrectOption
 
 GENERATED_AT = datetime(2026, 3, 15, 10, 30, tzinfo=UTC)
 
@@ -149,7 +150,7 @@ def full_report_data() -> CohortReportData:
         show_percentage=True,
         wrong_percentage=67,
         distractors=[("A straight line", 5, False)],
-        correct_option_texts=["A closed path around a body"],
+        correct_options=[CorrectOption("A closed path around a body")],
     )
     block = ConfusionBlock(questions=[confusion], shown=1, total=1)
     flagged_learner = learner_detail(

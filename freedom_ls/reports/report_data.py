@@ -95,6 +95,17 @@ class SelectedOption:
 
 
 @dataclasses.dataclass(frozen=True)
+class CorrectOption:
+    """One option the author marked correct on a question."""
+
+    text: str
+    # The option is one a content save retired. It is still listed, since a
+    # sitting served before the save was offered it, and the flag rides on the
+    # option because a live option and a retired one can share a text.
+    retired: bool = False
+
+
+@dataclasses.dataclass(frozen=True)
 class WrongAnswer:
     question_number: int
     question_text: str
@@ -105,7 +116,7 @@ class WrongAnswer:
     # per-option `correct` is what keeps their right ticks from reading as
     # mistakes against the correct-answer column alongside.
     selected_options: list[SelectedOption]
-    correct_option_texts: list[str]
+    correct_options: list[CorrectOption]
     # The question is one a content save retired; the wrong answer is still
     # listed, so a reader can tell why it is no longer in the quiz.
     question_retired: bool = False
@@ -246,7 +257,7 @@ class QuizConfusion:
     # than leaving templates to compute a percentage themselves.
     wrong_percentage: int | None
     distractors: list[Distractor]
-    correct_option_texts: list[str]
+    correct_options: list[CorrectOption]
     question_retired: bool = False
 
 

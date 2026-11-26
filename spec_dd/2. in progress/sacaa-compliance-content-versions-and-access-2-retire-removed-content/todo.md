@@ -36,8 +36,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (claude) PR 293 review: filter_visible accepts a plain Course queryset
 - [x] (claude) PR 293 review: the report marks a sitting whose served options are all gone against every option
 - [x] (claude) PR 293 review: the course-retire refusal reads its courses once
-- [ ] (user) PR 293 review: decide how the cohort report shows a retired correct option. It lists every correct option, retired ones included, even for a sitting never offered it. Dropping retired ones would hide a correct option from sittings that were served it, so the choice is between a Retired badge on the chip (three templates) or leaving it as is
-- [ ] (user) Code review: decide whether a `content_save` run that names only some source repos should be refused before it retires articles, categories and files. Only a course retire is refused today, as the spec says
+- [x] (user) PR 293 review: decide how the cohort report shows a retired correct option. It lists every correct option, retired ones included, even for a sitting never offered it. Dropping retired ones would hide a correct option from sittings that were served it, so the choice is between a Retired badge on the chip (three templates) or leaving it as is
+- [x] (user) Code review: decide whether a `content_save` run that names only some source repos should be refused before it retires articles, categories and files. Only a course retire is refused today, as the spec says
 
 ## 4. Documentation and pull request
 
