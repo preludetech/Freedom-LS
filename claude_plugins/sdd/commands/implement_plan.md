@@ -136,7 +136,7 @@ After all batches are complete:
 ## When to Stop and Ask
 
 **Stop immediately when:**
-- A test fails and the cause isn't obvious
+- A test fails and fixing it needs a decision the spec documents leave open (any other failing test is yours to fix: Step 3)
 - You hit a missing dependency or prerequisite
 
 **Ask for clarification rather than guessing. Don't force through blockers.**
@@ -153,7 +153,7 @@ Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/command
 - `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/sdd:implement_plan` to execute the implementation plan"`.
 - one `add:"<section>|user|Decide what to do about design miss: <miss> (screenshots: <paths>)"` per surviving design miss, where `<section>` is the heading text, without the `##`, of the section holding the ticked item (`3. Implementation and QA` in the current layout, `7. Implementation` in older checklists).
 
-- one `add:"<section>|user|<what to do, and what follows>"` per other item the run leaves outstanding for the user, as the `sdd:outstanding-items` skill defines it. Read the Step 3 summary for them: review leftovers, unmet criteria, failing or unrun tests, plan deviations that need their decision, files a helper created for them to keep or delete.
+- one `add:"<section>|user|<what to do, and what follows>"` per other item the run leaves outstanding for the user, as the `sdd:outstanding-items` skill defines it. Read the Step 3 summary for them: review leftovers, plan deviations that need their decision, files a helper created for them to keep or delete. A failing test or unmet criterion is never one of these: Step 3 fixes it. Only the decision a test turns on, when Step 3 could not fix it without one, is filed, as `Decide <the question>, then <what follows>`.
 
 With no surviving design misses and nothing outstanding there is nothing to add.
 

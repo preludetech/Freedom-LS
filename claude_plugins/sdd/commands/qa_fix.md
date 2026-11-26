@@ -208,7 +208,10 @@ follow it with the request `change` and `<change>`: `commits <sha before the fir
 and to return the helper's line inline. `status: blocked` from the helper is reported in Step 8
 as an open item for the user.
 
-The fixes stay committed whatever the result. Failing tests become a todo line in Step 8.
+The fixes stay committed whatever the result. When the run fails, read
+`claude_plugins/sdd/resources/fix_failing_tests.md` and follow it with the run's `failed:` set and
+the same `<change>`. Failing tests are this run's to fix, never the user's, whether or not they
+failed before the fixes. Only a test it returns `blocked` reaches Step 8.
 
 ## Step 8: Record
 
@@ -228,8 +231,8 @@ Update the trailing `status:` footer's `reason:` to the new counts.
 
 - one `tick:` per fixed or closed item, the line verbatim from Step 1;
 - a `tick:` for the `/sdd:qa_fix` item when the file has one and no item is open;
-- when the test run failed:
-  `add_after:"<the /sdd:qa_fix line, or the QA item>|user|Fix the tests the test run after the QA fixes left failing: <test names>"`;
+- per test Step 7 left `blocked` on a decision:
+  `add_after:"<the /sdd:qa_fix line, or the QA item>|user|Decide <the question>, then <what follows for <test name>>"`;
 - one `add_after:` naming the same line, marker `user`, for anything else this run leaves
   outstanding for the user, as the `sdd:outstanding-items` skill defines it.
 

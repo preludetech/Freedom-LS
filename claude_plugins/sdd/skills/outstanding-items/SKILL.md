@@ -1,6 +1,6 @@
 ---
 name: outstanding-items
-description: Put every item outstanding from the user into the spec's todo.md as an unticked checklist line before you report: a decision to make, a choice you deferred to them, a file to keep or delete, a command to run, a review to do, a failure they must handle. Use whenever a reply, final report or summary in a spec worktree leaves the user something to do, inside or outside an SDD command.
+description: Put every item outstanding from the user into the spec's todo.md as an unticked checklist line before you report: a decision to make, a choice you deferred to them, a file to keep or delete, a command to run, a review to do, a decision a failure turns on. Never a fix you can make yourself. Use whenever a reply, final report or summary in a spec worktree leaves the user something to do, inside or outside an SDD command.
 allowed-tools: Read, Edit, Bash
 ---
 
@@ -16,11 +16,14 @@ Anything that needs the user before the work is finished:
 - a decision you deferred to them, or a question you asked and left open
 - a file, branch or record left for them to keep, commit or delete
 - a command or check only they can run
-- a failure, skipped test or unmet criterion they must act on
 - a review or approval the workflow waits on
 
-A plain observation with nothing for the user to do stays in the report. A follow-up you are
-about to do yourself in this session is yours, not theirs.
+Work you can do yourself is never outstanding for the user: do it before you report. A failing
+test, a skipped test you can run, an unmet criterion, a broken hook: fix it, whether or not this
+work caused it. Only the decision such a fix turns on is theirs, filed as "Decide X, then Y", never
+as "Fix the tests".
+
+A plain observation with nothing for the user to do stays in the report.
 
 ## Steps
 

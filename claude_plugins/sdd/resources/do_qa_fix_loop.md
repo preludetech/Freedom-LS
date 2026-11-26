@@ -130,8 +130,16 @@ When at least one bug is `FIXED` this run, spawn a **solo `sdd:sdd-mechanic`**. 
 `<change>`: `commits <sha before the first fix>..HEAD`, and to return the helper's line inline. It changes nothing and
 writes no file, so Step 16's cleanup list stays as it is.
 
-When tests fail, add this row to `## Bug status` (skip the edit if there is no `qa_report.md`):
+The fixes stay committed whatever the result.
 
-`**UNRESOLVED** — test run after the fixes left tests failing (reason: <test names>)`
+**Failing tests are this run's to fix, never the user's.** It does not matter whether a test also
+fails before the fixes or on `main`. When the run fails, read
+`claude_plugins/sdd/resources/fix_failing_tests.md` and follow it with the run's `failed:` set and
+`<change>`: `commits <sha before the first fix>..HEAD`.
 
-Step 15 files the matching todo item. The fixes stay committed.
+Then add one row per outcome to `## Bug status` (skip the edit if there is no `qa_report.md`):
+
+- fixed: `**FIXED** (commit: <hash>) — test run after the fixes: <test names>`
+- needs a decision: `**UNRESOLVED** — <test name> (decision: <the question it turns on>)`
+
+Only a test that needs a decision reaches Step 15, as a category-5 item.

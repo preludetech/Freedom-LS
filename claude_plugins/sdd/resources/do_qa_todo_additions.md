@@ -13,8 +13,8 @@ These six categories, and nothing else:
    `add:"<section>|user|Fix smoke gate failure: <short description> before re-running \`/<QA command>\`"`.
 4. A product or UX decision a bug turns on:
    `add:"<section>|user|Decide <the question>, then <what follows from it>"`.
-5. A failure in the test run after the QA fixes:
-   `add:"<section>|user|Fix the tests the test run after the QA fixes left failing: <test names>"`.
+5. A test the run could not fix without a decision (`fix_failing_tests.md` returned it `blocked`):
+   `add:"<section>|user|Decide <the question>, then <what follows for <test name>>"`.
 6. Anything else the run leaves outstanding for the user, as the `sdd:outstanding-items` skill
    defines it: a test it could not run that only they can stage, a decision it deferred to them.
    A file a helper created is not one of these; Step 17 commits it:
@@ -25,6 +25,7 @@ These six categories, and nothing else:
 - Deleting, resetting, re-seeding or tidying development data — Rule 2, that is your work.
 - Keeping, committing or deleting a file `sdd:qa-data-helper` wrote — Step 17 commits it.
 - "Verify X yourself" for anything you could have driven in the browser.
+- "Fix the failing tests", or any other work you can do yourself. The run fixes failing tests.
 - An observation with no action attached — it goes in `qa_report.md` under General notes.
 - Anything already fixed this run. **FIXED** bugs live only in `qa_report.md`'s `## Bug status`, with
   their commit hash; an unchecked item with no follow-up is a stale checklist line.
