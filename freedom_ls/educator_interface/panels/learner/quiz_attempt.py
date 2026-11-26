@@ -41,7 +41,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
     marking_options,
 )
-from freedom_ls.form_engine.queries import stored_score_outdated
+from freedom_ls.form_engine.queries import format_quiz_time_limit, stored_score_outdated
 from freedom_ls.form_engine.scoring import is_quiz_answer_correct
 from freedom_ls.learner_management.capabilities import record_question_view
 from freedom_ls.learner_management.models import Learner
@@ -187,8 +187,9 @@ def quiz_attempt_result(sitting: FormProgress) -> QuizAttemptResult:
 
 
 class QuizAttemptSummaryPanel(InstanceDetailsPanel):
-    """When the sitting started and finished, and the pass mark it is judged
-    against today. The score and verdict are in the page header."""
+    """When the sitting started and finished, why it finished, the time limit it
+    ran under, and the pass mark it is judged against today. The score and verdict
+    are in the page header."""
 
     model = FormProgress
     title = "Summary"
@@ -196,14 +197,27 @@ class QuizAttemptSummaryPanel(InstanceDetailsPanel):
     def get_rows(self) -> list[dict[str, object]]:
         sitting = cast(FormProgress, self.instance)
         pass_percentage = sitting.form.quiz_pass_percentage
-        return [
+        rows = [
             self.detail_row("Started", sitting.start_time, "datetime"),
             self.detail_row("Completed", sitting.completed_time, "datetime"),
             self.detail_row(
-                "Pass mark (current setting)",
-                "No pass mark" if pass_percentage is None else f"{pass_percentage}%",
+                "Completion reason", sitting.get_completion_reason_display()
             ),
         ]
+        # The limit recorded on the sitting, not the quiz's current one.
+        if sitting.time_limit_minutes is not None:
+            rows.append(
+                self.detail_row(
+                    "Time limit", format_quiz_time_limit(sitting.time_limit_minutes)
+                )
+            )
+        rows.append(
+            self.detail_row(
+                "Pass mark (current setting)",
+                "No pass mark" if pass_percentage is None else f"{pass_percentage}%",
+            )
+        )
+        return rows
 
 
 QuestionVerdict = Literal["correct", "incorrect", "not_marked"]

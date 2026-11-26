@@ -2114,6 +2114,7 @@ def test_a_multi_page_quiz_row_shows_its_facts_in_place_of_the_count_chips(
         "Pages": "2",
         "Questions": "2",
         "Pass mark": "80%",
+        "Time limit": "None set",
         "Shows incorrect answers": "Yes",
         "Submits on exit": "Yes",
         "Shuffle pages": "No",
@@ -2123,6 +2124,17 @@ def test_a_multi_page_quiz_row_shows_its_facts_in_place_of_the_count_chips(
     text = document.text_content()
     assert "2 questions" not in text
     assert "2 pages" not in text
+
+
+@pytest.mark.django_db
+def test_a_timed_quiz_row_shows_its_time_limit_in_words(
+    staff_client: Client,
+) -> None:
+    form, _pages = _quiz(1, time_limit_minutes=90)
+
+    document = _drawing_page_preview(staff_client, form, None)
+
+    assert _quiz_facts_block(document)["Time limit"] == "1 hour 30 minutes"
 
 
 @pytest.mark.django_db

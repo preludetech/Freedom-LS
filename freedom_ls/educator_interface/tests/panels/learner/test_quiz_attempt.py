@@ -49,6 +49,7 @@ from freedom_ls.form_engine.factories import (
     served_paper_of,
 )
 from freedom_ls.form_engine.models import (
+    CompletionReason,
     Form,
     FormContent,
     FormPage,
@@ -140,8 +141,53 @@ def test_an_organisation_admin_sees_the_label_the_subtitle_and_the_summary_rows(
     assert [_text(label) for label in panel.cssselect("dt")] == [
         "Started",
         "Completed",
+        "Completion reason",
         "Pass mark (current setting)",
     ]
+
+
+def _summary_rows(
+    organisation: Organisation,
+    logged_in_client: Callable[[User], Client],
+    sitting: FormProgress,
+) -> dict[str, str]:
+    document = _page(
+        _admin_client(organisation, logged_in_client), organisation, sitting
+    )
+    (panel,) = document.cssselect("section[data-panel='summary']")
+    return {
+        _text(row.cssselect("dt")[0]): _text(row.cssselect("dd")[0])
+        for row in panel.cssselect("dl > div")
+    }
+
+
+def test_a_learner_submitted_sitting_shows_its_reason_and_no_time_limit_row(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting = _sitting(LearnerFactory(organisation=organisation))
+
+    rows = _summary_rows(organisation, logged_in_client, sitting)
+
+    assert rows["Completion reason"] == "Learner submitted"
+    assert "Time limit" not in rows
+
+
+def test_a_time_expired_sitting_shows_its_reason_and_the_limit_recorded_on_it(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting = _sitting(
+        LearnerFactory(organisation=organisation),
+        form_progress__completion_reason=CompletionReason.TIME_EXPIRED,
+        form_progress__time_limit_minutes=45,
+    )
+    Form.objects.filter(pk=sitting.form_id).update(time_limit_minutes=90)
+
+    rows = _summary_rows(organisation, logged_in_client, sitting)
+
+    assert rows["Completion reason"] == "Time ran out"
+    assert rows["Time limit"] == "45 minutes"
 
 
 def test_the_header_stats_read_the_stored_score_and_the_verdict(

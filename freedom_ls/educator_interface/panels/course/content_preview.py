@@ -29,7 +29,11 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.form_engine.conditions import full_path
 from freedom_ls.form_engine.models import Form, FormPage, FormStrategy
-from freedom_ls.form_engine.queries import count_sitting_questions, drawing_page_counts
+from freedom_ls.form_engine.queries import (
+    count_sitting_questions,
+    drawing_page_counts,
+    format_quiz_time_limit,
+)
 from freedom_ls.learner_management.capabilities import (
     can_view_course_questions,
     record_question_view,
@@ -562,10 +566,16 @@ def _quiz_facts(
         if form.quiz_pass_percentage is None
         else f"{form.quiz_pass_percentage}%"
     )
+    time_limit = (
+        "None set"
+        if form.time_limit_minutes is None
+        else format_quiz_time_limit(form.time_limit_minutes)
+    )
     return [
         ("Pages", str(total_pages)),
         ("Questions", str(question_count)),
         ("Pass mark", pass_mark),
+        ("Time limit", time_limit),
         ("Shows incorrect answers", yes_no(form.quiz_show_incorrect)),
         ("Submits on exit", yes_no(form.submit_on_exit)),
         ("Shuffle pages", yes_no(form.shuffle_pages)),
