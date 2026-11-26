@@ -13,6 +13,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `sacaa-compliance-assessment-controls-2-attempt-limits` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-assessment-controls-3-test-time-limit` (SACAA compliance)
+- 🔴 High · `sacaa-compliance-content-versions-and-access-3-question-versions` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🟡 Low · `educator-interface-page-polish` (Educator interface)
@@ -21,7 +22,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-assessment-controls-7-course-restart` (SACAA compliance)
-- 🔴 High · `sacaa-compliance-content-versions-and-access-3-question-versions` (SACAA compliance)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
@@ -84,7 +84,7 @@ Priority: 🔴 High
 
 Learner record retention, question versions and access, and assessment controls, for training organisations audited by SACAA. Parents: `sacaa-complianc-deletion-and-declaration`, `sacaa-compliance-content-versions-and-access`, `sacaa-compliance-assessment-controls`.
 
-- `sacaa-compliance-content-versions-and-access-3-question-versions` — **ready** — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
+- `sacaa-compliance-content-versions-and-access-3-question-versions` — **in progress** — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
 - `sacaa-compliance-content-versions-and-access-4-question-access` — **in progress** — A new role may view course questions and answers in the educator interface; each view is audited; admin question pages go.
 - `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
 - `sacaa-compliance-assessment-controls-1-score-moderation` — **blocked** by `sacaa-compliance-content-versions-and-access-4-question-access` — A moderator overrides a learner's mark on one quiz question with a reason; the system mark is kept. Collides with `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-5-answered-version-review`.
