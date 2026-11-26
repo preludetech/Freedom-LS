@@ -60,7 +60,7 @@
                     <p class="font-semibold" id="acting-on-self">Your own account is among them. You are signed out when it goes.</p>
                 {% endif %}
                 <div>
-                    <label for="{{ form.reason.id_for_label }}" class="font-semibold">Reason</label>
+                    <label for="{{ form.reason.id_for_label }}" class="block font-semibold">Reason</label>
                     {{ form.reason }}
                     {% for error in form.reason.errors %}
                         <p class="mt-1 text-red-600">{{ error }}</p>

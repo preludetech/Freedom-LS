@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from urllib.parse import parse_qs
 
 import pytest
@@ -499,3 +500,17 @@ def test_learner_invalid_reason_is_422_and_deletes_nothing(staff_client) -> None
 
     assert response.status_code == 422
     assert Learner._base_manager.filter(pk=learner.pk).exists()
+
+
+def test_reason_label_is_a_block_so_it_sits_above_the_textarea(staff_client) -> None:
+    """The Reason label sat inline beside the textarea at desktop width."""
+    user = UserFactory()
+
+    response = staff_client.get(_url(user))
+
+    body = response.content.decode()
+    label = re.search(r'<label for="id_reason"[^>]*>', body)
+    assert label is not None
+    classes = re.search(r'class="([^"]*)"', label.group(0))
+    assert classes is not None
+    assert "block" in classes.group(1).split()
