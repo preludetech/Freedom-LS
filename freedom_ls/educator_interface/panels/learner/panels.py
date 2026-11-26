@@ -75,6 +75,7 @@ class LearnerNamePanel(Panel):
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
         context["rename"] = self.available_actions[0].get_context_data(self.ctx)
+        context["email"] = cast(Learner, self.instance).user.email
         return context
 
 

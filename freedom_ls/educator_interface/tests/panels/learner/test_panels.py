@@ -401,6 +401,67 @@ def test_the_learner_settings_tab_offers_every_learner_action_to_an_org_admin(
 
 
 @pytest.mark.django_db
+def test_the_settings_tab_name_section_shows_the_email_above_the_name_form(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, user__email="ada@example.com")
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    document = _get_document(staff_client, f"{page_url}/__tabs/settings")
+
+    (name,) = document.cssselect("section[data-panel='name']")
+    (row,) = name.cssselect("dl > div")
+    (label,) = row.cssselect("dt")
+    (value,) = row.cssselect("dd")
+    (form,) = name.cssselect("form#learner-name-form")
+    assert label.text_content().strip() == "Email"
+    assert value.text_content().strip() == "ada@example.com"
+    assert form not in row.iterancestors()
+    assert row not in form.iterancestors()
+    assert list(name.iter()).index(row) < list(name.iter()).index(form)
+
+
+@pytest.mark.django_db
+def test_a_refused_rename_swaps_only_the_form_and_the_panel_keeps_its_email(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, user__email="ada@example.com")
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    response = staff_client.post(
+        f"{page_url}/__actions/edit_name",
+        {"first_name": "x" * 201, "last_name": "Lovelace"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    fragment = response.content.decode()
+    assert response.status_code == 422
+    assert "learner-name-form" in fragment
+    assert "ada@example.com" not in fragment
+    document = _get_document(staff_client, f"{page_url}/__tabs/settings")
+    (value,) = document.cssselect("section[data-panel='name'] dl dd")
+    assert value.text_content().strip() == "ada@example.com"
+
+
+@pytest.mark.django_db
+def test_a_viewer_who_may_not_rename_the_learner_sees_no_name_panel_or_email_row(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, user__email="ada@example.com")
+    page_url = _interface_url(organisation.slug, f"learners/{learner.pk}")
+
+    document = _get_document(
+        role_holder_client(organisation), f"{page_url}/__tabs/settings"
+    )
+
+    assert not document.cssselect("section[data-panel='name']")
+    assert not document.xpath("//dd[contains(., 'ada@example.com')]")
+
+
+@pytest.mark.django_db
 def test_register_for_a_course_sits_on_the_learners_courses_tab(staff_client: Client):
     organisation = OrganisationFactory()
     learner = LearnerFactory(organisation=organisation)

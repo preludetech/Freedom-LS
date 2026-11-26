@@ -1,10 +1,13 @@
 {% extends "panel_framework/panels/panel.html" %}
 {% comment %}
-The learner's first and last name as fields, with Save in the card footer. Context: rename (the
-edit action's form context).
+The learner's first and last name as fields, with Save in the card footer. The email sits above the form as a read-only row. Context: rename (the
+edit action's form context), email.
 {% endcomment %}
 
 {% block panel_body %}
+    <c-panel-definition-list>
+        <c-panel-definition-row label="Email"><span class="break-words">{{ email }}</span></c-panel-definition-row>
+    </c-panel-definition-list>
     {% include "educator_interface/partials/learner_name_form.html" with form=rename.form action_url=rename.action_url %}
 {% endblock panel_body %}
 
