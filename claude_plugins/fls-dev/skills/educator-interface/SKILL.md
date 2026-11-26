@@ -68,6 +68,9 @@ starts collapsed.
   (`preview_sequence` in `panels/course/content_preview.py`): Course content runs from Course
   details to the last item or page, Reference stays within itself.
 - A quiz's own preview row shows a facts block (`_quiz_facts`).
+- A quiz row's Preview is disabled, with the reason beside it, for a viewer without the question
+  bank viewer role. This is the one exception to the panel framework's "a row the viewer cannot
+  act on leaves its buttons cell empty" (`partials/course_outline_actions.html`).
 - Every outline table on the course page shares one column layout: the `#`, Type and Actions
   columns have fixed widths and Title takes the rest, so stacked outline panels line their
   numbers, types and Preview buttons up in one column each.
