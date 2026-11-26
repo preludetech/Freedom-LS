@@ -1093,6 +1093,7 @@ def test_deleting_the_user_deletes_the_declaration(mock_site_context: object) ->
     assert FormDeclaration.objects.count() == 0
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "factory", [FormFactory, FormPageFactory, FormContentFactory, FormQuestionFactory]
 )

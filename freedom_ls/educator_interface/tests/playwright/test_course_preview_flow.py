@@ -395,12 +395,14 @@ def test_course_outline_shows_a_retired_badge_beside_a_retired_topic_at_every_vi
         child_object=retired(TopicFactory(title="Superseded topic")),
         order=9,
     )
-    course_url = interface_url(live_server, organisation.slug, f"courses/{course.pk}")
+    content_url = interface_url(
+        live_server, organisation.slug, f"courses/{course.pk}/__tabs/content"
+    )
 
     for viewport in QA_VIEWPORTS:
         with no_console_errors(page):
             page.set_viewport_size(viewport)
-            page.goto(course_url)
+            page.goto(content_url)
             expect(_visible_text(page, "Superseded topic")).to_be_visible()
             expect(
                 page.get_by_text("Retired", exact=True).locator("visible=true")

@@ -85,7 +85,7 @@ The probe is clean everywhere; B3 and B4 were found by inspection, not by probe 
 | B2 | Cohort report hides progress recorded on a retired topic and leaves the last-item name unmarked | **FIXED** (commit: 3d514cbb8) |
 | B3 | Courses list cards show a bare "Status" label for every live course | **FIXED** (commit: 5d5cc26dc) |
 | B4 | Retired answer chips wrap inside the cohort report's sideways-scrolling quiz table | **FIXED** (commit: f76298c0e) |
-| — | **UNRESOLVED** — test run after the fixes left tests failing (reason: `form_engine/tests/test_models.py::test_not_retired_returns_the_live_form_rows_and_leaves_out_a_retired_one` [4 params] and `educator_interface/tests/playwright/test_course_preview_flow.py::test_course_outline_shows_a_retired_badge_beside_a_retired_topic_at_every_viewport`) | UNRESOLVED |
+| — | Test run after the fixes: `form_engine/tests/test_models.py::test_not_retired_returns_the_live_form_rows_and_leaves_out_a_retired_one` [4 params] lacked `@pytest.mark.django_db`; `educator_interface/tests/playwright/test_course_preview_flow.py::test_course_outline_shows_a_retired_badge_beside_a_retired_topic_at_every_viewport` opened the course page's default tab instead of the Content tab that holds the outline | **FIXED** (the follow-up commit that adds this row) |
 
 The full tier run over `bdf1b7175..HEAD` (local fallback): 21207 passed, 5 failed, 3 skipped. Neither failure comes from the QA fixes. The form_engine test has no `@pytest.mark.django_db` mark at `bdf1b7175`, so it raises "Database access not allowed" whatever the code does. The B2 fixer saw the Playwright outline-badge test fail both with and without its change.
 
@@ -118,4 +118,4 @@ Notes and difficulties:
 - The retired course's LESSONS count reads 0 because `lesson_count` counts live items only, as the spec documents.
 - Mobile and tablet passes covered only the tests with a layout dimension; the data-only tests (2, 4, 5, 8, 9) ran at desktop.
 
-status: ok · reason: 4 bugs — 4 fixed, 0 unresolved; 5 tests failing that predate the fixes; report rendered, screenshots verified
+status: ok · reason: 4 bugs — 4 fixed, 0 unresolved; 5 failing tests that predate the fixes, fixed; report rendered, screenshots verified
