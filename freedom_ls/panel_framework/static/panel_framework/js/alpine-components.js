@@ -9,10 +9,22 @@
 // doing. It is set on every request, back to the button's own text when no
 // file is going up, so a failed upload never leaves "Uploading…" behind.
 const UPLOADING_LABEL = "Uploading…";
+
+// A form's request-error holder. A bulk confirm's holder sits in the dialog
+// body, outside the footer's button row, so it is found through the dialog
+// when the form has none.
+function requestErrorHolder(form) {
+    const dialog = form.closest("dialog");
+    return (
+        form.querySelector("[data-request-error]") ||
+        (dialog && dialog.querySelector("[data-request-error]"))
+    );
+}
+
 document.addEventListener("htmx:beforeRequest", (event) => {
     const form = event.detail.elt;
     if (!(form instanceof HTMLFormElement)) return;
-    const requestError = form.querySelector("[data-request-error]");
+    const requestError = requestErrorHolder(form);
     if (requestError) {
         requestError.replaceChildren();
         requestError.hidden = true;
@@ -47,12 +59,7 @@ function showRequestError(event) {
     const config = event.detail.requestConfig;
     const form = config && config.elt;
     if (!(form instanceof HTMLFormElement)) return;
-    // A bulk confirm's holder sits in the dialog body, outside the footer's
-    // button row, so it is found through the dialog when the form has none.
-    const holder =
-        form.querySelector("[data-request-error]") ||
-        (form.closest("dialog") &&
-            form.closest("dialog").querySelector("[data-request-error]"));
+    const holder = requestErrorHolder(form);
     if (!holder) return;
     const xhr = event.detail.xhr;
     const status = xhr ? xhr.status : 0;

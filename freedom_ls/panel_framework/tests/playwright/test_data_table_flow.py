@@ -385,6 +385,15 @@ def test_data_table_flow(
     )
     expect(modal.get_by_role("button", name="Cancel")).to_be_enabled()
     expect(modal.get_by_role("button", name="Close", exact=True).first).to_be_enabled()
+    # Running it again clears the last failure's message while it runs.
+    held.clear()
+    page.route("**/__actions/**", lambda route: held.append(route))
+    modal.get_by_role("button", name="Mark processed").click()
+    expect(modal.get_by_role("button", name="Cancel")).to_be_disabled()
+    expect(modal.get_by_role("alert")).to_have_count(0)
+    held[0].fulfill(status=500, body="server error")
+    page.unroute("**/__actions/**")
+    expect(modal.get_by_role("alert")).to_be_visible()
     page.keyboard.press("Escape")
     expect(modal).to_be_hidden()
 
