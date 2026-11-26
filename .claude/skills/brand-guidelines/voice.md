@@ -27,7 +27,7 @@ SaaS phrasing marks copy that has drifted off-voice: "unlock potential", "empowe
 |---------------------|------|
 | GitHub README       | Confident, concise, technical. Lead with what it does, then how. |
 | Marketing site      | Slightly warmer, benefit-led, still grounded in specifics. Screenshots are of the real app. |
-| Error messages      | Human, brief, helpful. Name the problem, suggest the fix, leave blame out. |
+| Error messages      | Human, brief, helpful. Name the problem, suggest the fix, leave blame out. A failure that may have left work half done says so and says how to see what changed before it says run it again. |
 | Docs / tutorials    | Patient, thorough. Assume competence, not familiarity. Include the "why". Contributor docs are written for someone new to Django. |
 | Community (Discord) | Casual, collegial, encouraging. Credit contributors by name and welcome first-timers warmly. |
 | Conference talks    | Energetic but grounded. Open with a real problem, show real solutions. |
@@ -157,4 +157,6 @@ opens the add dialog.
   a softened one a reader could take for "not yet"; a reason is labelled "Reason".
 - A confirm dialog says "you" when the person acts on themselves, and every sentence in it holds
   after the action: nothing it describes differs from the result, nothing it promises is lost by it.
+- A failure after an action that may have partly run says some changes may not have been made and
+  how to check, never a bare "Try again".
 - A count of revision questions waiting for the learner reads "N due", never "N ready".

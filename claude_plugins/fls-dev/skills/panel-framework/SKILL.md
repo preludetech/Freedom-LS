@@ -505,12 +505,15 @@ the form. The framework does the rest:
   the person had filled in and that has no error of its own gets `CHOOSE_AGAIN_MESSAGE`.
 - While a file is going up, the submit button's loading text reads "Uploading…".
 - The discard prompt counts a chosen file as a change.
-- A request that fails with nothing to swap in (a 413 or 5xx, a network error) shows a
+- A request that fails with nothing to swap in (a 413 or 5xx, a network error, a timeout) shows a
   `role="alert"` message in the form's `[data-request-error]` element, and Save works again. A
   413 says the file may be too large; anything else says the changes could not be saved. A 403
   or 404 from a user's own submit reloads the page instead, except inside
-  `[data-htmx-owns-errors]`; any other 403 or 404 gets the message. A template that renders its
-  own form needs the element too.
+  `[data-htmx-owns-errors]`; any other 403 or 404 gets the message. Every form a dialog submits
+  renders the element, a template that renders its own form and the bulk confirm form included.
+- A form whose failure the generic message misdescribes sets its own on the element, as
+  `data-request-error-message`. The bulk confirm form does: a failed run may have changed some
+  records, so "could not be saved" is wrong there.
 
 The host owns:
 
@@ -676,6 +679,8 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   in a list row has a small name and a small avatar centred on the name's first line; a person's
   badges sit on a line under the name and email, their left edge on the name's left edge; an
   expanded row that names the parent row's person again shows the name with no second avatar.
+- A dialog whose request fails (a 5xx, a network error, a timeout) shows a red alert line inside
+  the dialog and unlocks; a failure is never silent.
 - A disclosure, filter chip or menu button shows the icon chevron, never the browser's triangle,
   and the chevron turns up while open; a group opened inside a popover draws no second box.
 - A confirmation shows as a modal over the page it came from, JavaScript on or off; body text in a
