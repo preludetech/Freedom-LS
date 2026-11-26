@@ -70,6 +70,7 @@ from freedom_ls.reports.report_data import (
     LearnerRow,
     QuizColumn,
     QuizConfusion,
+    QuizResult,
     SummaryTable,
     over_limit_message,
 )
@@ -78,6 +79,7 @@ from freedom_ls.reports.tests.helpers import (
     topic_progress,
 )
 from freedom_ls.reports.tests.report_data_builders import (
+    GENERATED_AT,
     cohort_report_data,
     course_section,
     summary_row,
@@ -880,15 +882,46 @@ def _at_a_glance(region: lxml.html.HtmlElement) -> dict[str, str]:
     }
 
 
+_LEARNER_SCORE = 9
+_LEARNER_PERCENTAGE = 90
+
+
 def _seed_report_cache(cohort: Cohort, quiz_confusion: QuizConfusion) -> None:
     quiz = QuizColumn(
         form_id=uuid4(), title="Orbit Quiz", abbreviation="OQ", pass_percentage=50
     )
     block = ConfusionBlock(questions=[quiz_confusion], shown=1, total=1)
+    result = QuizResult(
+        form_id=quiz.form_id,
+        title=quiz.title,
+        latest_score=_LEARNER_SCORE,
+        latest_max_score=10,
+        latest_percentage=_LEARNER_PERCENTAGE,
+        passed=True,
+        attempt_count=1,
+        completed_at=GENERATED_AT,
+        pass_percentage=None,
+        attempts=[],
+    )
+    row = LearnerRow(
+        learner_id=uuid4(),
+        full_name="Ada Able",
+        completion_percentage=50,
+        completed_item_count=1,
+        total_item_count=2,
+        last_completed_title=None,
+        last_completed_at=None,
+        quiz_cells={quiz.form_id: result},
+    )
     section = course_section(
         title="Astronomy",
         quizzes=[quiz],
-        summary_tables=[SummaryTable(quizzes=[quiz], rows=[], continued=False)],
+        learner_rows=[row],
+        summary_tables=[
+            SummaryTable(
+                quizzes=[quiz], rows=[summary_row(row, [quiz])], continued=False
+            )
+        ],
         confusions_by_quiz={quiz.form_id: block},
     )
     cache.set(
@@ -1471,8 +1504,8 @@ class TestCohortReportQuestionDetail:
         text = " ".join(region.text_content().split())
         assert QUESTION_DETAIL_HIDDEN_NOTE in text
         _assert_no_question_text(text)
-        assert "Cohort at a glance" in text
-        assert "Astronomy" in text
+        assert "Ada Able" in text
+        assert f"{_LEARNER_PERCENTAGE}%" in text
         assert _question_views() == []
 
     def test_a_holders_plain_request_gets_the_javascript_note_and_no_entry(
