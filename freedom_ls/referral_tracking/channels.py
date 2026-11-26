@@ -340,4 +340,22 @@ def classify(first_touch: FirstTouch | None) -> ChannelResult:
     from_referer = _referer_result(first_touch.referer)
     if from_referer is not None:
         return from_referer
+    if first_touch.referral_code:
+        # A referral code is explicit first-party intent; fbclid alone is a guess.
+        return ChannelResult(Channel.REFERRAL, "", ChannelBasis.REFERRAL_CODE)
+    if first_touch.fbclid:
+        return ChannelResult(Channel.ORGANIC_SOCIAL, "Meta", ChannelBasis.FBCLID_ONLY)
     return ChannelResult(Channel.DIRECT, "", ChannelBasis.NONE)
+
+
+def has_signal(first_touch: FirstTouch) -> bool:
+    """Whether the touch carried anything, not whether it can be classified,
+    so an advert code counts."""
+    return bool(
+        _utm_signal(first_touch) is not None
+        or first_touch.advert_code
+        or first_touch.referral_code
+        or _has_google_click_id(first_touch)
+        or first_touch.fbclid
+        or referer_host(first_touch.referer)
+    )

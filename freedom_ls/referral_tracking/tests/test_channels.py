@@ -14,6 +14,7 @@ from freedom_ls.referral_tracking.channels import (
     FirstTouch,
     FirstTouchFields,
     classify,
+    has_signal,
     is_direct_pair,
 )
 from freedom_ls.referral_tracking.models import SignupAttribution
@@ -282,3 +283,80 @@ def _nested_entries(table: dict[str, str]) -> list[tuple[str, str]]:
 def test_host_table_has_no_entry_nested_under_another(table: dict[str, str]) -> None:
     # A nested entry would never be reached, so its platform would be ignored.
     assert _nested_entries(table) == []
+
+
+def test_classify_referral_code_alone_is_referral() -> None:
+    result = classify(_touch(referral_code="friend"))
+
+    assert result == ChannelResult(Channel.REFERRAL, "", ChannelBasis.REFERRAL_CODE)
+
+
+def test_classify_fbclid_alone_is_organic_social_via_meta() -> None:
+    result = classify(_touch(fbclid="abc"))
+
+    assert result == ChannelResult(
+        Channel.ORGANIC_SOCIAL, "Meta", ChannelBasis.FBCLID_ONLY
+    )
+
+
+def test_classify_referer_beats_a_referral_code() -> None:
+    result = classify(
+        _touch(referral_code="friend", referer="https://www.facebook.com/")
+    )
+
+    assert result == _referer(Channel.ORGANIC_SOCIAL, "Facebook")
+
+
+def test_classify_referral_code_beats_fbclid() -> None:
+    result = classify(_touch(referral_code="friend", fbclid="abc"))
+
+    assert result == ChannelResult(Channel.REFERRAL, "", ChannelBasis.REFERRAL_CODE)
+
+
+def test_classify_google_click_identifier_beats_a_referral_code() -> None:
+    result = classify(_touch(gclid="abc", referral_code="friend"))
+
+    assert result == _PAID_GOOGLE
+
+
+def test_classify_direct_pair_falls_through_to_a_referral_code() -> None:
+    result = classify(
+        _touch(utm_source="direct", utm_medium="none", referral_code="friend")
+    )
+
+    assert result == ChannelResult(Channel.REFERRAL, "", ChannelBasis.REFERRAL_CODE)
+
+
+def test_classify_direct_pair_falls_through_to_fbclid() -> None:
+    result = classify(_touch(utm_source="direct", utm_medium="none", fbclid="abc"))
+
+    assert result == ChannelResult(
+        Channel.ORGANIC_SOCIAL, "Meta", ChannelBasis.FBCLID_ONLY
+    )
+
+
+def test_classify_advert_code_alone_is_direct() -> None:
+    result = classify(_touch(advert_code="ad-1"))
+
+    assert result == ChannelResult(Channel.DIRECT, "", ChannelBasis.NONE)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected"),
+    [
+        ({}, False),
+        ({"utm_source": "direct", "utm_medium": "none"}, False),
+        ({"utm_source": "   "}, False),
+        ({"referer": "not a url"}, False),
+        ({"advert_code": "ad-1"}, True),
+        ({"utm_medium": "email"}, True),
+        ({"referral_code": "friend"}, True),
+        ({"gclid": "abc"}, True),
+        ({"gbraid": "abc"}, True),
+        ({"wbraid": "abc"}, True),
+        ({"fbclid": "abc"}, True),
+        ({"referer": "https://example.com/"}, True),
+    ],
+)
+def test_has_signal(overrides: dict[str, str], expected: bool) -> None:
+    assert has_signal(_touch(**overrides)) is expected
