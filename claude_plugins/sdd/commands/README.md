@@ -40,13 +40,14 @@ Run `/sdd:init` once per project. It writes `.claude/sdd/config.md`, adds `.giti
 
 ## Step 0: The spec roadmap
 
-`spec_dd/1. next/roadmap.md` is the spec roadmap: what is being built next. It opens with "Up next" (specs in progress, specs ready to start, specs that need work on main first, and a diagram of the next four levels of dependencies), then has one section per feature: every spec waiting or in flight with its state, an SVG dependency diagram and lean notes. Specs are always named by directory name, and finished work is left out. `docs/product/roadmap.md` is the product roadmap, a different file.
+`spec_dd/1. next/roadmap.md` is the spec roadmap: what is being built next. It opens with "Up next" (specs in progress, specs ready to start, specs waiting on a collision with one in progress, specs that need work on main first, and a diagram of the next four levels of dependencies), then has one section per feature: every spec waiting or in flight with its state, an SVG dependency diagram and lean notes. Specs are always named by directory name, and finished work is left out. `docs/product/roadmap.md` is the product roadmap, a different file.
 
 - `/sdd:roadmap` with no argument syncs the file with the directories: adds bullets for new directories, drops finished ones, and runs `scripts/roadmap.py` to set statuses, regenerate "Up next" and redraw the diagrams.
 - `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds them to the roadmap as a feature with its diagram and notes. The cut goes by user-visible outcome, never by line count.
 - `spec_dd/1. next/priority.md` lists specs and effort parents under priority headings, highest first, with a fixed `## Priority not set` section the script fills with anything unlisted. A spec inherits the highest priority of every spec that depends on it. The roadmap orders features and "Up next" by priority and colours them by level.
 - A spec whose bullet ends `Before starting:` has work to do on main first, such as a cut, and is listed under "Needs work on main first" instead of "Ready to start".
-- `/sdd:start` warns when a spec has a precursor or unmet blockers, and the script marks it `in progress`. `/sdd:finish_worktree` removes its bullet and reruns the script, which unblocks whatever waited on it; when the last spec of a cut effort finishes, the feature's section is archived into the parent directory and the parent moves to done.
+- A bullet's `Collides with` sentence names specs that edit the same code. A ready spec that collides with one in progress is listed under "Waiting on a collision" instead of "Ready to start".
+- `/sdd:start` warns when a spec has a precursor, unmet blockers or a collision with a spec in progress, and the script marks it `in progress`. `/sdd:finish_worktree` removes its bullet and reruns the script, which unblocks whatever waited on it; when the last spec of a cut effort finishes, the feature's section is archived into the parent directory and the parent moves to done.
 
 The format and the bullet grammar live in `claude_plugins/sdd/resources/roadmap_format.md`.
 
