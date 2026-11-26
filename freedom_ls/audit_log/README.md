@@ -77,6 +77,7 @@ action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 | `learner.added` | Learner added | Learners | learner | cohort, if one was given | `outcome` (`created`, `joined`), `cohort` |
 | `learner.renamed` | Learner renamed | Learners | learner | | `old`, `new` |
 | `learner.deactivated` | Learner deactivated | Learners | learner | | |
+| `learner.removed` | Learner force deleted | Learners | learner | | `counts` |
 | `learner.reactivated` | Learner reactivated | Learners | learner | cohort, if one was given | `cohort`, when adding by email reactivated them into one; `course`, `self_service`, when a self-registration did |
 | `learner.setup_email_resent` | Setup email resent | Learners | learner | | |
 | `cohort_membership.added` | Learner added to cohort | Cohort membership | learner | cohort | `cohort` |
@@ -107,6 +108,7 @@ action a project adds through `AUDIT_LOG_EXTRA_ACTIONS` lands under "Other".
 | `bulk_action.completed` | Bulk action completed | Other | organisation | | `counts`, `rows`, `truncated`, `bulk_action` |
 | `import.committed` | Import committed | Other | organisation | | `counts`, `rows`, `truncated` |
 | `audit_log.exported` | Audit log exported | Other | organisation | | `scope` (`organisation`, `learner`, `cohort`), `scope_label`, `count`, `filters` |
+| `user.deleted` | User force deleted | Other | user | the user's learners | `counts`, `unlinked`, `organisations`; the entry has no organisation |
 
 `bulk_action.completed` and `import.committed` are the summary actions; `record_run_summary`
 accepts nothing else. `role.deactivated`
