@@ -23,6 +23,7 @@ from django.db.models import Model, Q, QuerySet
 from django.utils import timezone
 
 from freedom_ls.deployment.config import config
+from freedom_ls.form_engine.sweeps import complete_expired_sittings
 from freedom_ls.learner_management.config import config as learner_management_config
 from freedom_ls.learner_management.models import ImportStatus, LearnerImport
 from freedom_ls.mail.sweeps import (
@@ -291,7 +292,7 @@ SWEEP_FAILURES = (CommandError, DatabaseError)
 
 def run_housekeeping_sweeps() -> HousekeepingOutcome:
     """Run both sweeps, the late-task check, the orphan reap, the mail sweeps and
-    the referral tracking prunes.
+    the referral tracking prunes and the expired sitting sweep.
 
     The mail sweeps enqueue outgoing email that is past due and re-drive email a
     dead worker left in sending. The prune deletes old
@@ -492,6 +493,23 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
     else:
         if hits_deleted:
             notes.append(f"Deleted {hits_deleted} referral code hit(s) past retention.")
+
+    try:
+        expired_sittings = complete_expired_sittings()
+    except DatabaseError as exc:
+        sentry_sdk.capture_exception(exc)
+        sweep_failures.append(f"expired sitting sweep failed: {exc}")
+    else:
+        if expired_sittings.completed:
+            notes.append(
+                f"Completed {expired_sittings.completed} sitting(s) whose quiz "
+                "time limit had run out."
+            )
+        if expired_sittings.failed:
+            sweep_failures.append(
+                f"expired sitting sweep could not complete "
+                f"{expired_sittings.failed} sitting(s)"
+            )
 
     return HousekeepingOutcome(
         sweep_failures=sweep_failures, findings=findings, notes=notes

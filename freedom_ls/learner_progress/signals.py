@@ -184,8 +184,10 @@ def recalculate_course_progress_on_form_attempt(
     move. That is the whole reason the attempt layer lives in `form_engine`:
     completing one costs a single indexed lookup here and touches nothing else.
     """
+    # _base_manager: housekeeping completes sittings with no request, so there is no
+    # site for the site-aware manager to filter by.
     course_attempt = (
-        CourseFormAttempt.objects.filter(form_progress=attempt)
+        CourseFormAttempt._base_manager.filter(form_progress=attempt)
         .select_related("course_progress__course")
         .first()
     )

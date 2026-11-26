@@ -132,6 +132,38 @@ def test_completing_a_form_recalculates_once(mock_site_context, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_completing_a_form_on_another_site_recalculates_its_course_progress(
+    mock_site_context, monkeypatch
+):
+    """A sweep completes sittings with no request, so the current site is not theirs."""
+    from freedom_ls.learner_progress import signals
+    from freedom_ls.tests.factories import SiteFactory
+    from freedom_ls.tests.site_context import site_context
+
+    with site_context(SiteFactory()):
+        course = CourseFactory()
+        form = FormFactory(strategy="QUIZ")
+        collection_item = ContentCollectionItemFactory(
+            collection_object=course, child_object=form, order=0
+        )
+        record: CourseProgress = CourseProgressFactory(course=course)
+        fp: FormProgress = CourseFormAttemptFactory(
+            course_progress=record, collection_item=collection_item, form=form
+        ).form_progress
+
+    calls = []
+    monkeypatch.setattr(
+        signals,
+        "recalculate_progress_percentage",
+        lambda course_progress: calls.append(course_progress),
+    )
+
+    fp.complete()
+
+    assert calls == [record]
+
+
+@pytest.mark.django_db
 def test_completing_a_form_sat_outside_a_course_recalculates_nothing(
     mock_site_context, monkeypatch
 ):

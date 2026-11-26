@@ -131,9 +131,11 @@ def ensure_served_paper(form_progress: FormProgress) -> None:
         return
     # Conditional on the column still being null, then re-read: two requests
     # racing on a sitting's first page both end up holding the first writer's paper.
-    FormProgress.objects.filter(pk=form_progress.pk, served_paper__isnull=True).update(
-        served_paper=build_served_paper(form_progress.form)
-    )
-    form_progress.served_paper = FormProgress.objects.values_list(
+    # _base_manager, because the housekeeping sweep completes sittings with no request
+    # site to filter by.
+    FormProgress._base_manager.filter(
+        pk=form_progress.pk, served_paper__isnull=True
+    ).update(served_paper=build_served_paper(form_progress.form))
+    form_progress.served_paper = FormProgress._base_manager.values_list(
         "served_paper", flat=True
     ).get(pk=form_progress.pk)

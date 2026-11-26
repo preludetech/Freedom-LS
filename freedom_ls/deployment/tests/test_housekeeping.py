@@ -40,6 +40,7 @@ from freedom_ls.deployment.housekeeping import (
     mark_orphaned_running_tasks_failed,
     run_housekeeping_sweeps,
 )
+from freedom_ls.form_engine.sweeps import ExpiredSittingSweep
 from freedom_ls.learner_management.models import (
     ImportStatus,
     LearnerImport,
@@ -1387,6 +1388,50 @@ class TestReferralCodeHitPruneSweep:
         outcome = run_housekeeping_sweeps()
 
         assert outcome.sweep_failures == ["referral code hit prune failed: down"]
+
+
+@pytest.mark.django_db
+class TestExpiredSittingSweep:
+    def test_completed_sittings_are_a_note(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.complete_expired_sittings",
+            return_value=ExpiredSittingSweep(completed=3, failed=0),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert (
+            "Completed 3 sitting(s) whose quiz time limit had run out." in outcome.notes
+        )
+
+    def test_failed_sittings_are_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.complete_expired_sittings",
+            return_value=ExpiredSittingSweep(completed=0, failed=2),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.sweep_failures == [
+            "expired sitting sweep could not complete 2 sitting(s)"
+        ]
+
+    def test_database_error_from_the_sweep_is_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.complete_expired_sittings",
+            side_effect=DatabaseError("down"),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert outcome.sweep_failures == ["expired sitting sweep failed: down"]
 
 
 class TestHousekeepingCommandHelp:

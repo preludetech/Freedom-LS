@@ -125,6 +125,7 @@ flowchart TB
     deadlines --> site_aware_models
     deployment --> base
     deployment --> content_engine
+    deployment --> form_engine
     deployment --> learner_management
     deployment --> mail
     deployment --> organisations
@@ -336,7 +337,7 @@ flowchart TB
 | course_interest | accounts, api, content_engine, course_access, referral_tracking, site_aware_models | learner_management |
 | course_recommendations | accounts, content_engine, learner_management, site_aware_models | — |
 | deadlines | accounts, audit_log, base, comms, content_base, content_engine, learner_management, learner_progress, organisations, site_aware_models | — |
-| deployment | base, content_engine, learner_management, mail, organisations, panel_framework, referral_tracking, reports | accounts |
+| deployment | base, content_engine, form_engine, learner_management, mail, organisations, panel_framework, referral_tracking, reports | accounts |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications, registration_rules |
 | educator_interface | accounts, audit_log, base, comms, content_engine, form_engine, learner_management, learner_progress, organisations, panel_framework, reports, role_based_permissions, site_aware_models | course_interest |
 | form_engine | accounts, base, content_base, markdown_rendering, site_aware_models | — |
