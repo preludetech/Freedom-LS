@@ -26,7 +26,7 @@
                     <tr>
                         <td>{% partial course-cell %}</td>
                         <td>{% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}</td>
-                        <td><c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" /></td>
+                        <td><div class="w-32"><c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" /></div></td>
                         <td class="whitespace-nowrap tabular-nums">{{ detail.completed_item_count }} of {{ detail.total_item_count }}</td>
                         <td>{% partial last-completed %}</td>
                     </tr>

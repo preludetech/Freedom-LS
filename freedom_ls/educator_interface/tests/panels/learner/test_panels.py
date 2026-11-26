@@ -229,6 +229,25 @@ class TestLearnerCoursesPanel:
         (bar,) = document.cssselect("tbody progress")
         assert bar.get("aria-label") == "Algebra progress"
 
+    def test_the_progress_bar_has_a_fixed_width_so_a_wide_status_cell_cannot_squeeze_it(
+        self, logged_in_client
+    ):
+        """The bar sat bare in an auto-sized column and shrank to about 22px
+        beside the Status column's flag reason sentence."""
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=CourseFactory(title="Algebra")
+        )
+        client = logged_in_client(_org_admin(learner.organisation))
+
+        document = lxml.html.fromstring(
+            _courses_panel_html(client, learner.organisation.slug, learner)
+        )
+
+        (bar,) = document.cssselect("tbody progress")
+        wrapper = bar.getparent().getparent()
+        assert "w-32" in wrapper.get("class", "").split()
+
     def test_the_items_cell_reads_completed_of_total(self, logged_in_client):
         course = CourseFactory(title="Algebra")
         done = TopicFactory()
