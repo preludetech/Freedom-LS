@@ -34,6 +34,7 @@ class UserAdmin(ForceDeleteAdminMixin, AccountsUserAdmin):
     """The accounts user admin plus force delete, registered here because
     force delete reaches course progress, which accounts cannot import."""
 
+    actions = ["force_delete_selected"]
     actions_detail = ["force_delete_one"]
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from functools import partial
 from typing import cast
 from urllib.parse import urlencode
@@ -12,10 +12,11 @@ from unfold.enums import ActionVariant
 from unfold.widgets import UnfoldAdminTextareaWidget
 
 from django import forms
+from django.contrib import admin
 from django.contrib.admin import ModelAdmin
 from django.contrib.admin.sites import AdminSite
 from django.core.exceptions import PermissionDenied
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
@@ -41,7 +42,7 @@ class ForceDeleteForm(forms.Form):
     reason = forms.CharField(max_length=REASON_LENGTH, widget=UnfoldAdminTextareaWidget)
 
 
-def _force_delete_url(ids: Sequence[object]) -> str:
+def _force_delete_url(ids: Iterable[object]) -> str:
     url = reverse(f"admin:{FORCE_DELETE_URL_NAME}")
     return f"{url}?{urlencode({'ids': ','.join(str(pk) for pk in ids)})}"
 
@@ -84,6 +85,14 @@ class ForceDeleteAdminMixin:
         self, request: HttpRequest, object_id: str
     ) -> HttpResponseRedirect:
         return redirect(_force_delete_url([object_id]))
+
+    @admin.action(
+        description="Force delete selected users", permissions=["force_delete"]
+    )
+    def force_delete_selected(
+        self, request: HttpRequest, queryset: QuerySet[Model]
+    ) -> HttpResponseRedirect:
+        return redirect(_force_delete_url(queryset.values_list("pk", flat=True)))
 
 
 def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpResponse:
@@ -135,6 +144,7 @@ def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpR
         "plan": plan,
         "form": form,
         "ids": ",".join(str(user.pk) for user in users),
+        "acting_on_self": any(user.pk == request.user.pk for user in users),
         "cancel_url": _back_url(users),
         "change_urls": [
             (user, reverse("admin:freedom_ls_accounts_user_change", args=[user.pk]))

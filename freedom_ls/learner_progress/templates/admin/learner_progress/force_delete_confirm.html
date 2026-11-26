@@ -43,6 +43,9 @@
             <form method="post" class="mt-8 flex flex-col gap-4" id="force-delete-form">
                 {% csrf_token %}
                 <input type="hidden" name="ids" value="{{ ids }}">
+                {% if acting_on_self %}
+                    <p class="font-semibold" id="acting-on-self">Your own account is among them. You are signed out when it goes.</p>
+                {% endif %}
                 <div>
                     <label for="{{ form.reason.id_for_label }}" class="font-semibold">Reason</label>
                     {{ form.reason }}
