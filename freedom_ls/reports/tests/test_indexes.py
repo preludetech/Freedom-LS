@@ -67,7 +67,6 @@ from freedom_ls.reports.gather import (
     _build_course_section,
     _build_learner_detail,
     build_confusions_by_quiz,
-    build_wrong_answers_by_learner_quiz,
     tally_quiz_answers,
 )
 from freedom_ls.reports.indexes import (
@@ -1147,7 +1146,7 @@ def _load_everything(cohort, site_id):
         load_distractor_rows(site_id, questions.question_ids, first_attempt_ids),
         questions,
     )
-    tallies = tally_quiz_answers(sat, progress.forms, first_attempt_ids)
+    tallies = tally_quiz_answers(sat, first_attempt_ids)
     return {
         "registrations": registrations,
         "roster": roster,
@@ -1204,9 +1203,6 @@ class TestTheAssemblyStageIssuesNoQueriesOnRealRows:
     ):
         cohort = _cohort_with_one_completed_quiz(learner_count=2)
         loaded = _load_everything(cohort, mock_site_context.pk)
-        wrong_answers = build_wrong_answers_by_learner_quiz(
-            loaded["tallies"], loaded["questions"]
-        )
         now = timezone.now()
 
         with django_assert_num_queries(0):
@@ -1216,7 +1212,6 @@ class TestTheAssemblyStageIssuesNoQueriesOnRealRows:
                     loaded["roster"],
                     loaded["catalogue"],
                     loaded["progress"],
-                    wrong_answers,
                     now,
                 )
                 for learner_id in loaded["roster"].learner_ids

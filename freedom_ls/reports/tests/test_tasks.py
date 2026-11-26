@@ -4,17 +4,35 @@ from __future__ import annotations
 
 import pytest
 
+from django.template.loader import render_to_string
 from django.test import override_settings
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+)
+from freedom_ls.form_engine.factories import (
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+    QuestionAnswerFactory,
+    QuestionOptionFactory,
+)
+from freedom_ls.form_engine.models import FormStrategy, QuestionType
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
 )
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.render import ReportRenderError
+from freedom_ls.reports.report_data import CohortReportData
 from freedom_ls.reports.tasks import generate_cohort_report
+from freedom_ls.reports.tests.helpers import form_progress
 from freedom_ls.tests.factories import SiteFactory
 
 pytestmark = pytest.mark.django_db
@@ -56,6 +74,71 @@ class TestGenerateCohortReportHappyPath:
 
         report.refresh_from_db()
         assert report.file.size > 0
+
+
+def _cohort_with_a_missed_question() -> CohortFactory:
+    """A cohort whose one learner answered the quiz's only question wrongly."""
+    cohort = CohortFactory()
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    quiz = FormFactory(strategy=FormStrategy.QUIZ, quiz_pass_percentage=50)
+    ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=0)
+    question = FormQuestionFactory(
+        form_page=FormPageFactory(form=quiz, order=0),
+        question="Which body does the Earth orbit?",
+        type=QuestionType.MULTIPLE_CHOICE,
+        order=0,
+    )
+    QuestionOptionFactory(question=question, text="The Sun", correct=True, order=0)
+    distractor = QuestionOptionFactory(
+        question=question, text="The Moon", correct=False, order=1
+    )
+    learner = UserFactory()
+    CohortMembershipFactory(cohort=cohort, learner__user=learner)
+    attempt = form_progress(
+        course_progress_record(course, learner),
+        quiz,
+        completed_time=timezone.now(),
+        scores={"score": 0, "max_score": 1},
+    )
+    QuestionAnswerFactory(
+        form_progress=attempt, question=question
+    ).selected_options.add(distractor)
+    return cohort
+
+
+class TestGenerateCohortReportCarriesNoQuestionDetail:
+    @pytest.mark.parametrize("requester_is_superuser", [True, False])
+    def test_the_rendered_document_holds_no_question_or_option_text(
+        self, mock_site_context: object, mocker: object, requester_is_superuser: bool
+    ) -> None:
+        cohort = _cohort_with_a_missed_question()
+        requester = UserFactory(is_superuser=requester_is_superuser)
+        report = GeneratedReportFactory(
+            cohort=cohort,
+            requested_by=requester,
+            status=GeneratedReport.STATUS_PENDING,
+        )
+        documents: list[str] = []
+
+        def capture(data: CohortReportData) -> bytes:
+            documents.append(
+                render_to_string(
+                    "reports/report.html",
+                    {"data": data, "theme_tokens": "", "print_css": ""},
+                )
+            )
+            return FAKE_PDF_BYTES
+
+        mocker.patch("freedom_ls.reports.tasks.render_report_pdf", side_effect=capture)
+
+        generate_cohort_report(str(report.pk), report.site_id)
+
+        assert len(documents) == 1
+        assert "Which body does the Earth orbit?" not in documents[0]
+        assert "The Sun" not in documents[0]
+        assert "The Moon" not in documents[0]
+        assert "Incorrect answers" not in documents[0]
 
 
 class TestGenerateCohortReportRequester:

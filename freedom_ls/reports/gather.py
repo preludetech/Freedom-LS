@@ -84,12 +84,9 @@ from freedom_ls.reports.report_data import (
     QuizColumn,
     QuizConfusion,
     QuizResult,
-    QuizWrongAnswers,
     ReportTooLargeError,
-    SelectedOption,
     SummaryRow,
     SummaryTable,
-    WrongAnswer,
 )
 from freedom_ls.reports.statuses import ProgressStatus, progress_status
 
@@ -117,12 +114,9 @@ __all__ = [
     "QuizColumn",
     "QuizConfusion",
     "QuizResult",
-    "QuizWrongAnswers",
     "ReportTooLargeError",
-    "SelectedOption",
     "SummaryRow",
     "SummaryTable",
-    "WrongAnswer",
     "build_progress_data",
     "cohort_figures",
     "gather_cohort_progress",
@@ -131,28 +125,15 @@ __all__ = [
 ]
 
 # Free-text answers have no correctness concept at all, so they are excluded
-# from wrong-answer aggregation and the confusion tally entirely, not scored
+# from the confusion tally entirely, not scored
 # wrong by default. The set itself lives with QuestionType in content_engine,
 # so this module and the learner results page cannot drift apart on it.
 
 
 @dataclasses.dataclass(frozen=True)
 class QuizTallies:
-    """Both views of the same answers, counted in one pass over the sat pairs."""
+    """The cohort-wide confusion tally, counted in one pass over the sat pairs."""
 
-    # Per-learner wrong-answer detail, counted across every completed attempt.
-    wrong_counts: dict[tuple[UUID, UUID, UUID], int]
-    # (option text, its `correct` verdict) to the number of wrong attempts it was
-    # selected in. A single attempt cannot select the same option twice, so a
-    # count never exceeds the matching wrong_counts entry. The verdict rides in
-    # the key so a multi-select answer's right ticks stay distinguishable from
-    # the tick that cost the mark. Whether the option is retired rides in the
-    # key too, so a retired option is marked on the row that lists it. Key order
-    # is first-seen order -- see the ordering note on
-    # FormProgressIndex.completed_attempt_ids.
-    wrong_selected_counts: dict[
-        tuple[UUID, UUID, UUID], dict[tuple[str, bool | None, bool], int]
-    ]
     # Cohort-wide confusion tally, first attempts only.
     respondent_counts: dict[UUID, int]
     wrong_counts_first: dict[UUID, int]
@@ -484,78 +465,21 @@ def _quiz_result_for(
     )
 
 
-def tally_quiz_answers(
-    sat: SatQuestions, forms: FormProgressIndex, first_attempt_ids: set[UUID]
-) -> QuizTallies:
-    """One pass over the sat pairs, feeding both the per-learner and cohort views.
-
-    The two views are counted together because they share this single walk;
-    counting them apart would traverse every (sitting, question) pair twice.
-    """
-    wrong_counts: dict[tuple[UUID, UUID, UUID], int] = defaultdict(int)
-    wrong_selected_counts: dict[
-        tuple[UUID, UUID, UUID], dict[tuple[str, bool | None, bool], int]
-    ] = defaultdict(lambda: defaultdict(int))
+def tally_quiz_answers(sat: SatQuestions, first_attempt_ids: set[UUID]) -> QuizTallies:
+    """One pass over the sat pairs, counting respondents and first-attempt misses."""
     respondent_counts: dict[UUID, int] = defaultdict(int)
     wrong_counts_first: dict[UUID, int] = defaultdict(int)
     for attempt_id, question in sat.pairs:
         is_correct = sat.correctness[(attempt_id, question.id)]
-        learner_id, form_id = forms.learner_form_by_attempt_id[attempt_id]
-        if not is_correct:
-            wrong_key = (learner_id, form_id, question.id)
-            wrong_counts[wrong_key] += 1
-            for option in sat.selected_options_by_pair.get(
-                (attempt_id, question.id), []
-            ):
-                wrong_selected_counts[wrong_key][
-                    (option.text, option.correct, option.is_retired)
-                ] += 1
         if attempt_id in first_attempt_ids:
             respondent_counts[question.id] += 1
             if not is_correct:
                 wrong_counts_first[question.id] += 1
 
     return QuizTallies(
-        wrong_counts=wrong_counts,
-        wrong_selected_counts=wrong_selected_counts,
         respondent_counts=respondent_counts,
         wrong_counts_first=wrong_counts_first,
     )
-
-
-def build_wrong_answers_by_learner_quiz(
-    tallies: QuizTallies, questions: QuestionIndex
-) -> dict[UUID, dict[UUID, list[WrongAnswer]]]:
-    """Each learner's missed questions, grouped by quiz and ordered by question number."""
-    wrong_answers_by_learner_quiz: dict[UUID, dict[UUID, list[WrongAnswer]]] = (
-        defaultdict(lambda: defaultdict(list))
-    )
-    for (learner_id, form_id, question_id), times_wrong in tallies.wrong_counts.items():
-        wrong_answers_by_learner_quiz[learner_id][form_id].append(
-            WrongAnswer(
-                question_number=questions.number_by_id[question_id],
-                question_text=questions.by_id[question_id].question,
-                times_wrong=times_wrong,
-                selected_options=[
-                    SelectedOption(
-                        text=text, correct=correct, count=count, retired=retired
-                    )
-                    for (
-                        text,
-                        correct,
-                        retired,
-                    ), count in tallies.wrong_selected_counts[
-                        (learner_id, form_id, question_id)
-                    ].items()
-                ],
-                correct_options=questions.correct_options[question_id],
-                question_retired=questions.by_id[question_id].is_retired,
-            )
-        )
-    for per_quiz in wrong_answers_by_learner_quiz.values():
-        for wrong_answer_list in per_quiz.values():
-            wrong_answer_list.sort(key=lambda wa: wa.question_number)
-    return wrong_answers_by_learner_quiz
 
 
 def build_confusion_block(
@@ -774,7 +698,6 @@ def _build_learner_detail(
     roster: CohortRoster,
     catalogue: CourseCatalogue,
     progress: ProgressIndex,
-    wrong_answers_by_learner_quiz: dict[UUID, dict[UUID, list[WrongAnswer]]],
     now: datetime,
 ) -> LearnerDetail:
     user = roster.learners_by_id[learner_id]
@@ -798,17 +721,6 @@ def _build_learner_detail(
         if result is not None
     ]
 
-    wrong_answers_for_learner = wrong_answers_by_learner_quiz.get(learner_id, {})
-    wrong_answers = [
-        QuizWrongAnswers(
-            form_id=form_id,
-            title=catalogue.forms_by_id[form_id].title,
-            answers=wrong_answers_for_learner[form_id],
-        )
-        for form_id in catalogue.ordered_quiz_form_ids
-        if form_id in wrong_answers_for_learner
-    ]
-
     detail = LearnerDetail(
         learner_id=learner_id,
         full_name=user.display_name,
@@ -821,7 +733,6 @@ def _build_learner_detail(
         has_any_progress=learner_id in progress.learner_ids_with_any_progress,
         completed_items=completed_items,
         quiz_results=quiz_results,
-        wrong_answers=wrong_answers,
         report_generated_at=now,
         flags=[],
     )
@@ -903,15 +814,15 @@ def _summarise(detail: LearnerDetail) -> LearnerSummary:
 def gather_cohort_progress(cohort_id: str, site_id: int) -> CohortProgressData:
     """The cohort's progress figures and at-risk flags, without the answer loaders.
 
-    An empty wrong-answer map yields the same completion, last item and flags
-    as the full gather, so the two agree on every figure this one returns.
+    It builds each learner's detail the way the full gather does, so the two
+    agree on every figure this one returns.
     """
     now = timezone.now()
     core = _load_progress_core(cohort_id, site_id)
     summaries = [
         _summarise(
             _build_learner_detail(
-                learner_id, core.roster, core.catalogue, core.progress, {}, now
+                learner_id, core.roster, core.catalogue, core.progress, now
             )
         )
         for learner_id in core.roster.learner_ids
@@ -957,10 +868,10 @@ def gather_cohort_report_data(
     so the query total is fixed by the cohort's course structure and never by
     how many learners or questions it has.
 
-    `pdf_detail=False` leaves out the two things only the PDF draws: the
+    `pdf_detail=False` leaves out the one thing only the PDF draws: the
     organisation logo (a storage read and a base64 encode that would otherwise
-    sit in every cached copy) and each learner's wrong-answer detail. Every
-    figure, row and confusion block is the same either way.
+    sit in every cached copy). Every figure, row and confusion block is the same
+    either way.
     """
     now = timezone.now()
 
@@ -985,10 +896,7 @@ def gather_cohort_report_data(
         questions,
     )
 
-    tallies = tally_quiz_answers(sat, progress.forms, first_attempt_ids)
-    wrong_answers_by_learner_quiz = (
-        build_wrong_answers_by_learner_quiz(tallies, questions) if pdf_detail else {}
-    )
+    tallies = tally_quiz_answers(sat, first_attempt_ids)
     confusions_by_quiz = build_confusions_by_quiz(
         catalogue.quiz_form_ids, questions, tallies, distractors_by_question
     )
@@ -1005,9 +913,7 @@ def gather_cohort_report_data(
         for reg in registrations
     ]
     learner_details = [
-        _build_learner_detail(
-            learner_id, roster, catalogue, progress, wrong_answers_by_learner_quiz, now
-        )
+        _build_learner_detail(learner_id, roster, catalogue, progress, now)
         for learner_id in roster.learner_ids
     ]
     figures = cohort_figures(learner_details)

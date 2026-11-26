@@ -136,8 +136,8 @@ class FormProgressIndex:
     completed_attempts_by_learner_form: dict[tuple[UUID, UUID], list[FormProgress]]
     completed_form_ids_by_learner: dict[UUID, set[UUID]]
     # Newest-completed first, NOT the chronological order of the lists above.
-    # It is the outer loop of the sat pairs, and so the order each WrongAnswer's
-    # selected options are first seen in -- reordering it reorders those.
+    # It is the outer loop of the sat pairs, so it sets the order the pairs are
+    # walked in.
     completed_attempt_ids: list[UUID]
     # Every form progress row, quiz or not: a completed survey sitting is in
     # completed_attempt_ids and must resolve here without a KeyError.

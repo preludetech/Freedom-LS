@@ -43,7 +43,6 @@ def learner_detail(**overrides: object) -> LearnerDetail:
         "has_any_progress": False,
         "completed_items": [],
         "quiz_results": [],
-        "wrong_answers": [],
         "report_generated_at": GENERATED_AT,
         "flags": [],
     }

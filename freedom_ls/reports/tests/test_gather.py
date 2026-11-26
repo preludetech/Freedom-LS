@@ -77,7 +77,6 @@ from freedom_ls.reports.gather import (
     attempt_number_of,
     build_confusion_block,
     build_progress_data,
-    build_wrong_answers_by_learner_quiz,
     cohort_figures,
     gather_cohort_progress,
     gather_cohort_report_data,
@@ -101,7 +100,6 @@ from freedom_ls.reports.report_data import (
     LearnerRow,
     LearnerSummary,
     QuizColumn,
-    SelectedOption,
 )
 from freedom_ls.reports.statuses import ProgressStatus
 from freedom_ls.reports.tests.gather_input_builders import (
@@ -274,7 +272,7 @@ def test_gather_returns_expected_shape_for_small_cohort(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_the_screen_gather_leaves_out_only_the_logo_and_the_wrong_answers(
+def test_the_screen_gather_leaves_out_only_the_logo(
     mock_site_context,
 ):
     course = CourseFactory()
@@ -305,8 +303,7 @@ def test_the_screen_gather_leaves_out_only_the_logo_and_the_wrong_answers(
 
     logo.assert_not_called()
     assert screen.organisation.logo_data_uri is None
-    assert full.learners[0].wrong_answers
-    assert screen.learners[0].wrong_answers == []
+    assert full.courses[0].confusions_by_quiz
     assert (
         screen.cohort_size,
         screen.median_completion,
@@ -382,103 +379,6 @@ def _cohort_with_two_question_quiz(*, pass_percentage: int | None = 50):
 
     cohort, record = _one_learner_cohort(course)
     return cohort, record, quiz, questions
-
-
-@pytest.mark.django_db
-def test_a_question_left_blank_reaches_the_wrong_answer_detail(mock_site_context):
-    """A blank question stores no answer row, but the learner still got it wrong."""
-    cohort, record, quiz, questions = _cohort_with_two_question_quiz()
-    (answered, correct_option), (blank, _) = questions
-    attempt = form_progress(
-        record, quiz, completed_time=timezone.now(), scores={"score": 1, "max_score": 2}
-    )
-    answer = QuestionAnswerFactory(form_progress=attempt, question=answered)
-    answer.selected_options.add(correct_option)
-
-    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
-
-    wrong = data.learners[0].wrong_answers[0].answers
-    assert [entry.question_text for entry in wrong] == [blank.question]
-    assert wrong[0].selected_options == []
-
-
-@pytest.mark.django_db
-def test_an_option_chosen_on_more_than_one_sitting_is_counted_once_per_sitting(
-    mock_site_context,
-):
-    """Retakes are what make the count worth printing: three wrong sittings on one
-    question read the same until you can see two of them were the same choice."""
-    course = CourseFactory()
-    quiz = FormFactory(strategy=FormStrategy.QUIZ)
-    _attach(course, quiz)
-    page = FormPageFactory(form=quiz, order=0)
-    question = FormQuestionFactory(
-        form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=0
-    )
-    QuestionOptionFactory(question=question, text="Mars", correct=True, order=0)
-    venus = QuestionOptionFactory(
-        question=question, text="Venus", correct=False, order=1
-    )
-    mercury = QuestionOptionFactory(
-        question=question, text="Mercury", correct=False, order=2
-    )
-    cohort, record = _one_learner_cohort(course)
-
-    for option in (venus, mercury, venus):
-        attempt = form_progress(
-            record,
-            quiz,
-            completed_time=timezone.now(),
-            scores={"score": 0, "max_score": 1},
-        )
-        QuestionAnswerFactory(
-            form_progress=attempt, question=question
-        ).selected_options.add(option)
-
-    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
-
-    answer = data.learners[0].wrong_answers[0].answers[0]
-    assert answer.times_wrong == 3
-    assert {option.text: option.count for option in answer.selected_options} == {
-        "Venus": 2,
-        "Mercury": 1,
-    }
-
-
-@pytest.mark.django_db
-def test_a_correct_tick_inside_a_wrong_multi_select_answer_is_marked_correct(
-    mock_site_context,
-):
-    """Ticking both right options plus a distractor scores the question wrong.
-
-    The learner's two right ticks still have to read as right, or the report
-    contradicts its own correct-answer column on the same row.
-    """
-    course = CourseFactory()
-    quiz = FormFactory(strategy=FormStrategy.QUIZ)
-    _attach(course, quiz)
-    page = FormPageFactory(form=quiz, order=0)
-    question = FormQuestionFactory(
-        form_page=page, type=QuestionType.CHECKBOXES, order=0
-    )
-    option_a = QuestionOptionFactory(question=question, text="A", correct=True, order=0)
-    option_b = QuestionOptionFactory(question=question, text="B", correct=True, order=1)
-    option_c = QuestionOptionFactory(
-        question=question, text="C", correct=False, order=2
-    )
-    cohort, record = _one_learner_cohort(course)
-    attempt = form_progress(
-        record, quiz, completed_time=timezone.now(), scores={"score": 0, "max_score": 1}
-    )
-    answer = QuestionAnswerFactory(form_progress=attempt, question=question)
-    answer.selected_options.set([option_a, option_b, option_c])
-
-    data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
-
-    wrong_answer = data.learners[0].wrong_answers[0].answers[0]
-    assert {
-        option.text: option.correct for option in wrong_answer.selected_options
-    } == {"A": True, "B": True, "C": False}
 
 
 @pytest.mark.django_db
@@ -724,7 +624,7 @@ def test_correct_none_option_selected_counts_as_distractor(mock_site_context):
     assert "Undecided" in distractor_texts
 
 
-def _build_quiz_with_wrong_answers(
+def _build_quiz_with_first_attempt_misses(
     *, respondent_count: int, wrong_count: int
 ) -> tuple[str, UUID]:
     """One quiz, one question; the first `wrong_count` first-attempt learners answer
@@ -762,7 +662,7 @@ def _build_quiz_with_wrong_answers(
 
 @pytest.mark.django_db
 def test_confusion_shows_plain_counts_below_respondent_threshold(mock_site_context):
-    cohort_id, quiz_id = _build_quiz_with_wrong_answers(
+    cohort_id, quiz_id = _build_quiz_with_first_attempt_misses(
         respondent_count=9, wrong_count=3
     )
 
@@ -777,7 +677,7 @@ def test_confusion_shows_plain_counts_below_respondent_threshold(mock_site_conte
 
 @pytest.mark.django_db
 def test_confusion_shows_percentage_at_respondent_threshold(mock_site_context):
-    cohort_id, quiz_id = _build_quiz_with_wrong_answers(
+    cohort_id, quiz_id = _build_quiz_with_first_attempt_misses(
         respondent_count=10, wrong_count=3
     )
 
@@ -987,58 +887,6 @@ class TestRequestedByName:
         data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
 
         assert data.requested_by_name == ""
-
-
-@pytest.mark.django_db
-class TestWrongAnswersCarryQuizTitles:
-    def test_wrong_answers_are_a_list_of_titled_quizzes_in_course_order(
-        self, mock_site_context
-    ):
-        course = CourseFactory()
-        quizzes_and_wrong_options = []
-        for order, title in enumerate(["Voltage Quiz 01", "Erosion Quiz 02"]):
-            quiz = FormFactory(title=title, strategy=FormStrategy.QUIZ)
-            _attach(course, quiz, order=order)
-            page = FormPageFactory(form=quiz, order=0)
-            question = FormQuestionFactory(
-                form_page=page, type=QuestionType.MULTIPLE_CHOICE, order=0
-            )
-            QuestionOptionFactory(
-                question=question, text="Right", correct=True, order=0
-            )
-            wrong_option = QuestionOptionFactory(
-                question=question, text="Wrong", correct=False, order=1
-            )
-            quizzes_and_wrong_options.append((quiz, question, wrong_option))
-
-        cohort, record = _one_learner_cohort(course)
-        for quiz, question, wrong_option in quizzes_and_wrong_options:
-            attempt = form_progress(
-                record,
-                quiz,
-                completed_time=timezone.now(),
-                scores={"score": 0, "max_score": 1},
-            )
-            answer = QuestionAnswerFactory(form_progress=attempt, question=question)
-            answer.selected_options.add(wrong_option)
-
-        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
-
-        detail = data.learners[0]
-        assert [block.title for block in detail.wrong_answers] == [
-            "Voltage Quiz 01",
-            "Erosion Quiz 02",
-        ]
-        assert all(block.answers for block in detail.wrong_answers)
-
-    def test_learner_without_wrong_answers_has_an_empty_list(self, mock_site_context):
-        course = CourseFactory()
-        _attach(course, TopicFactory())
-        cohort, _record = _one_learner_cohort(course)
-
-        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
-
-        assert data.learners[0].wrong_answers == []
 
 
 @pytest.mark.django_db
@@ -1313,16 +1161,6 @@ class TestSurveysAlongsideQuizzes:
             for question in block.questions
         ] == ["Which planet is red?"]
 
-    def test_a_survey_answer_is_never_reported_as_a_wrong_answer(
-        self, cohort_with_a_quiz_and_a_survey, mock_site_context
-    ):
-        data = gather_cohort_report_data(
-            str(cohort_with_a_quiz_and_a_survey.id), mock_site_context.pk
-        )
-
-        wrong_answers = data.learners[0].wrong_answers
-        assert [block.title for block in wrong_answers] == ["Astronomy Quiz"]
-
     def test_a_completed_survey_counts_toward_course_completion(
         self, cohort_with_a_quiz_and_a_survey, mock_site_context
     ):
@@ -1559,7 +1397,6 @@ def _a_detail(
         has_any_progress=False,
         completed_items=[],
         quiz_results=[],
-        wrong_answers=[],
         report_generated_at=JAN_1,
         flags=flags if flags is not None else [],
     )
@@ -2273,219 +2110,44 @@ class TestIndexDistractors:
 
 
 class TestTallyQuizAnswers:
-    def test_an_option_is_counted_once_per_wrong_attempt_it_was_chosen_in(self) -> None:
-        """The count the report prints is attempts-chosen-in, not options-chosen.
-
-        A sitting cannot select one option twice, so an option reaching two only
-        by being chosen again on a later sitting is what separates a settled
-        misconception from a one-off guess.
-        """
+    def test_only_first_attempts_count_as_respondents(self) -> None:
         quiz = a_quiz()
         question = a_question(quiz)
-        venus = an_option(question, "Venus", correct=False)
-        mercury = an_option(question, "Mercury", correct=False)
-        older = an_attempt(quiz, completed_time=JAN_1)
-        newer = an_attempt(quiz, completed_time=JAN_2)
+        first = an_attempt(quiz, completed_time=JAN_1)
+        retake = an_attempt(quiz, completed_time=JAN_2)
         sat = SatQuestions(
-            # Newest sitting first, as fold_form_progress_rows leaves them.
-            pairs=[(newer.id, question), (older.id, question)],
-            selected_options_by_pair={
-                (newer.id, question.id): [venus],
-                (older.id, question.id): [venus, mercury],
-            },
+            pairs=[(retake.id, question), (first.id, question)],
+            selected_options_by_pair={},
             correctness={
-                (newer.id, question.id): False,
-                (older.id, question.id): False,
+                (retake.id, question.id): False,
+                (first.id, question.id): False,
             },
         )
-        forms = a_progress_index(
-            learner_form_by_attempt_id={
-                newer.id: (LEARNER_ID, quiz.id),
-                older.id: (LEARNER_ID, quiz.id),
-            }
-        ).forms
 
-        tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
+        tallies = tally_quiz_answers(sat, first_attempt_ids={first.id})
 
-        counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
-        assert list(counts.items()) == [
-            (("Venus", False, False), 2),
-            (("Mercury", False, False), 1),
-        ]
+        assert dict(tallies.respondent_counts) == {question.id: 1}
+        assert dict(tallies.wrong_counts_first) == {question.id: 1}
 
-    def test_a_correct_sittings_selections_are_not_counted(self) -> None:
+    def test_a_correct_first_attempt_is_a_respondent_but_not_a_miss(self) -> None:
         quiz = a_quiz()
         question = a_question(quiz)
-        mars = an_option(question, "Mars", correct=True)
         attempt = an_attempt(quiz, completed_time=JAN_1)
         sat = SatQuestions(
             pairs=[(attempt.id, question)],
-            selected_options_by_pair={(attempt.id, question.id): [mars]},
+            selected_options_by_pair={},
             correctness={(attempt.id, question.id): True},
         )
-        forms = a_progress_index(
-            learner_form_by_attempt_id={attempt.id: (LEARNER_ID, quiz.id)}
-        ).forms
 
-        tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
+        tallies = tally_quiz_answers(sat, first_attempt_ids={attempt.id})
 
-        assert (LEARNER_ID, quiz.id, question.id) not in tallies.wrong_selected_counts
-
-    def test_a_correct_option_ticked_on_a_wrong_sitting_keeps_its_correctness(
-        self,
-    ) -> None:
-        """Multi-select is why a correct option can sit inside a wrong answer.
-
-        Ticking every correct option plus one distractor scores the question
-        wrong, so the learner's correct ticks have to stay distinguishable from
-        the tick that cost them the mark.
-        """
-        quiz = a_quiz()
-        question = a_question(quiz)
-        right = an_option(question, "Mars", correct=True)
-        wrong = an_option(question, "Sun", correct=False)
-        attempt = an_attempt(quiz, completed_time=JAN_1)
-        sat = SatQuestions(
-            pairs=[(attempt.id, question)],
-            selected_options_by_pair={(attempt.id, question.id): [right, wrong]},
-            correctness={(attempt.id, question.id): False},
-        )
-        forms = a_progress_index(
-            learner_form_by_attempt_id={attempt.id: (LEARNER_ID, quiz.id)}
-        ).forms
-
-        tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
-
-        counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
-        assert list(counts.items()) == [
-            (("Mars", True, False), 1),
-            (("Sun", False, False), 1),
-        ]
-
-    def test_an_option_with_no_verdict_is_tallied_as_neither(self) -> None:
-        """`correct` is nullable, and None is not True -- it is also not False.
-
-        The same nullable-field subtlety load_distractor_rows guards against with
-        `.exclude(correct=True)`: an unmarked option must never be painted as a
-        correct tick, and must not claim to be a known mistake either.
-        """
-        quiz = a_quiz()
-        question = a_question(quiz)
-        unmarked = an_option(question, "Pluto", correct=None)
-        attempt = an_attempt(quiz, completed_time=JAN_1)
-        sat = SatQuestions(
-            pairs=[(attempt.id, question)],
-            selected_options_by_pair={(attempt.id, question.id): [unmarked]},
-            correctness={(attempt.id, question.id): False},
-        )
-        forms = a_progress_index(
-            learner_form_by_attempt_id={attempt.id: (LEARNER_ID, quiz.id)}
-        ).forms
-
-        tallies = tally_quiz_answers(sat, forms, first_attempt_ids=set())
-
-        counts = tallies.wrong_selected_counts[(LEARNER_ID, quiz.id, question.id)]
-        assert list(counts.items()) == [(("Pluto", None, False), 1)]
-
-
-class TestBuildWrongAnswersByUserQuiz:
-    def test_answers_are_ordered_by_question_number(self) -> None:
-        quiz = a_quiz()
-        page = a_page(quiz)
-        first = a_question(quiz, text="First", order=0, page=page)
-        second = a_question(quiz, text="Second", order=1, page=page)
-        index = _a_question_index((first, []), (second, []))
-        tallies = QuizTallies(
-            wrong_counts={
-                (LEARNER_ID, quiz.id, second.id): 1,
-                (LEARNER_ID, quiz.id, first.id): 1,
-            },
-            wrong_selected_counts={
-                (LEARNER_ID, quiz.id, second.id): {},
-                (LEARNER_ID, quiz.id, first.id): {},
-            },
-            respondent_counts={},
-            wrong_counts_first={},
-        )
-
-        built = build_wrong_answers_by_learner_quiz(tallies, index)
-
-        assert [answer.question_number for answer in built[LEARNER_ID][quiz.id]] == [
-            1,
-            2,
-        ]
-
-    def test_each_answer_carries_its_questions_correct_options(self) -> None:
-        quiz = a_quiz()
-        question = a_question(quiz)
-        options = [an_option(question, "Mars", correct=True)]
-        index = _a_question_index((question, options))
-        tallies = QuizTallies(
-            wrong_counts={(LEARNER_ID, quiz.id, question.id): 2},
-            wrong_selected_counts={
-                (LEARNER_ID, quiz.id, question.id): {("Sun", False, False): 2}
-            },
-            respondent_counts={},
-            wrong_counts_first={},
-        )
-
-        answer = build_wrong_answers_by_learner_quiz(tallies, index)[LEARNER_ID][
-            quiz.id
-        ][0]
-
-        assert answer.times_wrong == 2
-        assert answer.selected_options == [SelectedOption("Sun", False, 2)]
-        assert answer.correct_options == [CorrectOption("Mars")]
-
-    def test_selected_options_carry_each_options_own_correctness(self) -> None:
-        quiz = a_quiz()
-        question = a_question(quiz)
-        options = [an_option(question, "Mars", correct=True)]
-        index = _a_question_index((question, options))
-        tallies = QuizTallies(
-            wrong_counts={(LEARNER_ID, quiz.id, question.id): 1},
-            wrong_selected_counts={
-                (LEARNER_ID, quiz.id, question.id): {
-                    ("Mars", True, False): 1,
-                    ("Sun", False, False): 1,
-                    ("Pluto", None, False): 1,
-                }
-            },
-            respondent_counts={},
-            wrong_counts_first={},
-        )
-
-        answer = build_wrong_answers_by_learner_quiz(tallies, index)[LEARNER_ID][
-            quiz.id
-        ][0]
-
-        assert answer.selected_options == [
-            SelectedOption("Mars", True, 1),
-            SelectedOption("Sun", False, 1),
-            SelectedOption("Pluto", None, 1),
-        ]
-
-    def test_one_learners_wrong_answers_do_not_reach_another(self) -> None:
-        quiz = a_quiz()
-        question = a_question(quiz)
-        index = _a_question_index((question, []))
-        tallies = QuizTallies(
-            wrong_counts={(LEARNER_ID, quiz.id, question.id): 1},
-            wrong_selected_counts={(LEARNER_ID, quiz.id, question.id): {}},
-            respondent_counts={},
-            wrong_counts_first={},
-        )
-
-        built = build_wrong_answers_by_learner_quiz(tallies, index)
-
-        assert OTHER_LEARNER_ID not in built
+        assert dict(tallies.respondent_counts) == {question.id: 1}
+        assert dict(tallies.wrong_counts_first) == {}
 
 
 class TestBuildConfusionBlock:
     def _tallies(self, *, wrong: dict, respondents: dict) -> QuizTallies:
         return QuizTallies(
-            wrong_counts={},
-            wrong_selected_counts={},
             respondent_counts=respondents,
             wrong_counts_first=wrong,
         )
@@ -3315,32 +2977,6 @@ class TestRetiredContentInTheReport:
         assert sections["A"].item_count == 0
         assert [q.retired for q in sections["A"].quizzes] == [True]
 
-    def test_a_wrong_answer_to_a_retired_question_is_listed_and_flagged(
-        self, mock_site_context: Site
-    ) -> None:
-        cohort, record, quiz, questions = _cohort_with_two_question_quiz()
-        (gone, _), (kept, _) = questions
-        retired(gone)
-        attempt = form_progress(
-            record,
-            quiz,
-            completed_time=timezone.now(),
-            scores={"score": 0, "max_score": 2},
-        )
-        for question in (gone, kept):
-            wrong = question.options.get(text="Wrong")
-            QuestionAnswerFactory(
-                form_progress=attempt, question=question
-            ).selected_options.add(wrong)
-
-        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
-
-        answers = data.learners[0].wrong_answers[0].answers
-        assert [(a.question_text, a.question_retired) for a in answers] == [
-            ("Question 1?", True),
-            ("Question 2?", False),
-        ]
-
     def test_a_retired_question_is_flagged_in_the_cohort_confusions(
         self, mock_site_context: Site
     ) -> None:
@@ -3364,33 +3000,6 @@ class TestRetiredContentInTheReport:
             "Question 1?": True,
             "Question 2?": False,
         }
-
-    def test_a_chosen_retired_option_is_flagged(self, mock_site_context: Site) -> None:
-        cohort, record, quiz, questions = _cohort_with_two_question_quiz()
-        (question, _), _ = questions
-        old = QuestionOptionFactory(
-            question=question, text="Old distractor", correct=False, order=2
-        )
-        retired(old)
-        attempt = form_progress(
-            record,
-            quiz,
-            completed_time=timezone.now(),
-            scores={"score": 0, "max_score": 2},
-        )
-        answer = QuestionAnswerFactory(form_progress=attempt, question=question)
-        answer.selected_options.add(old)
-
-        data = gather_cohort_report_data(str(cohort.id), mock_site_context.pk)
-
-        (wrong,) = [
-            a
-            for a in data.learners[0].wrong_answers[0].answers
-            if a.question_text == "Question 1?"
-        ]
-        assert [(o.text, o.retired) for o in wrong.selected_options] == [
-            ("Old distractor", True)
-        ]
 
     def test_a_chosen_retired_option_is_flagged_in_the_cohort_confusions(
         self, mock_site_context: Site

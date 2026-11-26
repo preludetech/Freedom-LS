@@ -189,7 +189,7 @@ def test_the_cache_key_carries_the_site_id_and_cohort() -> None:
     cohort_id = UUID("11111111-1111-1111-1111-111111111111")
 
     assert _cache_key(7, cohort_id, "progress") == (
-        "reports:screen:4:7:11111111-1111-1111-1111-111111111111:progress"
+        "reports:screen:5:7:11111111-1111-1111-1111-111111111111:progress"
     )
 
 
@@ -263,13 +263,12 @@ class TestCachedCohortReport:
 
         assert cached_cohort_report(cohort, refresh=True).cohort_size == 0
 
-    def test_the_entry_carries_neither_a_logo_nor_wrong_answers(self, cohort):
+    def test_the_entry_carries_no_logo(self, cohort):
         cached_cohort_report(cohort)
 
         entry = cache.get(_cache_key(cohort.site_id, cohort.pk, "report"))
 
         assert entry.organisation.logo_data_uri is None
-        assert [learner.wrong_answers for learner in entry.learners] == [[], []]
 
     def test_a_learner_added_after_caching_is_listed_on_the_next_read(self, cohort):
         cached_cohort_report(cohort)

@@ -79,22 +79,6 @@ class QuizResult:
 
 
 @dataclasses.dataclass(frozen=True)
-class SelectedOption:
-    """One option a learner ticked on a sitting they got wrong."""
-
-    text: str
-    # `QuestionOption.correct` is nullable, and None is carried through as None
-    # rather than collapsed to False: an option the author never marked up is
-    # not a right answer, but calling it wrong asserts a verdict nobody gave.
-    correct: bool | None
-    # Wrong attempts this option was selected in. A sitting cannot select the
-    # same option twice, so the count never exceeds times_wrong.
-    count: int
-    # The option is one a content save retired.
-    retired: bool = False
-
-
-@dataclasses.dataclass(frozen=True)
 class CorrectOption:
     """One option the author marked correct on a question."""
 
@@ -103,23 +87,6 @@ class CorrectOption:
     # sitting served before the save was offered it, and the flag rides on the
     # option because a live option and a retired one can share a text.
     retired: bool = False
-
-
-@dataclasses.dataclass(frozen=True)
-class WrongAnswer:
-    question_number: int
-    question_text: str
-    times_wrong: int
-    # Every option the learner ticked, in first-seen order -- including the ones
-    # that were right. A multi-select question is scored wrong as a whole, so a
-    # learner can tick two correct options and one distractor and land here; the
-    # per-option `correct` is what keeps their right ticks from reading as
-    # mistakes against the correct-answer column alongside.
-    selected_options: list[SelectedOption]
-    correct_options: list[CorrectOption]
-    # The question is one a content save retired; the wrong answer is still
-    # listed, so a reader can tell why it is no longer in the quiz.
-    question_retired: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -180,13 +147,6 @@ class SummaryTable:
 
 
 @dataclasses.dataclass(frozen=True)
-class QuizWrongAnswers:
-    form_id: UUID
-    title: str
-    answers: list[WrongAnswer]
-
-
-@dataclasses.dataclass(frozen=True)
 class AtRiskFlag:
     rule_id: str
     label: str
@@ -228,7 +188,6 @@ class LearnerDetail:
     has_any_progress: bool
     completed_items: list[CompletedItem]
     quiz_results: list[QuizResult]
-    wrong_answers: list[QuizWrongAnswers]
     # The single instant the whole report is evaluated against, carried on
     # every learner so at-risk rules (freedom_ls.reports.at_risk) never
     # call timezone.now() themselves — see AtRiskRule.evaluate().
@@ -243,7 +202,7 @@ class LearnerDetail:
         row exists: a learner who opened a topic without finishing it has a row
         but nothing to print, and the section must say so rather than end.
         """
-        return bool(self.completed_items or self.quiz_results or self.wrong_answers)
+        return bool(self.completed_items or self.quiz_results)
 
 
 # One wrong option's tally in a confusion row: its text, how many first attempts

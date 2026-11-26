@@ -50,10 +50,7 @@ from freedom_ls.reports.gather import (
     QuizColumn,
     QuizConfusion,
     QuizResult,
-    QuizWrongAnswers,
-    SelectedOption,
     SummaryTable,
-    WrongAnswer,
     gather_cohort_report_data,
 )
 from freedom_ls.reports.render import (
@@ -203,11 +200,6 @@ class TestBuildReportHtml:
         html = build_report_html(cohort_report_data(requested_by_name=""))
 
         assert "the system" in html
-
-    def test_confusion_percentage_names_its_denominator(self) -> None:
-        html = build_report_html(full_report_data())
-
-        assert "67% of 12 learners" in html
 
 
 @requires_tailwind_bundle
@@ -955,7 +947,7 @@ class TestContents:
         assert f'href="#course-{course.course_id}"' in html
         assert f'href="#learner-{learner.learner_id}"' in html
 
-    def test_links_to_confusion_block_when_present(self) -> None:
+    def test_lists_no_quiz_confusion_entry_even_when_a_block_is_present(self) -> None:
         quiz = QuizColumn(
             form_id=uuid4(), title="Quiz Y", abbreviation="QY", pass_percentage=50
         )
@@ -977,21 +969,8 @@ class TestContents:
 
         html = render_to_string("reports/partials/contents.html", {"data": data})
 
-        assert f'href="#confusions-{quiz.form_id}"' in html
-
-    def test_omits_confusion_link_when_block_empty(self) -> None:
-        quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz Y", abbreviation="QY", pass_percentage=50
-        )
-        block = ConfusionBlock(questions=[], shown=0, total=0)
-        course = course_section_with_one_summary_table(
-            quizzes=[quiz], confusions_by_quiz={quiz.form_id: block}
-        )
-        data = cohort_report_data(courses=[course])
-
-        html = render_to_string("reports/partials/contents.html", {"data": data})
-
         assert f'href="#confusions-{quiz.form_id}"' not in html
+        assert "Quiz confusions" not in html
 
 
 class TestMethodology:
@@ -1014,13 +993,12 @@ class TestMethodology:
             "complete",
             "quiz-score",
             "attempt",
-            "cohort-analysis",
             "multi-select-scoring",
-            "answers-given",
             "pass-marks",
             "excluded",
             "covered",
         } <= stated
+        assert {"cohort-analysis", "answers-given"}.isdisjoint(stated)
 
 
 class TestCourseSummaryTable:
@@ -1193,223 +1171,6 @@ class TestLearnerDetail:
         assert "no-activity" not in html
         assert "Voltage Quiz" in html
 
-    def test_renders_activity_when_only_wrong_answers_were_recorded(self) -> None:
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=3,
-                            question_text="What is erosion?",
-                            times_wrong=1,
-                            selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_options=[CorrectOption("Option D")],
-                        )
-                    ],
-                )
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert "no-activity" not in html
-        assert 'data-subhead="wrong-answers"' in html
-        assert "Erosion Quiz" in html
-
-    def test_names_an_unanswered_question_rather_than_leaving_the_cell_blank(
-        self,
-    ) -> None:
-        """A question left blank has nothing to quote back, so the cell has to say so."""
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=3,
-                            question_text="What is erosion?",
-                            times_wrong=1,
-                            selected_options=[],
-                            correct_options=[CorrectOption("Option D")],
-                        )
-                    ],
-                )
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert "no-answer" in html
-
-    def test_an_option_chosen_on_more_than_one_attempt_carries_its_count(self) -> None:
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=3,
-                            question_text="What is erosion?",
-                            times_wrong=3,
-                            selected_options=[
-                                SelectedOption("Option C", False, 2),
-                                SelectedOption("Option A", False, 1),
-                            ],
-                            correct_options=[CorrectOption("Option D")],
-                        )
-                    ],
-                )
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert 'Option C <span class="chip-count">×2</span>' in html  # noqa: RUF001 -- the multiplication sign the template renders
-
-    def test_an_option_chosen_once_carries_no_count(self) -> None:
-        """A question missed once has every option at a count of one, so the badge
-        would put a number on the common case that carries no information."""
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=3,
-                            question_text="What is erosion?",
-                            times_wrong=1,
-                            selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_options=[CorrectOption("Option D")],
-                        )
-                    ],
-                )
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert "Option C" in html
-        assert "chip-count" not in html
-
-    def test_a_correctly_ticked_option_is_not_painted_as_a_mistake(self) -> None:
-        """On a multi-select question the learner's right ticks sit inside a wrong
-        answer, and painting them red would contradict the correct-answer column
-        two cells to the right."""
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=2,
-                            question_text="Which two apply?",
-                            times_wrong=1,
-                            selected_options=[
-                                SelectedOption("Option A", True, 1),
-                                SelectedOption("Option C", False, 1),
-                            ],
-                            correct_options=[
-                                CorrectOption("Option A"),
-                                CorrectOption("Option B"),
-                            ],
-                        )
-                    ],
-                )
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert (
-            '<span class="chip chip-success"><span class="chip-glyph">✓</span>Option A'
-            in html
-        )
-        assert (
-            '<span class="chip chip-error"><span class="chip-glyph">✗</span>Option C'
-            in html
-        )
-
-    def test_an_option_the_author_never_marked_up_carries_no_verdict(self) -> None:
-        """`correct` is nullable. An unmarked option is not right, but calling it
-        wrong would assert a verdict the course author never gave."""
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=2,
-                            question_text="Which two apply?",
-                            times_wrong=1,
-                            selected_options=[SelectedOption("Option E", None, 1)],
-                            correct_options=[CorrectOption("Option A")],
-                        )
-                    ],
-                )
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert (
-            '<span class="chip chip-neutral"><span class="chip-glyph">○</span>Option E'
-            in html
-        )
-
-    def test_every_answer_chip_carries_a_glyph_so_greyscale_still_reads(self) -> None:
-        """Tint is not the only signal anywhere else in the report, and these two
-        columns sit side by side -- printed in greyscale they would otherwise be
-        indistinguishable from one another."""
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=2,
-                            question_text="Which two apply?",
-                            times_wrong=1,
-                            selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_options=[CorrectOption("Option A")],
-                        )
-                    ],
-                )
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert html.count('class="chip-glyph"') == 2
-
     def test_renders_flags_at_the_top(self) -> None:
         learner = learner_detail(
             flags=[
@@ -1452,67 +1213,6 @@ class TestLearnerDetail:
         assert '<span class="learner-running-name">Robin Fox</span>' in html
         assert '<h3 class="learner-heading">Robin Fox</h3>' in html
 
-    def test_wrong_answers_heading_names_its_quiz(self) -> None:
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Voltage Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=8,
-                            question_text="What is voltage?",
-                            times_wrong=2,
-                            selected_options=[SelectedOption("Option A", False, 1)],
-                            correct_options=[CorrectOption("Option B")],
-                        )
-                    ],
-                ),
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=3,
-                            question_text="What is erosion?",
-                            times_wrong=1,
-                            selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_options=[CorrectOption("Option D")],
-                        )
-                    ],
-                ),
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        # One heading per quiz, each naming the quiz it introduces.
-        headings = re.findall(
-            r'data-subhead="wrong-answers"[^>]*>(.*?)</p>', html, re.S
-        )
-        assert len(headings) == 2
-        assert "Voltage Quiz" in headings[0]
-        assert "Erosion Quiz" in headings[1]
-        assert "What is voltage?" in html
-        assert "What is erosion?" in html
-
-    def test_omits_wrong_answers_block_for_a_quiz_with_no_wrong_answers(self) -> None:
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(form_id=uuid4(), title="Clean Quiz", answers=[])
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert 'data-subhead="wrong-answers"' not in html
-
 
 class TestLearnerDetails:
     def test_states_the_situation_when_the_cohort_has_no_learners(self) -> None:
@@ -1536,207 +1236,6 @@ class TestLearnerDetails:
         assert f'id="learner-{learners[1].learner_id}"' in html
         assert "Ann Lee" in html
         assert "Bo Kim" in html
-
-
-class TestQuizConfusion:
-    def test_renders_counts_not_percentage_when_show_percentage_false(self) -> None:
-        question = QuizConfusion(
-            question_number=1,
-            question_text="What is X?",
-            respondent_count=6,
-            wrong_count=4,
-            show_percentage=False,
-            wrong_percentage=None,
-            distractors=[("Option B", 3, False)],
-            correct_options=[CorrectOption("Option A")],
-        )
-        block = ConfusionBlock(questions=[question], shown=1, total=1)
-        quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz 1", abbreviation="Q1", pass_percentage=50
-        )
-
-        html = render_to_string(
-            "reports/partials/quiz_confusion.html", {"quiz": quiz, "block": block}
-        )
-
-        assert "4 of 6" in html
-        assert "%" not in html
-        assert "Option A" in html
-        assert "Option B" in html
-        assert "×3" in html  # noqa: RUF001 -- the multiplication sign the template renders
-
-    def test_a_single_respondent_is_one_learner_not_learners(self) -> None:
-        question = QuizConfusion(
-            question_number=1,
-            question_text="What is X?",
-            respondent_count=1,
-            wrong_count=1,
-            show_percentage=False,
-            wrong_percentage=None,
-            distractors=[("Option B", 1, False)],
-            correct_options=[CorrectOption("Option A")],
-        )
-        block = ConfusionBlock(questions=[question], shown=1, total=1)
-        quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz 1", abbreviation="Q1", pass_percentage=50
-        )
-
-        html = render_to_string(
-            "reports/partials/quiz_confusion.html", {"quiz": quiz, "block": block}
-        )
-
-        assert "1 of 1 learner<" in html
-
-    def test_renders_percentage_not_counts_when_show_percentage_true(self) -> None:
-        question = QuizConfusion(
-            question_number=1,
-            question_text="What is X?",
-            respondent_count=20,
-            wrong_count=15,
-            show_percentage=True,
-            wrong_percentage=75,
-            distractors=[("Option B", 12, False)],
-            correct_options=[CorrectOption("Option A")],
-        )
-        block = ConfusionBlock(questions=[question], shown=1, total=1)
-        quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz 1", abbreviation="Q1", pass_percentage=50
-        )
-
-        html = render_to_string(
-            "reports/partials/quiz_confusion.html", {"quiz": quiz, "block": block}
-        )
-
-        assert "75%" in html
-        assert "15 of 20" not in html
-        assert "Option A" in html
-        assert "Option B" in html
-        assert "×12" in html  # noqa: RUF001 -- the multiplication sign the template renders
-
-    def test_emits_confusion_anchor_id(self) -> None:
-        quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz 1", abbreviation="Q1", pass_percentage=50
-        )
-        block = ConfusionBlock(questions=[], shown=0, total=0)
-
-        html = render_to_string(
-            "reports/partials/quiz_confusion.html", {"quiz": quiz, "block": block}
-        )
-
-        assert f'id="confusions-{quiz.form_id}"' in html
-
-
-class TestConfusions:
-    def test_includes_quiz_with_nonempty_block_and_skips_empty(self) -> None:
-        quiz_with_confusion = QuizColumn(
-            form_id=uuid4(),
-            title="Quiz With Confusion",
-            abbreviation="Q1",
-            pass_percentage=50,
-        )
-        clean_quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz Clean", abbreviation="Q2", pass_percentage=50
-        )
-        confusion = QuizConfusion(
-            question_number=1,
-            question_text="Tricky?",
-            respondent_count=5,
-            wrong_count=3,
-            show_percentage=False,
-            wrong_percentage=None,
-            distractors=[("Wrong option", 2, False)],
-            correct_options=[CorrectOption("Right option")],
-        )
-        block_with_confusion = ConfusionBlock(questions=[confusion], shown=1, total=1)
-        clean_block = ConfusionBlock(questions=[], shown=0, total=0)
-        section = course_section_with_one_summary_table(
-            quizzes=[quiz_with_confusion, clean_quiz],
-            confusions_by_quiz={
-                quiz_with_confusion.form_id: block_with_confusion,
-                clean_quiz.form_id: clean_block,
-            },
-        )
-
-        html = render_to_string(
-            "reports/partials/confusions.html", {"courses": [section]}
-        )
-
-        assert "Tricky?" in html
-        assert "Quiz Clean" not in html
-        assert f'id="confusions-{quiz_with_confusion.form_id}"' in html
-        assert f'id="confusions-{clean_quiz.form_id}"' not in html
-        assert 'data-empty-state="confusions"' not in html
-
-    def test_states_the_situation_when_there_are_no_courses(self) -> None:
-        html = render_to_string("reports/partials/confusions.html", {"courses": []})
-
-        assert 'data-empty-state="confusions"' in html
-
-    def test_states_the_situation_when_every_quiz_is_clean(self) -> None:
-        clean_quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz Clean", abbreviation="QC", pass_percentage=50
-        )
-        section = course_section_with_one_summary_table(
-            quizzes=[clean_quiz],
-            confusions_by_quiz={
-                clean_quiz.form_id: ConfusionBlock(questions=[], shown=0, total=0)
-            },
-        )
-
-        html = render_to_string(
-            "reports/partials/confusions.html", {"courses": [section]}
-        )
-
-        assert 'data-empty-state="confusions"' in html
-
-    def test_no_empty_state_when_a_later_course_has_confusions(self) -> None:
-        # The emptiness flag has to survive the loop that finds the match, not
-        # just the iteration it was set in.
-        clean_quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz Clean", abbreviation="QC", pass_percentage=50
-        )
-        busy_quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz Busy", abbreviation="QB", pass_percentage=50
-        )
-        confusion = QuizConfusion(
-            question_number=1,
-            question_text="Tricky?",
-            respondent_count=5,
-            wrong_count=3,
-            show_percentage=False,
-            wrong_percentage=None,
-            distractors=[],
-            correct_options=[CorrectOption("Right option")],
-        )
-        clean_section = course_section_with_one_summary_table(
-            title="Clean course",
-            quizzes=[clean_quiz],
-            confusions_by_quiz={
-                clean_quiz.form_id: ConfusionBlock(questions=[], shown=0, total=0)
-            },
-        )
-        busy_section = course_section_with_one_summary_table(
-            title="Busy course",
-            quizzes=[busy_quiz],
-            confusions_by_quiz={
-                busy_quiz.form_id: ConfusionBlock(
-                    questions=[confusion], shown=1, total=1
-                )
-            },
-        )
-
-        html = render_to_string(
-            "reports/partials/confusions.html",
-            {"courses": [clean_section, busy_section]},
-        )
-
-        assert "Tricky?" in html
-        assert 'data-empty-state="confusions"' not in html
-
-    def test_emits_a_running_element_that_clears_the_learner_header(self) -> None:
-        html = render_to_string("reports/partials/confusions.html", {"courses": []})
-
-        assert '<span class="running-name-reset">' in html
 
 
 class TestReportShell:
@@ -1764,7 +1263,7 @@ class TestReportShell:
         assert 'class="methodology"' in html
         assert "landscape-section" in html
         assert 'class="learner-details' in html
-        assert 'class="confusions' in html
+        assert 'class="confusions' not in html
         assert "--color-success: #38A169;" in html
         assert "body { margin: 0; }" in html
 
@@ -2013,7 +1512,7 @@ class TestCoverBranding:
 STATUS_GLYPH_CODEPOINTS = [0x2713, 0x2717, 0x25B2, 0x25CF, 0x25CB, 0x2014]
 
 # Headings that belong to the per-learner section and must never reach a
-# landscape page or the confusions section. Upper-cased where print.css sets
+# landscape page. Upper-cased where print.css sets
 # .subhead in small caps -- the extracted text carries what was drawn, not what
 # the template wrote.
 LEARNER_DETAIL_HEADINGS = ["Details per learner", "ITEMS COMPLETED", "QUIZ ATTEMPTS"]
@@ -2029,14 +1528,12 @@ def _busy_report_data() -> CohortReportData:
 
     The *last* learner is left short and given a name that appears nowhere else
     in the document. That combination is what a leaked running header needs:
-    his section starts on a fresh page and ends part way down it, so the
-    confusions section follows him onto that same page and WeasyPrint fills the
-    header from his running element -- the leak QA saw on the first page of the
-    section, which a long final learner would hide by ending the page for him.
+    his section starts on a fresh page and ends part way down it, so a name
+    leaking from the running header onto a following page shows up, which a long
+    final learner would hide by ending the page for him.
 
-    The course gets a second quiz whose confusion block is far too big for one
-    page, on top of the first quiz's small one, so the section has continuation
-    pages to check as well as a first one.
+    The course gets a second quiz carrying a large confusion block, which the
+    PDF must leave out however much of it there is.
     """
     data = full_report_data()
     first, last = data.learners[0], data.learners[-1]
@@ -2106,21 +1603,6 @@ def _busy_report_data() -> CohortReportData:
                         max_score=10,
                         percentage=30,
                         passed=False,
-                    )
-                ],
-            )
-        ],
-        wrong_answers=[
-            QuizWrongAnswers(
-                form_id=quiz.form_id,
-                title=quiz.title,
-                answers=[
-                    WrongAnswer(
-                        question_number=1,
-                        question_text="What is an orbit?",
-                        times_wrong=1,
-                        selected_options=[SelectedOption("A straight line", False, 1)],
-                        correct_options=[CorrectOption("A closed path around a body")],
                     )
                 ],
             )
@@ -2340,26 +1822,6 @@ def _names_appearing_in(data: CohortReportData, text: str) -> set[str]:
     return {learner.full_name for learner in data.learners if learner.full_name in text}
 
 
-def _confusions_section_page_texts(reader: PdfReader) -> list[str]:
-    """Text of every page of the confusions section, its own first page included.
-
-    Anchored on the *last* page carrying the section heading, because the same
-    string appears earlier as an entry on the contents page. Anchoring on
-    quiz_confusion.html's caution line instead would silently skip the section's
-    first page whenever the first block is pushed off it, which is exactly the
-    page a running-header leak lands on. Everything from there to the end of the
-    document belongs to the section: confusions is the last include in
-    report.html.
-    """
-    texts = [page.extract_text() for page in reader.pages]
-    first = max(
-        index
-        for index, text in enumerate(texts)
-        if "Quiz confusions across the cohort" in text.replace("\n", " ")
-    )
-    return texts[first:]
-
-
 Rect = tuple[float, float, float, float]
 
 # One PDF path/painting operator: a colour to paint in, a rectangle to add to the
@@ -2491,66 +1953,6 @@ def _with_a_retired_quiz_and_question() -> CohortReportData:
     )
 
 
-class TestRetiredOptionInTheConfusionsPartial:
-    def test_only_the_retired_incorrect_answer_is_marked(self) -> None:
-        """A retired incorrect answer used to print like a live one."""
-        quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz", abbreviation="Q1", pass_percentage=50
-        )
-        confusion = QuizConfusion(
-            question_number=1,
-            question_text="Tricky?",
-            respondent_count=5,
-            wrong_count=3,
-            show_percentage=False,
-            wrong_percentage=None,
-            distractors=[("Jupiter", 2, True), ("Mars", 1, False)],
-            correct_options=[CorrectOption("Earth")],
-        )
-
-        html = render_to_string(
-            "reports/partials/quiz_confusion.html",
-            {
-                "quiz": quiz,
-                "block": ConfusionBlock(questions=[confusion], shown=1, total=1),
-            },
-        )
-
-        assert html.count("Retired") == 1
-        assert html.index("Jupiter") < html.index("Retired") < html.index("Mars")
-
-    def test_only_the_retired_correct_answer_is_marked(self) -> None:
-        """A retired correct option used to print like a live one, even for
-        sittings that were never offered it."""
-        quiz = QuizColumn(
-            form_id=uuid4(), title="Quiz", abbreviation="Q1", pass_percentage=50
-        )
-        confusion = QuizConfusion(
-            question_number=1,
-            question_text="Tricky?",
-            respondent_count=5,
-            wrong_count=3,
-            show_percentage=False,
-            wrong_percentage=None,
-            distractors=[("Mars", 1, False)],
-            correct_options=[
-                CorrectOption("Earth", retired=True),
-                CorrectOption("Terra"),
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/quiz_confusion.html",
-            {
-                "quiz": quiz,
-                "block": ConfusionBlock(questions=[confusion], shown=1, total=1),
-            },
-        )
-
-        assert html.count("Retired") == 1
-        assert html.index("Earth") < html.index("Retired") < html.index("Terra")
-
-
 class TestChipStaysOnOneLine:
     def test_chip_rule_forbids_wrapping(self) -> None:
         """An option chip with its Retired mark used to break its text onto two
@@ -2564,38 +1966,6 @@ class TestChipStaysOnOneLine:
 
         assert rule is not None
         assert "whitespace-nowrap" in rule.group(1)
-
-
-class TestRetiredCorrectOptionInTheLearnerDetail:
-    def test_only_the_retired_correct_answer_is_marked(self) -> None:
-        learner = learner_detail(
-            has_any_progress=True,
-            wrong_answers=[
-                QuizWrongAnswers(
-                    form_id=uuid4(),
-                    title="Erosion Quiz",
-                    answers=[
-                        WrongAnswer(
-                            question_number=3,
-                            question_text="What is erosion?",
-                            times_wrong=1,
-                            selected_options=[SelectedOption("Option C", False, 1)],
-                            correct_options=[
-                                CorrectOption("Option D", retired=True),
-                                CorrectOption("Option E"),
-                            ],
-                        )
-                    ],
-                )
-            ],
-        )
-
-        html = render_to_string(
-            "reports/partials/learner_detail.html", {"learner": learner}
-        )
-
-        assert html.count("Retired") == 1
-        assert html.index("Option D") < html.index("Retired") < html.index("Option E")
 
 
 @pytest.mark.weasyprint
@@ -2683,10 +2053,9 @@ class TestRenderReportPdf:
             "Contents and definitions",
             "Summary of learner progress",
             "Details per learner",
-            "Quiz confusions across the cohort",
         ]
 
-    def test_outline_names_every_course_learner_and_analysed_quiz_once(
+    def test_outline_names_every_course_and_learner_once(
         self, busy_report_pdf_bytes: bytes
     ) -> None:
         reader = _reader(busy_report_pdf_bytes)
@@ -2699,7 +2068,6 @@ class TestRenderReportPdf:
             any(title.startswith(course.title) for title in titles)
             for course in data.courses
         )
-        assert data.courses[0].quizzes[0].title in titles
 
     def test_outline_omits_the_sub_headings_the_contents_page_does_not_list(
         self, busy_report_pdf_bytes: bytes
@@ -2737,35 +2105,32 @@ class TestRenderReportPdf:
 
         assert _names_appearing_in(data, landscape_text) == set()
 
-    def test_no_page_of_the_confusions_section_names_a_learner(
-        self, busy_report_pdf_bytes: bytes
+    def test_the_pdf_carries_no_question_or_option_text_from_the_confusion_data(
+        self, report_pdf_bytes: bytes
     ) -> None:
-        # Two distinct leaks, and the section's first page is where the harder
-        # one lives: WeasyPrint fills the header from the first running element
-        # on a page, so while this section shared a page with the last learner's
-        # detail section its own reset element could never win. Nothing in a
-        # cohort-wide section names a learner, so any name on these pages came
-        # from the running header.
-        reader = _reader(busy_report_pdf_bytes)
-        data = _busy_report_data()
-        section_texts = _confusions_section_page_texts(reader)
+        text = " ".join(_joined_text(_reader(report_pdf_bytes)).split())
 
-        assert len(section_texts) > 1, "fixture must span a first and a later page"
-        assert _names_appearing_in(data, "".join(section_texts)) == set()
+        assert "What is an orbit?" not in text
+        assert "A closed path around a body" not in text
+        assert "A straight line" not in text
 
-    def test_confusions_section_starts_on_a_page_of_its_own(
+    def test_the_pdf_has_no_quiz_confusions_heading_contents_entry_or_incorrect_answers_block(
         self, busy_report_pdf_bytes: bytes
     ) -> None:
         reader = _reader(busy_report_pdf_bytes)
-        first_page_text = _confusions_section_page_texts(reader)[0]
+        text = " ".join(_joined_text(reader).split())
 
-        assert "Quiz confusions across the cohort" in first_page_text
-        # The section heading is the first thing on the page, not something
-        # stranded alone on the page before it.
-        assert "Orbit Quiz" in first_page_text
-        assert {
-            heading for heading in LEARNER_DETAIL_HEADINGS if heading in first_page_text
-        } == set()
+        assert "Quiz confusions" not in text
+        assert "Incorrect answers" not in text.title()
+        assert "what holds a moon in place" not in text
+
+    def test_a_learners_section_still_shows_the_per_quiz_score(
+        self, busy_report_pdf_bytes: bytes
+    ) -> None:
+        text = " ".join(_joined_text(_reader(busy_report_pdf_bytes)).split())
+
+        assert "QUIZ ATTEMPTS" in text
+        assert "30%" in text
 
     def test_an_empty_completion_bar_paints_a_zero_width_fill(self) -> None:
         # The fill is a percentage-width box inside a fixed-width track. Drawn

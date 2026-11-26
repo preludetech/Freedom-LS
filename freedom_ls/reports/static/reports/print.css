@@ -407,43 +407,6 @@ th.numeric {
   margin-right: 2pt;
 }
 
-/* Chips: a light tint with its paired foreground, for a piece of quoted
-   content — an option a learner chose, or the one they should have. */
-.chip {
-  display: inline-block;
-  font-size: 7.4pt;
-  padding: 0.5pt 4pt;
-  margin: 0.5pt 2pt 0.5pt 0;
-}
-.chip-success {
-  background: var(--color-success-light);
-  color: var(--color-on-success-light);
-}
-.chip-error {
-  background: var(--color-error-light);
-  color: var(--color-on-error-light);
-}
-.chip-neutral {
-  background: var(--report-fill);
-  color: var(--color-muted);
-}
-/* Chips quoting an answer carry a verdict glyph as well as a tint, so the
-   answers-given and correct-answer columns stay apart in greyscale. */
-.chip-glyph {
-  margin-right: 2pt;
-}
-.chip-count {
-  font-family: var(--report-font-mono);
-  font-size: 6.8pt;
-}
-
-/* A question left blank has no option to quote, so it reads as an absence
-   rather than as something the learner chose. */
-.no-answer {
-  color: var(--color-muted);
-  font-style: italic;
-}
-
 /* Progress bars: nested spans, fixed-width outer and percentage-width inner.
    No flexbox — WeasyPrint's flexbox support is not well tested.
    `line-height: 0` on the track stops the outer box's inherited line box
@@ -553,8 +516,7 @@ h6 {
   bookmark-label: content();
 }
 h2.course-heading,
-h3.learner-heading,
-h3.confusion-heading {
+h3.learner-heading {
   bookmark-level: 2;
   bookmark-label: content();
 }
@@ -1058,12 +1020,11 @@ h3.confusion-heading {
 .learner-section .completion-bar-outer {
   width: 60mm;
 }
-/* Fixed widths on both tables below, for the same reason: a learner's section
-   stacks one attempts table and one incorrect-answers table per quiz, and the
-   detail section repeats that stack for every learner. Left to size themselves
-   from their own contents, no two of those tables agree on where a column
-   starts, and a page of them reads as several unrelated tables rather than one
-   set of figures. The widths are budgeted against each table's own width. */
+/* Fixed widths on the attempts table: the detail section repeats one for every
+   learner. Left to size itself from its own contents, no two of those tables
+   agree on where a column starts, and a page of them reads as several unrelated
+   tables rather than one set of figures. The widths are budgeted against the
+   table's own width. */
 
 /* 130mm — the full page width is far wider than these four figures need. */
 .learner-section .attempts-table {
@@ -1090,89 +1051,4 @@ h3.confusion-heading {
   font-size: 6.8pt;
   color: var(--color-muted);
   margin-left: 3pt;
-}
-/* 180mm — the full page width less the side margins. The two answer columns
-   are held equal so a reader compares what was chosen against what was right
-   across a fixed distance, and the question column takes the rest. */
-.learner-section .wrong-answers-table {
-  table-layout: fixed;
-}
-.learner-section .wrong-answers-table .col-question-number {
-  width: 9mm;
-  font-family: var(--report-font-mono);
-}
-.learner-section .wrong-answers-table .col-question {
-  width: 60mm;
-}
-.learner-section .wrong-answers-table .col-wrong {
-  width: 12mm;
-}
-.learner-section .wrong-answers-table .col-answers,
-.learner-section .wrong-answers-table .col-correct {
-  width: 49.5mm;
-}
-
-/* ==== confusions.html / quiz_confusion.html ==== */
-/* Cohort-wide, so it neither shares a page with one learner's section nor
-   inherits that learner's running header. Both halves are needed: the break
-   keeps the last learner's name off this section's first page, which WeasyPrint
-   would otherwise take from the first running element on a shared page, and the
-   reset clears the name carried over onto the pages after it. */
-.confusions {
-  break-before: page;
-}
-.running-name-reset {
-  position: running(learner-name);
-}
-.quiz-confusion {
-  break-inside: avoid-page;
-  margin-bottom: 10pt;
-}
-/* The first block already has a whole fresh page under the section heading, so
-   avoiding a break inside it can only push it off that page and strand the
-   heading on a blank one — and a block that big splits across pages anyway,
-   repeating its header row. Later blocks still keep themselves whole. */
-.confusions > .quiz-confusion:first-of-type {
-  break-inside: auto;
-}
-.quiz-confusion .confusion-table {
-  table-layout: fixed;
-}
-.quiz-confusion .col-question-number {
-  width: 10mm;
-  font-family: var(--report-font-mono);
-}
-.quiz-confusion .col-question {
-  width: 62mm;
-}
-.quiz-confusion .col-distractors {
-  width: 62mm;
-}
-.quiz-confusion .col-ratio {
-  width: 28mm;
-}
-.quiz-confusion .confusion-question {
-  line-height: 1.45;
-}
-.quiz-confusion .correct-answers {
-  display: block;
-  margin-top: 2pt;
-}
-.quiz-confusion .ratio-value {
-  font-family: var(--report-font-mono);
-  font-size: 8.4pt;
-  font-weight: 600;
-}
-.quiz-confusion .ratio-bar {
-  display: block;
-  width: 100%;
-  height: 2.5mm;
-  line-height: 0;
-  background: var(--report-fill);
-  margin-top: 1.5mm;
-}
-.quiz-confusion .ratio-bar-fill {
-  display: block;
-  height: 2.5mm;
-  background: var(--color-error);
 }
