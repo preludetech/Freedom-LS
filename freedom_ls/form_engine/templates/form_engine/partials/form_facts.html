@@ -1,7 +1,8 @@
+{% load form_engine_tags %}
 {% comment %}
 The facts a form's start page gives before anyone starts: how many
-questions and how many pages. Reads question_count and page_count. The
-caller wraps the chips, so it chooses how they align.
+questions, how many pages and, for a timed quiz, the time limit. Reads
+question_count, page_count and form. The caller wraps the chips, so it chooses how they align.
 {% endcomment %}
 <c-chip variant="muted" class="text-on-surface">
     <c-icon name="notes" class="size-4 text-secondary" />
@@ -11,3 +12,9 @@ caller wraps the chips, so it chooses how they align.
     <c-icon name="folder" class="size-4 text-secondary" />
     {{ page_count }} page{{ page_count|pluralize }}
 </c-chip>
+{% if form.time_limit_minutes %}
+<c-chip variant="muted" class="text-on-surface">
+    <c-icon name="time_limit" class="size-4 text-secondary" />
+    {{ form.time_limit_minutes|quiz_time_limit_text }}
+</c-chip>
+{% endif %}

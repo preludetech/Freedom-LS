@@ -63,6 +63,8 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "trend_down",
     # Deadlines
     "deadline",
+    # A quiz time limit: the clock glyph, named for what it shows
+    "time_limit",
     # Commerce
     "price",
     # Misc

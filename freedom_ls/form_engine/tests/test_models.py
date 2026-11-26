@@ -30,6 +30,7 @@ from freedom_ls.form_engine.factories import (
     served_paper_of,
 )
 from freedom_ls.form_engine.models import (
+    CompletionReason,
     Form,
     FormContent,
     FormDeclaration,
@@ -1371,3 +1372,13 @@ def test_question_number_of_a_retired_question_counts_every_question_before_it(
     gone = retire(cast("FormQuestion", FormQuestionFactory(form_page=page, order=1)))
 
     assert FormQuestion.objects.get(pk=gone.pk).question_number() == 3
+
+
+@pytest.mark.django_db
+def test_a_new_sitting_defaults_to_learner_submitted_with_no_recorded_limit(
+    mock_site_context,
+):
+    sitting = FormProgressFactory(user=UserFactory())
+
+    assert sitting.completion_reason == CompletionReason.LEARNER_SUBMITTED
+    assert sitting.time_limit_minutes is None

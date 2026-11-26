@@ -46,6 +46,7 @@ from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
     save_course,
     save_file_to_db,
+    save_form,
     save_form_content,
     save_form_page,
     save_form_question,
@@ -7153,3 +7154,44 @@ def test_save_run_keeps_both_options_of_a_question_live_when_they_share_a_value(
             pk__in=[OPTION_A_UUID, OPTION_B_UUID]
         )
     ] == [False, False]
+
+
+def _save_quiz(make_temp_file, mock_site_context, front_matter: str) -> Form:
+    temp_file = make_temp_file(".md", f"---\ncontent_type: FORM\n{front_matter}---\n")
+    (item,) = parse_single_file(temp_file)
+    return cast(Form, save_form(item, mock_site_context, temp_file.parent))
+
+
+_QUIZ_FRONT_MATTER = (
+    "title: Timed quiz\nstrategy: QUIZ\nquiz_show_incorrect: true\n"
+    "quiz_pass_percentage: 70\n"
+)
+
+
+@pytest.mark.django_db
+def test_form_time_limit_minutes_saves(make_temp_file, mock_site_context) -> None:
+    form = _save_quiz(
+        make_temp_file,
+        mock_site_context,
+        _QUIZ_FRONT_MATTER + "time_limit_minutes: 45\n",
+    )
+
+    assert form.time_limit_minutes == 45
+
+
+@pytest.mark.django_db
+def test_removing_time_limit_minutes_clears_it_on_the_next_load(
+    make_temp_file, mock_site_context
+) -> None:
+    timed = _save_quiz(
+        make_temp_file,
+        mock_site_context,
+        _QUIZ_FRONT_MATTER + "time_limit_minutes: 45\n",
+    )
+
+    reloaded = _save_quiz(
+        make_temp_file, mock_site_context, _QUIZ_FRONT_MATTER + f"uuid: {timed.id}\n"
+    )
+
+    assert reloaded.pk == timed.pk
+    assert reloaded.time_limit_minutes is None

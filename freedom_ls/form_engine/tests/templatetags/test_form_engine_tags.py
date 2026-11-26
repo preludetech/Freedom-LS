@@ -713,3 +713,11 @@ def test_question_options_prefer_revision_options_over_the_sitting_path(
     )
 
     assert [option.text for option in options] == ["Alpha", "Beta"]
+
+
+def test_quiz_time_limit_text_filter_renders_words() -> None:
+    rendered = Template(
+        "{% load form_engine_tags %}{{ m|quiz_time_limit_text }}"
+    ).render(Context({"m": 90}))
+
+    assert rendered == "1 hour 30 minutes"

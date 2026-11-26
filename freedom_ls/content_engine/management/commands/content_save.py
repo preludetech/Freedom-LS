@@ -876,12 +876,15 @@ def save_course_part(item, site, base_path):
 
 def save_form(item, site, base_path):
     """Save a Form to the database."""
+    # Written on every load, None included, so that deleting `time_limit_minutes`
+    # from the file removes the limit; a None in the dump would be dropped.
     return save_with_uuid(
         Form,
         item,
         site,
         base_path,
-        exclude_fields=DUE_DATE_FIELD_NAMES | {"sections"},
+        exclude_fields=DUE_DATE_FIELD_NAMES | {"sections", "time_limit_minutes"},
+        time_limit_minutes=item.time_limit_minutes,
     )
 
 

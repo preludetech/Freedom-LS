@@ -15,6 +15,7 @@ from freedom_ls.form_engine.phone_numbers import (
     phone_examples,
     stored_phone_country,
 )
+from freedom_ls.form_engine.queries import format_quiz_time_limit
 from freedom_ls.form_engine.submissions import submitted_phone_country
 from freedom_ls.form_engine.typed_answers import format_answer
 from freedom_ls.form_engine.uploads import (
@@ -30,6 +31,12 @@ if TYPE_CHECKING:
     from freedom_ls.form_engine.models import FormQuestion, QuestionOption
 
 register = template.Library()
+
+
+@register.filter
+def quiz_time_limit_text(minutes: int) -> str:
+    """A quiz time limit in minutes, as words."""
+    return format_quiz_time_limit(minutes)
 
 
 @register.simple_tag

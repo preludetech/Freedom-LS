@@ -48,6 +48,13 @@ OPTION_QUESTION_TYPES = frozenset(
 )
 
 
+class CompletionReason(models.TextChoices):
+    """Why a sitting was completed."""
+
+    LEARNER_SUBMITTED = "learner_submitted", _("Learner submitted")
+    TIME_EXPIRED = "time_expired", _("Time ran out")
+
+
 class FormStrategy(models.TextChoices):
     """Form strategy enumeration."""
 

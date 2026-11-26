@@ -40,6 +40,17 @@ def without_quiz_answers[T: Model](
     )
 
 
+def format_quiz_time_limit(minutes: int) -> str:
+    """A quiz time limit in words: "45 minutes", "1 hour", "1 hour 30 minutes"."""
+    hours, rest = divmod(minutes, 60)
+    parts: list[str] = []
+    if hours:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if rest or not hours:
+        parts.append(f"{rest} minute{'s' if rest != 1 else ''}")
+    return " ".join(parts)
+
+
 def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
     """Whether a completed attempt passed, or None when there is no verdict to give.
 

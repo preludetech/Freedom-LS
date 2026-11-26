@@ -5130,3 +5130,38 @@ def test_posting_an_answer_for_an_undrawn_question_stores_nothing_for_it(
         question.id for question in drawn
     }
     assert not QuestionAnswer.objects.filter(question__in=undrawn).exists()
+
+
+def _start_page_content(client: Client, *, time_limit_minutes: int | None) -> str:
+    user = UserFactory()
+    form = FormFactory(time_limit_minutes=time_limit_minutes)
+    FormQuestionFactory(form_page=FormPageFactory(form=form, order=0), order=0)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response: HttpResponse = client.get(url)
+    return response.content.decode()
+
+
+@pytest.mark.django_db
+def test_form_start_page_shows_the_time_limit_and_notice_for_a_timed_quiz(
+    mock_site_context, client
+):
+    content = _start_page_content(client, time_limit_minutes=90)
+
+    assert "1 hour 30 minutes" in content
+    assert "This quiz has a time limit of 1 hour 30 minutes." in content
+    assert "The clock starts when you press Start" in content
+
+
+@pytest.mark.django_db
+def test_form_start_page_shows_no_time_limit_for_an_untimed_quiz(
+    mock_site_context, client
+):
+    content = _start_page_content(client, time_limit_minutes=None)
+
+    assert "time limit" not in content

@@ -33,7 +33,12 @@ from freedom_ls.site_aware_models.models import (
     TimestampedModel,
 )
 
-from .enums import FREE_TEXT_QUESTION_TYPES, FormStrategy, QuestionType
+from .enums import (
+    FREE_TEXT_QUESTION_TYPES,
+    CompletionReason,
+    FormStrategy,
+    QuestionType,
+)
 from .live_tree import live_pages
 from .phone_numbers import e164_phone_answer
 from .scoring import is_quiz_answer_correct
@@ -56,6 +61,7 @@ if TYPE_CHECKING:
 # resolving now that the enums live in their own module.
 __all__ = [
     "FREE_TEXT_QUESTION_TYPES",
+    "CompletionReason",
     "Form",
     "FormPage",
     "FormProgress",
@@ -86,6 +92,15 @@ class Form(TitledContent, MarkdownContent):
         blank=True,
         null=True,
         help_text=_("Percentage (0-100) required to pass the quiz"),
+    )
+
+    time_limit_minutes = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text=_(
+            "Minutes a learner has to finish a quiz sitting, counted from when it "
+            "starts. If empty (default), the quiz has no time limit."
+        ),
     )
 
     submit_on_exit = models.BooleanField(
@@ -510,6 +525,17 @@ class FormProgress(SiteAwareModel):
         on_delete=models.SET_NULL,
         related_name="+",
         help_text=_("The page furthest along this sitting has been shown"),
+    )
+    completion_reason = models.CharField(
+        max_length=20,
+        choices=CompletionReason.choices,
+        default=CompletionReason.LEARNER_SUBMITTED,
+        help_text=_("Why this sitting was completed"),
+    )
+    time_limit_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text=_("The quiz time limit in force when this sitting completed"),
     )
     asked = models.JSONField(
         null=True,

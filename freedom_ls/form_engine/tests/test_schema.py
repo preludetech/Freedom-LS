@@ -810,3 +810,44 @@ def test_a_quiz_with_requires_declaration_and_text_parses() -> None:
 
     assert form.requires_declaration is True
     assert form.declaration_text == "I confirm."
+
+
+def _quiz_with_limit(**extra: object) -> dict[str, object]:
+    return {
+        "content_type": "FORM",
+        "file_path": "forms/quiz/form.md",
+        "title": "Quiz",
+        "strategy": "QUIZ",
+        "quiz_show_incorrect": True,
+        "quiz_pass_percentage": 70,
+        **extra,
+    }
+
+
+def test_a_quiz_form_accepts_a_time_limit() -> None:
+    form = Form.model_validate(_quiz_with_limit(time_limit_minutes=45))
+
+    assert form.time_limit_minutes == 45
+
+
+@pytest.mark.parametrize("strategy", ["UNSCORED", "CATEGORY_VALUE_SUM"])
+def test_a_time_limit_on_a_non_quiz_form_is_rejected(strategy: str) -> None:
+    with pytest.raises(
+        ValidationError,
+        match="time_limit_minutes should only be set when strategy is QUIZ",
+    ):
+        Form.model_validate(
+            {
+                "content_type": "FORM",
+                "file_path": "forms/survey/form.md",
+                "title": "Survey",
+                "strategy": strategy,
+                "time_limit_minutes": 30,
+            }
+        )
+
+
+@pytest.mark.parametrize("minutes", [0, -5])
+def test_a_time_limit_of_zero_or_less_is_rejected(minutes: int) -> None:
+    with pytest.raises(ValidationError):
+        Form.model_validate(_quiz_with_limit(time_limit_minutes=minutes))

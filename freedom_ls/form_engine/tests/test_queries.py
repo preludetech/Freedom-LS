@@ -46,6 +46,7 @@ from freedom_ls.form_engine.queries import (
     count_sitting_questions,
     drawing_page_counts,
     form_questions,
+    format_quiz_time_limit,
     quiz_verdict,
     stored_score_outdated,
     without_quiz_answers,
@@ -779,3 +780,18 @@ def test_without_quiz_answers_drops_quiz_rows_and_keeps_the_other_strategies(
     result = without_quiz_answers(model.objects.all(), path)
 
     assert sorted(row.pk for row in result) == sorted(kept)
+
+
+@pytest.mark.parametrize(
+    ("minutes", "text"),
+    [
+        (1, "1 minute"),
+        (45, "45 minutes"),
+        (60, "1 hour"),
+        (120, "2 hours"),
+        (90, "1 hour 30 minutes"),
+        (61, "1 hour 1 minute"),
+    ],
+)
+def test_format_quiz_time_limit_words(minutes: int, text: str) -> None:
+    assert format_quiz_time_limit(minutes) == text
