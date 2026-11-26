@@ -66,7 +66,16 @@ examRunnerForm scope (no intermediate x-data between them).
          class="h-screen flex flex-col overflow-hidden">
 
         {% comment %}=== TOP BAR (fixed in place by the flex column; no stacking context, so the dialogs inside it can cover the footer) ==={% endcomment %}
-        <div class="flex-none">
+        {% comment %}
+        A timed sitting puts x-data="examCountdown" here so the timer and any
+        warnings share one scope; the nested examExitDialog keeps its own.
+        {% endcomment %}
+        <div class="flex-none"
+             {% if remaining_seconds is not None %}
+             x-data="examCountdown"
+             data-remaining-seconds="{{ remaining_seconds }}"
+             data-time-up-url="{{ submit_and_exit_url }}"
+             {% endif %}>
 
             {% comment %}Runner bar: 3-column — exit X (left), form title (centre), answered count (right){% endcomment %}
             <div class="flex items-center justify-between gap-2 px-4 py-3 bg-white border-b border-border">
@@ -184,9 +193,19 @@ examRunnerForm scope (no intermediate x-data between them).
                 reflects answers filled in on this page; {{ answered_count }} is the
                 no-JS fallback.
                 {% endcomment %}
-                <div class="text-sm text-muted whitespace-nowrap"
-                     data-testid="answered-summary">
-                    <span x-text="answeredCount">{{ answered_count }}</span> of {{ total_question_count }} answered
+                <div class="flex items-center gap-3 text-sm text-muted whitespace-nowrap">
+                    {% if remaining_seconds is not None %}
+                        {% comment %}Not a live region: a ticking announcement every second would drown the page.{% endcomment %}
+                        <span role="timer"
+                              aria-atomic="true"
+                              aria-label="Time left"
+                              class="font-semibold text-on-surface tabular-nums"
+                              data-testid="quiz-countdown"
+                              x-text="text">{{ remaining_text }}</span>
+                    {% endif %}
+                    <span data-testid="answered-summary">
+                        <span x-text="answeredCount">{{ answered_count }}</span> of {{ total_question_count }} answered
+                    </span>
                 </div>
 
             </div>

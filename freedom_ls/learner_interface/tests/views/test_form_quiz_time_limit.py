@@ -714,3 +714,111 @@ def test_saving_into_a_sitting_another_request_completed_changes_nothing(
 
     assert saved is False
     assert _saved_answers(stale) == {}
+
+
+def _runner_page(client: Client, course: Course) -> HttpResponse:
+    return cast("HttpResponse", client.get(_fill_url(course, 1)))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("elapsed", "remaining_seconds", "remaining_text"),
+    [
+        (timedelta(0), 1800, "30:00"),
+        (timedelta(minutes=29, seconds=59, milliseconds=400), 0, "0:00"),
+        (timedelta(minutes=25, seconds=30, milliseconds=500), 269, "4:29"),
+        (timedelta(minutes=29, seconds=5), 55, "0:55"),
+    ],
+)
+def test_the_runner_context_counts_the_whole_seconds_left(
+    paged_course: PagedCourse,
+    client: Client,
+    elapsed: timedelta,
+    remaining_seconds: int,
+    remaining_text: str,
+) -> None:
+    course, form, _, user, _ = paged_course
+    _open_sitting(course, user, form)
+
+    with time_machine.travel(STARTED_AT + elapsed, tick=False):
+        response = _runner_page(client, course)
+
+    assert response.context["remaining_seconds"] == remaining_seconds
+    assert response.context["remaining_text"] == remaining_text
+
+
+@pytest.mark.django_db
+def test_the_runner_context_shows_hours_for_a_limit_of_an_hour_or_more(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, _, user, _ = paged_course
+    Form.objects.filter(pk=form.pk).update(time_limit_minutes=125)
+    _open_sitting(course, user, form)
+
+    with time_machine.travel(STARTED_AT, tick=False):
+        response = _runner_page(client, course)
+
+    assert response.context["remaining_text"] == "2:05:00"
+
+
+@pytest.mark.django_db
+def test_an_untimed_runner_context_has_no_remaining_time(
+    mock_site_context: object, client: Client
+) -> None:
+    user: User = UserFactory()
+    form, _ = _paged_quiz(limit=None)
+    course = course_with_form(form)
+    course_progress_record(course, user, created_at=REGISTERED_AT)
+    client.force_login(user)
+    _open_sitting(course, user, form)
+
+    with time_machine.travel(STARTED_AT, tick=False):
+        response = _runner_page(client, course)
+
+    assert response.context["remaining_seconds"] is None
+
+
+@pytest.mark.django_db
+def test_a_timed_runner_page_has_a_timer_named_time_left(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, _, user, _ = paged_course
+    _open_sitting(course, user, form)
+
+    with time_machine.travel(STARTED_AT, tick=False):
+        html = _runner_page(client, course).content.decode()
+
+    assert 'role="timer"' in html
+    assert 'aria-label="Time left"' in html
+
+
+@pytest.mark.django_db
+def test_a_timed_runner_page_carries_the_countdown_data_attributes(
+    paged_course: PagedCourse, client: Client
+) -> None:
+    course, form, _, user, _ = paged_course
+    _open_sitting(course, user, form)
+
+    with time_machine.travel(STARTED_AT, tick=False):
+        html = _runner_page(client, course).content.decode()
+
+    assert 'x-data="examCountdown"' in html
+    assert 'data-remaining-seconds="1800"' in html
+    assert f'data-time-up-url="{_exit_url(course)}"' in html
+
+
+@pytest.mark.django_db
+def test_an_untimed_runner_page_has_no_timer(
+    mock_site_context: object, client: Client
+) -> None:
+    user: User = UserFactory()
+    form, _ = _paged_quiz(limit=None)
+    course = course_with_form(form)
+    course_progress_record(course, user, created_at=REGISTERED_AT)
+    client.force_login(user)
+    _open_sitting(course, user, form)
+
+    html = _runner_page(client, course).content.decode()
+
+    assert 'role="timer"' not in html
+    assert "data-remaining-seconds" not in html

@@ -2303,6 +2303,15 @@ def _form_page_url(course_slug: str, index: int, page_number: int) -> str:
     )
 
 
+def _format_countdown(seconds: int) -> str:
+    """Whole seconds as the countdown shows them: m:ss, or h:mm:ss from an hour."""
+    hours, rest = divmod(seconds, 3600)
+    minutes, secs = divmod(rest, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
 def _render_form_fill_page(
     request: HttpRequest,
     course: Course,
@@ -2315,6 +2324,7 @@ def _render_form_fill_page(
     *,
     reference_linked: bool,
     decision: CourseAccessDecision,
+    now: datetime,
     course_index: PlayerCourseIndex | None = None,
 ) -> HttpResponse:
     """Render one runner page, carrying whatever a submission was rejected for.
@@ -2326,6 +2336,8 @@ def _render_form_fill_page(
     here, so leaving by the dialog moves the resume point just as paging does.
     ``course_index`` is the outline a caller already built for its gate, so the
     chrome does not build it again; a caller with no gate leaves it out.
+    ``now`` is the instant the caller's expiry check used, so the countdown
+    starts from the same clock that decided the sitting was still open.
     """
 
     def url_for_page(number: int) -> str:
@@ -2343,6 +2355,11 @@ def _render_form_fill_page(
 
     form_progress.record_page_reached(current.number, current.path)
 
+    expiry = form_progress.expires_at()
+    remaining_seconds = (
+        None if expiry is None else max(0, int((expiry - now).total_seconds()))
+    )
+
     context = page_context(form, current, form_progress, submission, url_for_page) | {
         "course": course,
         # Player chrome (outline panel + breadcrumb) so the fill page keeps the
@@ -2358,6 +2375,10 @@ def _render_form_fill_page(
             decision=decision,
         ),
         **answered_counts(form_progress, current.questions, current.path),
+        "remaining_seconds": remaining_seconds,
+        "remaining_text": (
+            None if remaining_seconds is None else _format_countdown(remaining_seconds)
+        ),
         # URLs the exit dialog acts on.
         "submit_and_exit_url": reverse(
             "learner_interface:form_submit_and_exit",
@@ -2504,6 +2525,7 @@ def form_fill_page(
         submission,
         reference_linked=decision.can_access_content,
         decision=decision,
+        now=now,
         course_index=player_index,
     )
 
@@ -3441,6 +3463,7 @@ def form_submit_and_exit(
                     submission,
                     reference_linked=decision.can_access_content,
                     decision=decision,
+                    now=now,
                 )
         form_progress.complete()  # idempotent
 

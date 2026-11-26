@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import timedelta
 from uuid import UUID
 
 import pytest
 from playwright.sync_api import Dialog, Page, expect
 from pytest_django.live_server_helper import LiveServer
+
+from django.utils import timezone
 
 from freedom_ls.accounts.models import User
 from freedom_ls.conftest import reverse_url
@@ -732,3 +735,58 @@ def test_a_declaration_quiz_asks_for_a_signature_before_page_one(
 
     expect(page).to_have_url(re.compile(r"/fill_form/1$"))
     expect(page.get_by_text("Which option is right?")).to_be_visible()
+
+
+def _timed_quiz_course() -> Course:
+    """A one-minute quiz with two required multiple-choice questions."""
+    form = FormFactory(
+        title="Timed Quiz",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=50,
+        time_limit_minutes=1,
+    )
+    form_page = FormPageFactory(form=form, title="Page 1", order=0)
+    for order, (question_text, option) in enumerate(
+        [("What is 2+2?", "4"), ("What is 3+3?", "6")]
+    ):
+        question = FormQuestionFactory(
+            form_page=form_page,
+            question=question_text,
+            type="multiple_choice",
+            order=order,
+            required=True,
+        )
+        QuestionOptionFactory(question=question, text=option, correct=True, order=0)
+    return course_with_form(form, title="Timed Course", slug="timed-course")
+
+
+def test_a_timed_quiz_submits_itself_when_the_countdown_reaches_zero(
+    live_server: LiveServer,
+    logged_in_page: Page,
+    logged_in_user: User,
+) -> None:
+    page = logged_in_page
+    course = _timed_quiz_course()
+    register_user_for_course(course, logged_in_user)
+
+    navigate_to_form(page, live_server, course)
+    expect(page.get_by_text("1 minute").first).to_be_visible()
+    expect(page.get_by_text("This quiz has a time limit of 1 minute.")).to_be_visible()
+    start_form(page)
+
+    # Leave a few seconds on the clock rather than waiting out the whole minute.
+    FormProgress.objects.filter(user=logged_in_user).update(
+        start_time=timezone.now() - timedelta(seconds=55)
+    )
+    page.reload()
+    countdown = page.get_by_test_id("quiz-countdown")
+    expect(countdown).to_have_text(re.compile(r"^0:0[1-5]$"))
+    first_reading = countdown.inner_text()
+    expect(countdown).not_to_have_text(first_reading)
+
+    answer_multiple_choice_question(page, "4")
+
+    expect(page).to_have_url(re.compile(r"/1/complete$"), timeout=15000)
+    expect(page.get_by_text("Time ran out")).to_be_visible()
+    stored = FormProgress.objects.get(user=logged_in_user)
+    assert stored.answers.count() == 1

@@ -446,6 +446,83 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // examCountdown — the timed quiz's countdown, and the browser's submit at 0:00.
+    //
+    // Usage:
+    //   x-data="examCountdown"  data-remaining-seconds="{N}"  data-time-up-url="{url}"
+    //   on the top bar container, so warnings can later share this scope.
+    //
+    // The server decides when time is up; this only posts the open page to the
+    // time-up URL once the countdown reaches zero. A page restored from the
+    // back/forward cache is reloaded so the server's clock is read again.
+    Alpine.data("examCountdown", () => ({
+        text: "",
+        submitted: false,
+        _startRemaining: 0,
+        _timeUpUrl: "",
+        _perfStart: 0,
+        _dateStart: 0,
+        _interval: null,
+        _onVisibility: null,
+        _onPageShow: null,
+        init() {
+            this._startRemaining = Number(this.$el.dataset.remainingSeconds);
+            this._timeUpUrl = this.$el.dataset.timeUpUrl;
+            this._perfStart = performance.now();
+            this._dateStart = Date.now();
+            this._onVisibility = () => this.tick();
+            this._onPageShow = (e) => {
+                if (e.persisted) window.location.reload();
+                else this.tick();
+            };
+            document.addEventListener("visibilitychange", this._onVisibility);
+            window.addEventListener("pageshow", this._onPageShow);
+            this.tick();
+            this._interval = setInterval(() => this.tick(), 1000);
+        },
+        // The larger of the two clock deltas, so neither a changed device clock
+        // nor a suspended tab hides lost time.
+        remaining() {
+            const elapsed = Math.max(
+                performance.now() - this._perfStart,
+                Date.now() - this._dateStart,
+            ) / 1000;
+            return Math.max(0, this._startRemaining - elapsed);
+        },
+        // One clock read decides both the text and the submit.
+        tick() {
+            const left = this.remaining();
+            this.text = this._format(Math.floor(left));
+            if (left <= 0 && !this.submitted) this.submitTimeUp();
+        },
+        _format(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = String(seconds % 60).padStart(2, "0");
+            if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${s}`;
+            return `${m}:${s}`;
+        },
+        submitTimeUp() {
+            this.submitted = true;
+            // Stops the beforeunload guard; form.submit() fires no submit event,
+            // so the required-answer check does not run either.
+            runnerNavigating = true;
+            const form = document.getElementById("runner-page-form");
+            form.action = this._timeUpUrl;
+            const flag = document.createElement("input");
+            flag.type = "hidden";
+            flag.name = "time_up";
+            flag.value = "1";
+            form.appendChild(flag);
+            form.submit();
+        },
+        destroy() {
+            clearInterval(this._interval);
+            document.removeEventListener("visibilitychange", this._onVisibility);
+            window.removeEventListener("pageshow", this._onPageShow);
+        },
+    }));
+
     // -------------------------------------------------------------------------
     // End exam runner components
     // -------------------------------------------------------------------------
