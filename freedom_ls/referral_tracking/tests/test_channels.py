@@ -4,6 +4,10 @@ from datetime import UTC, datetime
 import pytest
 
 from freedom_ls.referral_tracking.channels import (
+    EMAIL_HOSTS,
+    SEARCH_HOSTS,
+    SOCIAL_HOSTS,
+    VIDEO_HOSTS,
     Channel,
     ChannelBasis,
     ChannelResult,
@@ -180,3 +184,101 @@ def test_classify_utm_pair(
     result = classify(_touch(utm_source=utm_source, utm_medium=utm_medium))
 
     assert result == expected
+
+
+def _referer(channel: Channel, platform: str = "") -> ChannelResult:
+    return ChannelResult(channel, platform, ChannelBasis.REFERER)
+
+
+_PAID_GOOGLE = ChannelResult(Channel.PAID_SEARCH, "Google", ChannelBasis.GCLID)
+
+
+@pytest.mark.parametrize("identifier", ["gclid", "gbraid", "wbraid"])
+def test_classify_google_click_identifier_is_paid_search(identifier: str) -> None:
+    result = classify(_touch(**{identifier: "abc"}))
+
+    assert result == _PAID_GOOGLE
+
+
+def test_classify_utm_beats_a_click_identifier() -> None:
+    result = classify(_touch(utm_source="newsletter", utm_medium="email", gclid="abc"))
+
+    assert result == _utm(Channel.EMAIL, "Email")
+
+
+def test_classify_click_identifier_beats_a_referer() -> None:
+    result = classify(_touch(gclid="abc", referer="https://www.facebook.com/"))
+
+    assert result == _PAID_GOOGLE
+
+
+def test_classify_direct_pair_falls_through_to_a_click_identifier() -> None:
+    result = classify(_touch(utm_source="direct", utm_medium="none", gclid="abc"))
+
+    assert result == _PAID_GOOGLE
+
+
+def test_classify_direct_pair_falls_through_to_the_referer() -> None:
+    result = classify(
+        _touch(
+            utm_source="direct", utm_medium="none", referer="https://www.facebook.com/"
+        )
+    )
+
+    assert result == _referer(Channel.ORGANIC_SOCIAL, "Facebook")
+
+
+@pytest.mark.parametrize(
+    ("referer", "expected"),
+    [
+        (
+            "https://l.facebook.com/l.php?u=x",
+            _referer(Channel.ORGANIC_SOCIAL, "Facebook"),
+        ),
+        ("https://lm.facebook.com/", _referer(Channel.ORGANIC_SOCIAL, "Facebook")),
+        ("https://m.facebook.com/", _referer(Channel.ORGANIC_SOCIAL, "Facebook")),
+        ("https://l.instagram.com/", _referer(Channel.ORGANIC_SOCIAL, "Instagram")),
+        ("https://search.yahoo.com/", _referer(Channel.ORGANIC_SEARCH, "Yahoo")),
+        ("https://www.google.co.za/", _referer(Channel.ORGANIC_SEARCH, "Google")),
+        ("https://www.google.com.au/", _referer(Channel.ORGANIC_SEARCH, "Google")),
+        ("https://www.google.de/", _referer(Channel.ORGANIC_SEARCH, "Google")),
+        ("https://accounts.google.com/", _referer(Channel.REFERRAL)),
+        ("https://docs.google.com/", _referer(Channel.REFERRAL)),
+        ("https://box.com/", _referer(Channel.REFERRAL)),
+        ("https://ghost.co/", _referer(Channel.REFERRAL)),
+        ("https://outlook.office.com/", _referer(Channel.EMAIL, "Outlook")),
+        ("https://outlook.office365.com/", _referer(Channel.EMAIL, "Outlook")),
+        ("https://mail.proton.me/", _referer(Channel.EMAIL, "Proton Mail")),
+        ("https://www.icloud.com/mail/", _referer(Channel.EMAIL, "iCloud Mail")),
+        ("https://mail.yahoo.com/", _referer(Channel.EMAIL, "Yahoo Mail")),
+        ("android-app://com.google.android.gm/", _referer(Channel.EMAIL, "Gmail")),
+        (
+            "android-app://com.linkedin.android/",
+            _referer(Channel.ORGANIC_SOCIAL, "LinkedIn"),
+        ),
+        ("android-app://com.example.app/", _referer(Channel.REFERRAL)),
+        ("not a url", ChannelResult(Channel.DIRECT, "", ChannelBasis.NONE)),
+        ("http://", ChannelResult(Channel.DIRECT, "", ChannelBasis.NONE)),
+    ],
+)
+def test_classify_referer(referer: str, expected: ChannelResult) -> None:
+    result = classify(_touch(referer=referer))
+
+    assert result == expected
+
+
+def _nested_entries(table: dict[str, str]) -> list[tuple[str, str]]:
+    return [
+        (entry, other)
+        for entry in table
+        for other in table
+        if entry != other and entry.endswith("." + other)
+    ]
+
+
+@pytest.mark.parametrize(
+    "table", [SEARCH_HOSTS, SOCIAL_HOSTS, VIDEO_HOSTS, EMAIL_HOSTS]
+)
+def test_host_table_has_no_entry_nested_under_another(table: dict[str, str]) -> None:
+    # A nested entry would never be reached, so its platform would be ignored.
+    assert _nested_entries(table) == []

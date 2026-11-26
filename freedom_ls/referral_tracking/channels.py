@@ -11,6 +11,8 @@ from typing import Protocol
 
 from django.db import models
 
+from freedom_ls.referral_tracking.referers import referer_host
+
 
 class Channel(models.TextChoices):
     # Declaration order is the display order: `.choices` feeds filter dropdowns.
@@ -152,6 +154,88 @@ VIDEO_SOURCES: dict[str, str] = {
 
 _SOCIAL_AND_VIDEO_SOURCES: dict[str, str] = {**SOCIAL_SOURCES, **VIDEO_SOURCES}
 
+SEARCH_HOSTS: dict[str, str] = {
+    "bing.com": "Bing",
+    "duckduckgo.com": "DuckDuckGo",
+    "yahoo.com": "Yahoo",
+    "yahoo.co.jp": "Yahoo",
+    "ecosia.org": "Ecosia",
+    "baidu.com": "Baidu",
+    "yandex.com": "Yandex",
+    "yandex.ru": "Yandex",
+    "qwant.com": "Qwant",
+    "ask.com": "Ask",
+    "aol.com": "AOL",
+    "naver.com": "Naver",
+    "seznam.cz": "Seznam",
+    "sogou.com": "Sogou",
+    "msn.com": "MSN",
+    "search.google.com": "Google",
+    "lens.google.com": "Google",
+    "news.google.com": "Google",
+    "play.google.com": "Google",
+}
+SOCIAL_HOSTS: dict[str, str] = {
+    "facebook.com": "Facebook",
+    "fb.com": "Facebook",
+    "fb.me": "Facebook",
+    "instagram.com": "Instagram",
+    "messenger.com": "Meta",
+    "t.co": "X",
+    "twitter.com": "X",
+    "x.com": "X",
+    "linkedin.com": "LinkedIn",
+    "lnkd.in": "LinkedIn",
+    "tiktok.com": "TikTok",
+    "pinterest.com": "Pinterest",
+    "reddit.com": "Reddit",
+    "whatsapp.com": "WhatsApp",
+    "wa.me": "WhatsApp",
+    "snapchat.com": "Snapchat",
+    "tumblr.com": "Tumblr",
+    "quora.com": "Quora",
+    "vk.com": "VK",
+    "weibo.com": "Weibo",
+    "wechat.com": "WeChat",
+}
+VIDEO_HOSTS: dict[str, str] = {
+    "youtube.com": "YouTube",
+    "youtu.be": "YouTube",
+    "vimeo.com": "Vimeo",
+    "twitch.tv": "Twitch",
+    "dailymotion.com": "Dailymotion",
+}
+EMAIL_HOSTS: dict[str, str] = {
+    "mail.google.com": "Gmail",
+    "mail.yahoo.com": "Yahoo Mail",
+    "outlook.live.com": "Outlook",
+    "outlook.office.com": "Outlook",
+    "outlook.office365.com": "Outlook",
+    "mail.proton.me": "Proton Mail",
+    "icloud.com": "iCloud Mail",
+}
+GOOGLE_SEARCH_HOST = re.compile(r"^google\.([a-z]{2,3}|co\.[a-z]{2}|com\.[a-z]{2})$")
+APP_PACKAGES: dict[str, tuple[Channel, str]] = {
+    "com.facebook.katana": (Channel.ORGANIC_SOCIAL, "Facebook"),
+    "com.facebook.lite": (Channel.ORGANIC_SOCIAL, "Facebook"),
+    "com.facebook.orca": (Channel.ORGANIC_SOCIAL, "Meta"),
+    "com.instagram.android": (Channel.ORGANIC_SOCIAL, "Instagram"),
+    "com.whatsapp": (Channel.ORGANIC_SOCIAL, "WhatsApp"),
+    "com.twitter.android": (Channel.ORGANIC_SOCIAL, "X"),
+    "com.linkedin.android": (Channel.ORGANIC_SOCIAL, "LinkedIn"),
+    "com.zhiliaoapp.musically": (Channel.ORGANIC_SOCIAL, "TikTok"),
+    "com.pinterest": (Channel.ORGANIC_SOCIAL, "Pinterest"),
+    "com.reddit.frontpage": (Channel.ORGANIC_SOCIAL, "Reddit"),
+    "com.snapchat.android": (Channel.ORGANIC_SOCIAL, "Snapchat"),
+    "org.telegram.messenger": (Channel.ORGANIC_SOCIAL, "Telegram"),
+    "com.google.android.youtube": (Channel.ORGANIC_SOCIAL, "YouTube"),
+    "com.google.android.googlequicksearchbox": (Channel.ORGANIC_SEARCH, "Google"),
+    "com.google.android.gm": (Channel.EMAIL, "Gmail"),
+    "com.microsoft.office.outlook": (Channel.EMAIL, "Outlook"),
+}
+
+_ANDROID_APP_PREFIX = "android-app://"
+
 
 def is_direct_pair(utm_source: str, utm_medium: str) -> bool:
     """True when the source is a direct marker and the medium is an empty marker."""
@@ -159,6 +243,18 @@ def is_direct_pair(utm_source: str, utm_medium: str) -> bool:
         utm_source.strip().lower() in DIRECT_SOURCES
         and utm_medium.strip().lower() in DIRECT_MEDIA
     )
+
+
+def _matches(host: str, listed: str) -> bool:
+    return host == listed or host.endswith("." + listed)
+
+
+def _lookup(host: str, table: dict[str, str]) -> str | None:
+    """The platform for the first listed name that the host equals or sits under."""
+    for listed, platform in table.items():
+        if _matches(host, listed):
+            return platform
+    return None
 
 
 def _utm_signal(first_touch: FirstTouch) -> tuple[str, str] | None:
@@ -199,6 +295,39 @@ def _utm_result(source: str, medium: str) -> ChannelResult:
     return result(Channel.OTHER)
 
 
+def _has_google_click_id(first_touch: FirstTouch) -> bool:
+    return bool(first_touch.gclid or first_touch.gbraid or first_touch.wbraid)
+
+
+def _referer_result(referer: str) -> ChannelResult | None:
+    host = referer_host(referer)
+    if not host:
+        return None
+
+    def result(channel: Channel, platform: str = "") -> ChannelResult:
+        return ChannelResult(channel, platform, ChannelBasis.REFERER)
+
+    # Checked on the raw string first: `referer_host` returns a bare package name,
+    # which could otherwise match a web host table.
+    if referer.strip().lower().startswith(_ANDROID_APP_PREFIX):
+        channel, platform = APP_PACKAGES.get(host, (Channel.REFERRAL, ""))
+        return result(channel, platform)
+    mail_platform = _lookup(host, EMAIL_HOSTS)
+    if mail_platform is not None:
+        return result(Channel.EMAIL, mail_platform)
+    if GOOGLE_SEARCH_HOST.match(host):
+        return result(Channel.ORGANIC_SEARCH, "Google")
+    for channel, table in (
+        (Channel.ORGANIC_SEARCH, SEARCH_HOSTS),
+        (Channel.ORGANIC_SOCIAL, SOCIAL_HOSTS),
+        (Channel.ORGANIC_SOCIAL, VIDEO_HOSTS),
+    ):
+        listed_platform = _lookup(host, table)
+        if listed_platform is not None:
+            return result(channel, listed_platform)
+    return result(Channel.REFERRAL)
+
+
 def classify(first_touch: FirstTouch | None) -> ChannelResult:
     """The first matching rule wins."""
     if first_touch is None:
@@ -206,4 +335,9 @@ def classify(first_touch: FirstTouch | None) -> ChannelResult:
     utm_pair = _utm_signal(first_touch)
     if utm_pair is not None:
         return _utm_result(*utm_pair)
+    if _has_google_click_id(first_touch):
+        return ChannelResult(Channel.PAID_SEARCH, "Google", ChannelBasis.GCLID)
+    from_referer = _referer_result(first_touch.referer)
+    if from_referer is not None:
+        return from_referer
     return ChannelResult(Channel.DIRECT, "", ChannelBasis.NONE)
