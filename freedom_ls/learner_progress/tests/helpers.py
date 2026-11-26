@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import cast
 
+import pytest
+
+from django.db.models import Model
 from django.utils import timezone
 
+from freedom_ls.accounts import admin as accounts_admin
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
@@ -189,3 +194,15 @@ def change_course_title(record: CourseProgress) -> None:
     course = record.course
     course.title = "Changed title"
     course.save()
+
+
+def stub_unlinked(monkeypatch: pytest.MonkeyPatch, count: int) -> list[list[User]]:
+    """Register a collector that reports `count` learners and records its calls."""
+    calls: list[list[User]] = []
+
+    def collect(users: Sequence[User]) -> tuple[type[Model], int]:
+        calls.append(list(users))
+        return Learner, count
+
+    monkeypatch.setattr(accounts_admin, "USER_ERASURE_UNLINKED_RECORDS", [collect])
+    return calls
