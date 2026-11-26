@@ -23,13 +23,6 @@ TAILWIND_COMPONENTS_CSS: Path = (
 )
 BASE_TEMPLATES_DIR: Path = FREEDOM_LS_PACKAGE_DIR / "base" / "templates"
 BASE_INTERFACE: Path = BASE_TEMPLATES_DIR / "_base_interface.html"
-MODAL_FOOTER: Path = (
-    FREEDOM_LS_PACKAGE_DIR
-    / "panel_framework"
-    / "templates"
-    / "cotton"
-    / "modal-footer.html"
-)
 
 
 def test_the_base_select_rule_draws_its_own_chevron_inside_the_end_padding() -> None:
@@ -44,15 +37,15 @@ def test_the_base_select_rule_draws_its_own_chevron_inside_the_end_padding() -> 
     assert "pr-10" in chevron_rules[0]
 
 
-def test_only_the_dialog_footer_makes_a_button_44px_tall_on_a_phone() -> None:
-    """Below md every `.btn` gets a 44px hit area from an invisible ::after, and
-    the one height rule for buttons is the dialog footer's."""
+def test_no_button_rule_sets_a_touch_height() -> None:
+    """No `.btn` rule sets `min-h-11`: every button, a dialog footer's
+    included, is small below md and reaches 44px through the invisible ::after
+    hit area every `.btn` gets there."""
     css = TAILWIND_COMPONENTS_CSS.read_text()
     height_rules = re.findall(r"\n    ([^\n{]*\.btn[^\n{]*)\{[^}]*min-h-11", css)
 
-    assert height_rules == ["[data-modal-footer] .btn "]
+    assert height_rules == []
     assert re.search(r"\.btn::after \{[^}]*height: 2\.75rem", css)
-    assert "data-modal-footer" in MODAL_FOOTER.read_text()
 
 
 @pytest.mark.parametrize(

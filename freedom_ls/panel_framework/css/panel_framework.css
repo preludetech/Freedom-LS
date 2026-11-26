@@ -186,10 +186,12 @@
         }
     }
 
-    /* A dialog footer's Cancel and confirm are the decision the dialog asks
-     * for, at the bottom of the sheet under the thumb: 44px tall below md. */
+    /* A dialog footer's buttons are small below md like every other button,
+     * with the same invisible 44px hit area. The footer's 16px padding holds
+     * the 6px the hit area reaches past the button, so the dialog does not
+     * clip it. */
     [data-modal-footer] .panel-btn {
-        @apply max-md:min-h-11
+        @apply max-md:px-2 max-md:py-1.5 max-md:text-sm
     }
 
     /* Modal scrim: the ::backdrop pseudo of a native <dialog>, whose own box stays

@@ -490,16 +490,15 @@ def test_no_template_hand_writes_a_table_outside_the_table_components() -> None:
 
 def test_every_framework_action_trigger_is_small() -> None:
     """The framework renders every action trigger (page header, panel
-    footer, empty state, row) at the small size; only a dialog's footer
-    buttons are full size."""
+    footer, empty state, row) at the small size."""
     for name in ("modal_trigger.html", "action_button.html"):
         assert 'size="small"' in (PARTIALS_DIR / name).read_text(), name
 
 
 def test_no_button_hand_writes_a_touch_height() -> None:
     """A button looks the same at every width: the shared `.panel-btn` rule gives it
-    an invisible 44px hit area below md, and only the dialog footer's rule
-    makes a button 44px to the eye. So no button carries `min-h-11` itself.
+    an invisible 44px hit area below md, so no button carries `min-h-11`
+    itself.
     Dropdown menu items are not `.panel-btn`, so they keep theirs."""
     offenders = template_rules.hand_written_touch_heights(
         TEMPLATES_DIR, "panel-button", "panel-btn", "panel-dropdown-menu"
@@ -508,15 +507,15 @@ def test_no_button_hand_writes_a_touch_height() -> None:
     assert offenders == []
 
 
-def test_only_the_dialog_footer_makes_a_panel_button_44px_tall_on_a_phone() -> None:
-    """The framework stylesheet's one height rule for `.panel-btn` is the
-    dialog footer's, beside the hit area every `.panel-btn` gets below md."""
+def test_no_panel_button_rule_sets_a_touch_height() -> None:
+    """No `.panel-btn` rule in the framework stylesheet sets `min-h-11`: every
+    button, a dialog footer's included, is small below md and reaches 44px
+    through the invisible hit area every `.panel-btn` gets there."""
     css = FRAMEWORK_CSS.read_text()
     height_rules = re.findall(r"\n    ([^\n{]*\.panel-btn[^\n{]*)\{[^}]*min-h-11", css)
 
-    assert height_rules == ["[data-modal-footer] .panel-btn "]
+    assert height_rules == []
     assert re.search(r"\.panel-btn::after \{[^}]*height: 2\.75rem", css)
-    assert "data-modal-footer" in (COMPONENTS_DIR / "modal-footer.html").read_text()
 
 
 def test_the_filter_sheet_has_a_close_control() -> None:

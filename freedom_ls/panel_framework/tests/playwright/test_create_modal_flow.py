@@ -257,13 +257,14 @@ def test_create_modal_flow(
             assert footer_box is not None
             assert last_box is not None
             assert cancel_box is not None
-            assert last_box["y"] > cancel_box["y"] + cancel_box["height"] - 1, (
-                "footer actions did not wrap below Cancel at 375px"
+            # The small footer buttons fit beside Cancel on one row.
+            assert last_box["y"] == pytest.approx(cancel_box["y"], abs=1), (
+                "footer actions wrapped below Cancel at 375px"
             )
             # The footer has px-6 (24px) padding.
             assert last_box["x"] + last_box["width"] == pytest.approx(
                 footer_box["x"] + footer_box["width"] - 24, abs=1
-            ), "wrapped footer actions not right-aligned at 375px"
+            ), "footer actions not right-aligned at 375px"
 
         page.keyboard.press("Escape")
         expect(modal).to_be_hidden()

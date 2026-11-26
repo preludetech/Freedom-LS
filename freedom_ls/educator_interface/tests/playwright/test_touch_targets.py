@@ -1,7 +1,7 @@
 """Touch targets on the educator interface: 44px to the touch below md.
 
 A button keeps its desktop look on a phone; an invisible ::after hit area
-gives it the 44px height. Only a dialog footer's buttons are 44px to the eye.
+gives it the 44px height. A dialog footer's buttons are small below md too.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import base64
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Locator, Page
 from pytest_django.live_server_helper import LiveServer
 
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -19,7 +19,10 @@ from freedom_ls.base.tests.tailwind_build import build_fls_css_with_theme
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
+from freedom_ls.tests.playwright_helpers import (
+    QA_VIEWPORTS,
+    assert_no_horizontal_overflow,
+)
 
 from .helpers import interface_url
 
@@ -42,11 +45,23 @@ _SMALLEST_CONTROL = """() => {
     return [...controls]
         .map((el) => ({ el, box: hitTarget(el).getBoundingClientRect() }))
         .filter(({ box }) => box.width > 0 && box.height > 0)
-        .filter(({ el, box }) => Math.round(hitHeight(el, box)) < 44 || Math.round(box.width) < 44)
+        // A dialog footer's button is as wide as its label, so a short label is
+        // narrower than 44px; its hit area is still 44px tall.
+        .filter(({ el, box }) => Math.round(hitHeight(el, box)) < 44
+            || (!el.closest("[data-modal-footer]") && Math.round(box.width) < 44))
         .map(({ el, box }) => `${el.tagName} ${el.textContent.trim().slice(0, 20)} ${box.width}x${box.height}`);
 }"""
 
 _BUTTON_HEIGHT = """(button) => button.getBoundingClientRect().height"""
+
+# The vertical extent of a button's invisible hit area (its ::after), as
+# [top, bottom] in page coordinates.
+_HIT_AREA_SPAN = """(button) => {
+    const box = button.getBoundingClientRect();
+    const height = parseFloat(getComputedStyle(button, "::after").height) || 0;
+    const centre = box.top + box.height / 2;
+    return [centre - height / 2, centre + height / 2, box.left, box.right];
+}"""
 
 
 def test_touch_targets_flow(
@@ -56,7 +71,8 @@ def test_touch_targets_flow(
 ) -> None:
     """On a phone no header, tab, search or dialog control is under 44px to
     the touch, a small button keeps its desktop look (under 40px tall) and a
-    dialog footer's Cancel is 44px tall."""
+    dialog footer's buttons are small too, with 44px hit areas that do not
+    overlap, on a phone and unchanged above md."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
@@ -76,10 +92,21 @@ def test_touch_targets_flow(
     dialog = page.get_by_role("dialog", name="Create cohort")
     dialog.wait_for()
     assert page.evaluate(_SMALLEST_CONTROL) == [], "create dialog has a small control"
-    cancel = dialog.locator("footer").get_by_role("button", name="Cancel")
-    assert round(cancel.evaluate(_BUTTON_HEIGHT)) >= 44, (
-        "dialog footer Cancel under 44px tall"
-    )
+    footer_buttons = dialog.locator("footer").get_by_role("button")
+    assert footer_buttons.count() >= 2
+    for index in range(footer_buttons.count()):
+        button = footer_buttons.nth(index)
+        assert button.evaluate(_BUTTON_HEIGHT) < 40, "dialog footer button not small"
+        top, bottom, _, _ = button.evaluate(_HIT_AREA_SPAN)
+        assert bottom - top >= 44, "dialog footer button hit area under 44px"
+    first_span = footer_buttons.nth(0).evaluate(_HIT_AREA_SPAN)
+    last_span = footer_buttons.nth(footer_buttons.count() - 1).evaluate(_HIT_AREA_SPAN)
+    assert first_span[3] <= last_span[2], "dialog footer hit areas overlap"
+    assert_no_horizontal_overflow(page)
+
+    desktop_height = _desktop_footer_button_height(page, dialog)
+    assert round(desktop_height) >= 40, "dialog footer button shrank above md"
+    page.set_viewport_size(_PHONE)
 
     page.goto(interface_url(live_server, organisation.slug, "learners"))
     filter_button = page.get_by_role("button", name="Filter", exact=True)
@@ -89,6 +116,13 @@ def test_touch_targets_flow(
     filter_button.click()
     page.get_by_role("dialog", name="Filter").wait_for()
     assert page.evaluate(_SMALLEST_CONTROL) == [], "filter dialog has a small control"
+
+
+def _desktop_footer_button_height(page: Page, dialog: Locator) -> float:
+    """Height of the dialog footer's Cancel at the widest QA viewport."""
+    page.set_viewport_size(QA_VIEWPORTS[-1])
+    cancel = dialog.locator("footer").get_by_role("button", name="Cancel")
+    return float(cancel.evaluate(_BUTTON_HEIGHT))
 
 
 # Heights of the First Class theme's buttons in px. Centring a label must never
