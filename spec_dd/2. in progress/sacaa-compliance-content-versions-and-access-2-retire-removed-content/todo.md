@@ -7,6 +7,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [x] (user) Decide what to change after reading upstream_change_review.md, then edit the idea, spec or plan it names
+- [ ] (user) Decide what to do about the post-rebase front-end check failure: the admin FormProgress change page logs "Permissions policy violation: unload is not allowed" from Django's vendored admin/js/admin/RelatedObjectLookups.js at every viewport (not from this branch), then re-run `/sdd:finish_worktree`
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 
 ## 2. Plan
