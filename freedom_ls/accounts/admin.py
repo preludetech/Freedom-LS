@@ -135,14 +135,21 @@ class UserAdmin(SiteAwareExportModelAdmin):
     add_form = UserCreationForm
     change_password_form = AdminPasswordChangeForm
 
-    list_display = ["email", "first_name", "last_name", "is_staff", "is_active"]
+    list_display = [
+        "email",
+        "first_name",
+        "last_name",
+        "is_staff",
+        "is_active",
+        "last_active",
+    ]
     search_fields = ["email", "first_name", "last_name"]
     list_filter = ["is_staff", "is_superuser", "is_active"]
     ordering = ["email"]
     # The picture is read-only because the account page is the only path that
     # validates and re-encodes an upload, so the admin must not be a second
     # way to store a file.
-    readonly_fields = ["last_login", "profile_picture"]
+    readonly_fields = ["last_login", "last_active", "profile_picture"]
     inlines = [LegalConsentInline]
 
     add_fieldsets = (
@@ -190,7 +197,7 @@ class UserAdmin(SiteAwareExportModelAdmin):
                 ),
             },
         ),
-        ("Important dates", {"fields": ("last_login",)}),
+        ("Important dates", {"fields": ("last_login", "last_active")}),
     )
 
     def get_form(self, request, obj=None, **kwargs):

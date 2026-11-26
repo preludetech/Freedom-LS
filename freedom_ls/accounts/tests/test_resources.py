@@ -174,6 +174,21 @@ def test_last_login_is_empty_for_a_user_who_never_logged_in(staff_client):
     assert _cell(response, user, "last_login") == ""
 
 
+@pytest.mark.django_db
+def test_last_active_is_empty_for_a_user_never_seen_signed_in(staff_client):
+    user = UserFactory(last_active=None)
+
+    response = _export_user(staff_client, user)
+
+    assert _cell(response, user, "last_active") == ""
+
+
+def test_last_active_follows_last_login_in_the_export_fields():
+    assert USER_EXPORT_FIELDS.index("last_active") == (
+        USER_EXPORT_FIELDS.index("last_login") + 1
+    )
+
+
 def test_resource_has_no_credential_or_permission_fields():
     for name in ("password", "is_superuser", "groups", "user_permissions"):
         assert name not in UserResource.fields

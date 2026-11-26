@@ -35,6 +35,7 @@ EXPECTED_FIELDS = {
     "email_verified",
     "created_at",
     "last_login",
+    "last_active",
     "updated_at",
 }
 
@@ -321,3 +322,14 @@ def test_the_list_past_the_rate_is_429_json_with_retry_after(client, auth, clean
 
 def test_the_project_settings_carry_no_rest_framework_setting():
     assert not hasattr(settings, "REST_FRAMEWORK")
+
+
+def test_an_api_request_moves_neither_updated_at_nor_last_active(client, auth):
+    stamp = datetime(2020, 1, 1, tzinfo=UTC)
+    user = UserFactory(last_active=stamp)
+    User._base_manager.filter(pk=user.pk).update(updated_at=stamp)
+
+    client.get(reverse(LIST_URL_NAME), headers=auth)
+
+    user = User._base_manager.get(pk=user.pk)
+    assert (user.updated_at, user.last_active) == (stamp, stamp)

@@ -24,6 +24,7 @@ USER_EXPORT_FIELDS = (
     "email_verified",
     "created_at",
     "last_login",
+    "last_active",
 )
 
 

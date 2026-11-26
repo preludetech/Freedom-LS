@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.accounts.admin import UserAdmin
 from freedom_ls.accounts.factories import (
     EmailAddressFactory,
     LegalConsentFactory,
@@ -215,3 +218,38 @@ def test_user_admin_change_form_post_leaves_the_stored_picture_unchanged(staff_c
 
     user = User._base_manager.get(pk=user.pk)
     assert user.profile_picture.name == stored_name
+
+
+@pytest.mark.django_db
+def test_user_changelist_sorts_on_last_active(staff_client):
+    older = UserFactory(last_active=datetime(2020, 1, 1, tzinfo=UTC))
+    newer = UserFactory(last_active=datetime(2025, 1, 1, tzinfo=UTC))
+    column = UserAdmin.list_display.index("last_active")
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_accounts_user_changelist"), {"o": f"-{column + 1}"}
+    )
+
+    ordered = [u.pk for u in response.context["cl"].result_list]
+    assert ordered.index(newer.pk) < ordered.index(older.pk)
+
+
+@pytest.mark.django_db
+def test_user_change_form_post_leaves_last_active_unchanged(staff_client):
+    stamp = datetime(2020, 1, 1, tzinfo=UTC)
+    user = UserFactory(last_active=stamp)
+    url = reverse("admin:freedom_ls_accounts_user_change", args=[user.pk])
+
+    staff_client.post(
+        url,
+        {
+            "email": user.email,
+            "first_name": "",
+            "last_name": "",
+            "is_active": "on",
+            "last_active": "2030-01-01 00:00:00",
+        },
+    )
+
+    user = User._base_manager.get(pk=user.pk)
+    assert user.last_active == stamp
