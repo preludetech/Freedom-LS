@@ -10,7 +10,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -23,6 +23,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 4. Documentation and pull request
 
 - [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) Run `/sdd:document`: in `docs/api.md`, add `last_active` to the user API's field table and say it does not move `updated_at` (spec "Documentation and downstream")
+- [ ] (cmd) Run `/sdd:document`: in `freedom_ls/audit_log/README.md`, add `user.deleted` and `learner.removed` to the action table with label, group, target, subjects and details (spec "Audit log" and "Documentation and downstream")
+- [ ] (cmd) Run `/sdd:document`: in `claude_plugins/fls-dev/skills/domain-glossary/SKILL.md`, add the two codes under "Changes" and define "force delete" and "last active" (spec "Terminology" and "Documentation and downstream")
 - [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 
 ## 5. Cleanup
