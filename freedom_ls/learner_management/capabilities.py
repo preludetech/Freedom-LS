@@ -44,6 +44,9 @@ if TYPE_CHECKING:
     type Holder = User | OuterRef
 
 
+VIEW_COURSE_QUESTIONS = "freedom_ls_content_engine.view_course_questions"
+
+
 def roles_granting(capability: str, site: Site) -> frozenset[str]:
     """The role keys on `site` whose permissions include `capability`."""
     config = get_role_config(site.name)
@@ -198,3 +201,12 @@ def can(user: RequestUser, capability: str, scope: Model) -> bool:
             learner=scope, cohort__in=cohorts
         ).exists()
     return False
+
+
+def can_view_course_questions(user: RequestUser, organisation: Organisation) -> bool:
+    """Whether `user` may see question detail in `organisation`.
+
+    Always asked of the organisation, never of a cohort or learner inside
+    it, so a cohort-level grant of the permission can never pass.
+    """
+    return can(user, VIEW_COURSE_QUESTIONS, organisation)

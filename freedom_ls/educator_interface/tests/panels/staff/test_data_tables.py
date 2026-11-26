@@ -251,7 +251,11 @@ def test_the_staff_page_lists_only_the_roles_the_site_defines(
 ):
     organisation = OrganisationFactory()
     without = frozenset(
-        {"organisation_staff_viewer", "organisation_staff_roles_viewer"}
+        {
+            "organisation_staff_viewer",
+            "organisation_staff_roles_viewer",
+            "question_bank_viewer",
+        }
     )
     with custom_role_config(mock_site_context, settings, without=without):
         client = role_holder_client(organisation, "organisation_admin")
@@ -399,6 +403,37 @@ def test_the_role_filter_narrows_the_members_page(role_holder_client):
 
     (row,) = document.cssselect("#main-content tbody tr")
     assert "viewer@x.org" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_the_role_filter_narrows_the_staff_page_to_question_bank_viewers(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    _hold(UserFactory(email="bank@x.org"), "question_bank_viewer", organisation)
+    _hold(UserFactory(email="viewer@x.org"), "cohort_viewer", cohort)
+    client = role_holder_client(organisation, "organisation_admin")
+
+    document = _get_document(
+        client,
+        _interface_url(organisation.slug, "staff") + "?staff-role=question_bank_viewer",
+    )
+
+    (row,) = document.cssselect("#main-content tbody tr")
+    assert "bank@x.org" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_a_question_bank_viewer_is_listed_with_its_role_name(role_holder_client):
+    organisation = OrganisationFactory()
+    _hold(UserFactory(email="bank@x.org"), "question_bank_viewer", organisation)
+    client = role_holder_client(organisation, "organisation_admin")
+
+    document = _staff_document(client, organisation)
+    row = _staff_member_row(document, "bank@x.org")
+
+    assert "Question bank viewer" in row.text_content()
 
 
 @pytest.mark.django_db

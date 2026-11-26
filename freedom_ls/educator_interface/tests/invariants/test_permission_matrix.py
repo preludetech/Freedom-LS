@@ -11,7 +11,7 @@ action asks about.
 The world: site A has organisation O1 (cohorts C1 granted and C2, learners L1
 in C1 and L2 in C2) and O2 (C3, L3). Site B has O3 (C4, L4). Grants:
 site_admin on site A, organisation_admin, organisation_staff_viewer and
-organisation_staff_roles_viewer on O1, cohort_admin and cohort_viewer on C1.
+organisation_staff_roles_viewer and question_bank_viewer on O1, cohort_admin and cohort_viewer on C1.
 """
 
 from __future__ import annotations
@@ -85,6 +85,7 @@ GATED_ROLES = (
     "organisation_admin",
     "organisation_staff_viewer",
     "organisation_staff_roles_viewer",
+    "question_bank_viewer",
     "cohort_admin",
     "cohort_viewer",
 )
@@ -94,6 +95,7 @@ ROLES = (
     "organisation_admin",
     "organisation_staff_viewer",
     "organisation_staff_roles_viewer",
+    "question_bank_viewer",
     "cohort_admin",
     "cohort_viewer",
 )
@@ -159,6 +161,10 @@ ASSIGN_ORGANISATION_STAFF_VIEWER = (
 ASSIGN_ORGANISATION_STAFF_ROLES_VIEWER = (
     "freedom_ls_role_based_permissions.assign_organisation_staff_roles_viewer"
 )
+VIEW_COURSE_QUESTIONS = "freedom_ls_content_engine.view_course_questions"
+ASSIGN_QUESTION_BANK_VIEWER = (
+    "freedom_ls_role_based_permissions.assign_question_bank_viewer"
+)
 
 # capability -> role -> the (scope kind, relation) pairs where can() is True.
 MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
@@ -167,6 +173,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -179,6 +186,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": {("cohort", OWN)},
     },
@@ -191,6 +199,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("learner", OWN)},
         "cohort_viewer": {("learner", OWN)},
     },
@@ -203,6 +212,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -226,6 +236,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         },
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         # A cohort grant covers the cohort and, as every cohort grant does,
         # the learners in it. The learner page's History panel asks for the
         # organisation instead, so a cohort admin opens cohort History only.
@@ -237,6 +248,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -249,6 +261,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -261,6 +274,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -269,6 +283,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -281,6 +296,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -293,6 +309,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": set(),
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -305,6 +322,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -317,6 +335,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -329,6 +348,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -341,6 +361,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -353,6 +374,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("learner", OWN)},
         "cohort_viewer": set(),
     },
@@ -365,6 +387,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("learner", OWN)},
         "cohort_viewer": set(),
     },
@@ -373,6 +396,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -385,6 +409,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -397,6 +422,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": set(),
     },
@@ -405,6 +431,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -413,6 +440,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -421,6 +449,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -429,6 +458,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -437,6 +467,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": set(),
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -455,6 +486,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         },
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": {("cohort", OWN)},
         "cohort_viewer": {("cohort", OWN)},
     },
@@ -463,6 +495,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": {("organisation", OWN)},
         "organisation_staff_roles_viewer": {("organisation", OWN)},
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -471,6 +504,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": {("organisation", OWN)},
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -479,6 +513,7 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -487,6 +522,25 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "organisation_admin": {("organisation", OWN)},
         "organisation_staff_viewer": set(),
         "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    VIEW_COURSE_QUESTIONS: {
+        "site_admin": set(),
+        "organisation_admin": set(),
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ASSIGN_QUESTION_BANK_VIEWER: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "organisation_staff_viewer": set(),
+        "organisation_staff_roles_viewer": set(),
+        "question_bank_viewer": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -524,6 +578,8 @@ CAPABILITY_SCOPE_KINDS: dict[str, tuple[str, ...]] = {
     VIEW_ORGANISATION_STAFF_ROLES: ("organisation",),
     ASSIGN_ORGANISATION_STAFF_VIEWER: ("organisation",),
     ASSIGN_ORGANISATION_STAFF_ROLES_VIEWER: ("organisation",),
+    VIEW_COURSE_QUESTIONS: ("organisation",),
+    ASSIGN_QUESTION_BANK_VIEWER: ("organisation",),
 }
 
 
@@ -570,6 +626,9 @@ def _build_world(site_a: Site) -> World:
         organisation_staff_roles_viewer_user, o1, "organisation_staff_roles_viewer"
     )
 
+    question_bank_viewer_user = UserFactory()
+    assign_object_role(question_bank_viewer_user, o1, "question_bank_viewer")
+
     cohort_admin_user = UserFactory()
     assign_object_role(cohort_admin_user, c1, "cohort_admin")
 
@@ -590,6 +649,7 @@ def _build_world(site_a: Site) -> World:
             "organisation_staff_roles_viewer": cast(
                 AbstractBaseUser, organisation_staff_roles_viewer_user
             ),
+            "question_bank_viewer": cast(AbstractBaseUser, question_bank_viewer_user),
             "cohort_admin": cast(AbstractBaseUser, cohort_admin_user),
             "cohort_viewer": cast(AbstractBaseUser, cohort_viewer_user),
         },

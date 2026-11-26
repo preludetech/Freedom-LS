@@ -11,9 +11,16 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_management.capabilities import can
+from freedom_ls.learner_management.capabilities import (
+    VIEW_COURSE_QUESTIONS,
+    can,
+    can_view_course_questions,
+)
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import StaffMember
+from freedom_ls.learner_management.queries import (
+    VIEW_COURSE_QUESTIONS as QUERIES_VIEW_COURSE_QUESTIONS,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.loader import clear_caches
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRolesConfig
@@ -144,3 +151,97 @@ def test_a_site_scope_with_only_an_object_grant_is_denied(
     assign_object_role(user, organisation, "organisation_admin")
 
     assert can(user, VIEW_ORGANISATION, mock_site_context) is False
+
+
+@pytest.mark.django_db
+def test_a_question_bank_viewer_may_view_course_questions_in_its_organisation(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    user = UserFactory()
+    assign_object_role(user, organisation, "question_bank_viewer")
+
+    assert can_view_course_questions(user, organisation) is True
+
+
+@pytest.mark.django_db
+def test_a_question_bank_viewer_may_not_view_course_questions_in_another_organisation(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    other_organisation = OrganisationFactory()
+    user = UserFactory()
+    assign_object_role(user, other_organisation, "question_bank_viewer")
+
+    assert can_view_course_questions(user, organisation) is False
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_may_not_view_course_questions(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    user = UserFactory()
+    assign_object_role(user, organisation, "organisation_admin")
+
+    assert can_view_course_questions(user, organisation) is False
+
+
+@pytest.mark.django_db
+def test_a_superuser_may_view_course_questions(mock_site_context: Site) -> None:
+    organisation = OrganisationFactory()
+    user = UserFactory(superuser=True)
+
+    assert can_view_course_questions(user, organisation) is True
+
+
+@pytest.mark.django_db
+def test_a_holder_with_an_inactive_staff_member_row_may_not_view_course_questions(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    user = UserFactory()
+    assign_object_role(user, organisation, "question_bank_viewer")
+    StaffMember.objects.filter(user=user, organisation=organisation).update(
+        is_active=False
+    )
+
+    assert can_view_course_questions(user, organisation) is False
+
+
+@pytest.mark.django_db
+def test_a_cohort_grant_of_the_permission_does_not_pass_the_organisation_check(
+    mock_site_context: Site, settings
+) -> None:
+    """The cohort grant is real (it passes for the cohort itself) but the
+    organisation-scoped check never reaches cohort grants."""
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    user = UserFactory()
+    assign_object_role(user, cohort, "cohort_viewer")
+    module_path = "fake_permissions_module_for_cohort_question_grant"
+    fake_module = ModuleType(module_path)
+    fake_module.ROLES = SiteRolesConfig(
+        {
+            "cohort_viewer": Role(
+                display_name="Cohort viewer",
+                permissions=frozenset({VIEW_COURSE_QUESTIONS}),
+                assignment_scope=SCOPE_OBJECT,
+            ),
+        }
+    )
+    settings.FREEDOMLS_PERMISSIONS_MODULES = {mock_site_context.name: module_path}
+
+    with patch(
+        "freedom_ls.role_based_permissions.loader.import_module",
+        return_value=fake_module,
+    ):
+        clear_caches()
+        cohort_check = can(user, VIEW_COURSE_QUESTIONS, cohort)
+        organisation_check = can_view_course_questions(user, organisation)
+
+    assert (cohort_check, organisation_check) == (True, False)
+
+
+def test_the_queries_module_re_exports_the_view_course_questions_constant() -> None:
+    assert QUERIES_VIEW_COURSE_QUESTIONS == VIEW_COURSE_QUESTIONS

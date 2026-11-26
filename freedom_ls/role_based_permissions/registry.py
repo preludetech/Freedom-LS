@@ -21,6 +21,7 @@ PERMISSIONS: dict[str, str] = {
     # "freedom_ls_content_engine.add_activity": "Can add activity",
     # "freedom_ls_content_engine.change_activity": "Can change activity",
     # "freedom_ls_content_engine.delete_activity": "Can delete activity",
+    "freedom_ls_content_engine.view_course_questions": "Can view a course's quiz questions, options and correct answers",
     # "freedom_ls_content_engine.view_course": "Can view course",
     # "freedom_ls_content_engine.add_course": "Can add course",
     # "freedom_ls_content_engine.change_course": "Can change course",
@@ -88,6 +89,7 @@ PERMISSIONS: dict[str, str] = {
     "freedom_ls_role_based_permissions.assign_cohort_viewer": "Can grant or remove the cohort_viewer role",
     "freedom_ls_role_based_permissions.assign_organisation_staff_viewer": "Can grant or remove the organisation_staff_viewer role",
     "freedom_ls_role_based_permissions.assign_organisation_staff_roles_viewer": "Can grant or remove the organisation_staff_roles_viewer role",
+    "freedom_ls_role_based_permissions.assign_question_bank_viewer": "Can grant or remove the question_bank_viewer role",
     # --- course_recommendations app (label: freedom_ls_course_recommendations) ---
     # "freedom_ls_course_recommendations.view_recommendedcourse": "Can view recommended course",
     # "freedom_ls_course_recommendations.add_recommendedcourse": "Can add recommended course",

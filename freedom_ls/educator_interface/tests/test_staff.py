@@ -80,7 +80,12 @@ class TestRoleEntryScope:
         assert _entry("organisation_admin").scope == "Whole organisation"
 
     @pytest.mark.parametrize(
-        "role", ["organisation_staff_viewer", "organisation_staff_roles_viewer"]
+        "role",
+        [
+            "organisation_staff_viewer",
+            "organisation_staff_roles_viewer",
+            "question_bank_viewer",
+        ],
     )
     def test_a_viewer_role_targets_the_organisation_and_reads_whole_organisation(
         self, mock_site_context: Site, role: str

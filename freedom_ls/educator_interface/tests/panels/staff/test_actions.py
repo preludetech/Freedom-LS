@@ -441,6 +441,7 @@ def test_the_role_step_offers_every_staff_role_with_its_description(
         "organisation_admin",
         "organisation_staff_viewer",
         "organisation_staff_roles_viewer",
+        "question_bank_viewer",
         "cohort_admin",
         "cohort_viewer",
     ]
@@ -449,7 +450,7 @@ def test_the_role_step_offers_every_staff_role_with_its_description(
 
 
 @pytest.mark.django_db
-def test_a_site_admin_is_offered_five_roles(
+def test_a_site_admin_is_offered_six_roles(
     mock_site_context, logged_in_client, organisation
 ):
     CohortFactory(organisation=organisation)
@@ -462,7 +463,7 @@ def test_a_site_admin_is_offered_five_roles(
     response = _lookup(logged_in_client(site_admin), organisation, "ada@example.com")
 
     document = lxml.html.fromstring(response.content.decode())
-    assert len(document.cssselect("input[name='role']:not([value=''])")) == 5
+    assert len(document.cssselect("input[name='role']:not([value=''])")) == 6
 
 
 @pytest.mark.django_db
@@ -481,6 +482,7 @@ def test_with_no_active_cohort_only_the_organisation_roles_are_offered(
         "organisation_admin",
         "organisation_staff_viewer",
         "organisation_staff_roles_viewer",
+        "question_bank_viewer",
     ]
     assert "This organisation has no active cohorts yet." in _text(response)
 
@@ -1080,6 +1082,59 @@ def test_the_add_dialog_gives_a_viewer_role_on_the_organisation(
     assert _active_roles(user) == {
         ("organisation_staff_roles_viewer", str(organisation.pk))
     }
+
+
+@pytest.mark.django_db
+def test_the_add_dialog_gives_the_question_bank_viewer_role_on_the_organisation(
+    admin_client, organisation
+):
+    user = UserFactory(email="ada@example.com")
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "question_bank_viewer"
+    )
+
+    assert response.status_code == 204
+    assert _active_roles(user) == {("question_bank_viewer", str(organisation.pk))}
+
+
+@pytest.mark.django_db
+def test_deactivating_the_question_bank_viewer_role_deactivates_the_assignment(
+    admin_client, organisation
+):
+    user = _staff_member_holding("question_bank_viewer", organisation)
+
+    response = _remove(admin_client, organisation, user, "question_bank_viewer")
+
+    assert response.status_code == 204
+    assert _active_roles(user) == set()
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_forged_question_bank_viewer_grant_answers_422(
+    cohort_admin_setup, organisation
+):
+    cohort, admin = cohort_admin_setup
+    learner = LearnerFactory(organisation=organisation).user
+    ctx = _cohort_admin_ctx(
+        organisation,
+        cohort,
+        admin,
+        {
+            "step": "submit",
+            "email": learner.email,
+            "role": "question_bank_viewer",
+            "cohorts": str(cohort.pk),
+            "confirmed": "1",
+        },
+    )
+
+    response = AddStaffMemberToCohortAction().handle_submit(ctx)
+
+    assert response.status_code == 422
+    assert not ObjectRoleAssignment.objects.filter(
+        user=learner, role="question_bank_viewer"
+    ).exists()
 
 
 @pytest.mark.django_db

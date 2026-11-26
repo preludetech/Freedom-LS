@@ -24,6 +24,7 @@ class TestBaseRoles:
             "organisation_admin",
             "organisation_staff_viewer",
             "organisation_staff_roles_viewer",
+            "question_bank_viewer",
             "system_admin",
             "learner",
             "observer",
@@ -163,3 +164,31 @@ def test_a_role_description_reads_as_the_product_states_it(
     role: str, description: str
 ) -> None:
     assert BASE_ROLES[role].description == description
+
+
+def test_the_question_bank_viewer_role_has_its_display_name_and_description() -> None:
+    role = BASE_ROLES["question_bank_viewer"]
+
+    assert (role.display_name, role.description) == (
+        "Question bank viewer",
+        "May view a course's quiz questions, options and correct answers, in course previews, cohort reports and attempt reviews. Each view is logged.",
+    )
+
+
+def test_only_the_question_bank_viewer_holds_the_view_course_questions_permission() -> (
+    None
+):
+    holders = {
+        key
+        for key, role in BASE_ROLES.items()
+        if "freedom_ls_content_engine.view_course_questions" in role.permissions
+    }
+
+    assert holders == {"question_bank_viewer"}
+
+
+@pytest.mark.parametrize("role", ["site_admin", "organisation_admin"])
+def test_admins_may_grant_the_question_bank_viewer_role(role: str) -> None:
+    held = BASE_ROLES[role].permissions
+
+    assert "freedom_ls_role_based_permissions.assign_question_bank_viewer" in held

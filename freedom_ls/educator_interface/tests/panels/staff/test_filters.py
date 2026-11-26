@@ -128,7 +128,7 @@ def test_the_role_filter_offers_no_choices_to_a_names_only_viewer(
 
 
 @pytest.mark.django_db
-def test_the_role_filter_offers_the_usual_five_to_a_roles_viewer(
+def test_the_role_filter_offers_every_staff_role_to_a_roles_viewer(
     site_aware_request: RequestFactory,
 ):
     organisation = OrganisationFactory()
@@ -150,6 +150,7 @@ def test_the_role_filter_offers_the_usual_five_to_a_roles_viewer(
         "organisation_admin",
         "organisation_staff_viewer",
         "organisation_staff_roles_viewer",
+        "question_bank_viewer",
         "cohort_admin",
         "cohort_viewer",
     ]
@@ -235,6 +236,7 @@ def test_the_role_choices_carry_the_display_names(staff_request):
         ("organisation_admin", "Organisation admin"),
         ("organisation_staff_viewer", "Organisation staff viewer"),
         ("organisation_staff_roles_viewer", "Organisation staff and roles viewer"),
+        ("question_bank_viewer", "Question bank viewer"),
         ("cohort_admin", "Cohort admin"),
         ("cohort_viewer", "Cohort viewer"),
     ]

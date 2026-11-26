@@ -22,6 +22,7 @@ from freedom_ls.learner_management.factories import (
     StaffMemberFactory,
 )
 from freedom_ls.learner_management.models import StaffMember
+from freedom_ls.learner_management.queries import role_target
 from freedom_ls.learner_management.role_assignment import (
     ASSIGN,
     CHANGE_STAFF_MEMBER,
@@ -219,6 +220,10 @@ def test_a_cohort_admin_may_not_grant_the_viewer_roles(
     roles = [g.role for g in grantable_roles(grantor, organisation)]
 
     assert not [role for role in roles if role.startswith("organisation_")]
+
+
+def test_the_question_bank_viewer_role_is_held_on_the_organisation() -> None:
+    assert role_target("question_bank_viewer") == "organisation"
 
 
 @pytest.mark.django_db
@@ -509,6 +514,7 @@ def test_a_superuser_may_grant_every_role_on_every_active_cohort(
         ("organisation_admin", None),
         ("organisation_staff_viewer", None),
         ("organisation_staff_roles_viewer", None),
+        ("question_bank_viewer", None),
         ("cohort_admin", [cohort_a.name, cohort_b.name]),
         ("cohort_viewer", [cohort_a.name, cohort_b.name]),
     ]
@@ -529,6 +535,7 @@ def test_a_site_admin_may_grant_every_role_on_every_active_cohort(
         ("organisation_admin", None),
         ("organisation_staff_viewer", None),
         ("organisation_staff_roles_viewer", None),
+        ("question_bank_viewer", None),
         ("cohort_admin", [cohort.name]),
         ("cohort_viewer", [cohort.name]),
     ]
@@ -549,6 +556,7 @@ def test_an_organisation_admin_may_grant_every_role_on_every_active_cohort(
         ("organisation_admin", None),
         ("organisation_staff_viewer", None),
         ("organisation_staff_roles_viewer", None),
+        ("question_bank_viewer", None),
         ("cohort_admin", [cohort.name]),
         ("cohort_viewer", [cohort.name]),
     ]
@@ -582,7 +590,7 @@ def test_an_inactive_cohort_is_not_grantable(mock_site_context: Site) -> None:
 
     result = _grantable(grantor, organisation)
 
-    assert result[3:] == [
+    assert result[4:] == [
         ("cohort_admin", [active.name]),
         ("cohort_viewer", [active.name]),
     ]

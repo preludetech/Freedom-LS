@@ -52,6 +52,7 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_learner_management.view_organisation_staff_roles",
                     "freedom_ls_role_based_permissions.assign_organisation_staff_viewer",
                     "freedom_ls_role_based_permissions.assign_organisation_staff_roles_viewer",
+                    "freedom_ls_role_based_permissions.assign_question_bank_viewer",
                     # FUTURE: add freedom_ls_role_based_permissions.* custom permissions as site admin features are built
                 }
             ),
@@ -135,6 +136,7 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_learner_management.view_organisation_staff_roles",
                     "freedom_ls_role_based_permissions.assign_organisation_staff_viewer",
                     "freedom_ls_role_based_permissions.assign_organisation_staff_roles_viewer",
+                    "freedom_ls_role_based_permissions.assign_question_bank_viewer",
                 }
             ),
         ),
@@ -158,6 +160,13 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_learner_management.view_organisation_staff_roles",
                 }
             ),
+        ),
+        "question_bank_viewer": Role(
+            display_name="Question bank viewer",
+            assignment_scope=SCOPE_OBJECT,
+            lti_role=None,
+            description="May view a course's quiz questions, options and correct answers, in course previews, cohort reports and attempt reviews. Each view is logged.",
+            permissions=frozenset({"freedom_ls_content_engine.view_course_questions"}),
         ),
         # --- Placeholder roles (no permissions exist yet) ---
         # These roles are defined for completeness but have empty permission

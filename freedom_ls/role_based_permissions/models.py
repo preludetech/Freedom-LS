@@ -132,6 +132,10 @@ class ObjectRoleAssignment(SiteAwareModel):
                 "assign_organisation_staff_roles_viewer",
                 "Can grant or remove the organisation_staff_roles_viewer role",
             ),
+            (
+                "assign_question_bank_viewer",
+                "Can grant or remove the question_bank_viewer role",
+            ),
         ]
 
     def __str__(self) -> str:

@@ -20,6 +20,9 @@ from django.db.models.functions import Cast
 from freedom_ls.accounts.account_setup import is_pending, pending_user_q
 from freedom_ls.content_engine.models import Course, CourseAudience, CourseVisibility
 from freedom_ls.learner_management.capabilities import (
+    VIEW_COURSE_QUESTIONS as VIEW_COURSE_QUESTIONS,
+)
+from freedom_ls.learner_management.capabilities import (
     _active_role_assignments,
     _current_site,
     _granted_cohorts,
@@ -63,6 +66,7 @@ STAFF_ROLES: tuple[str, ...] = (
     "organisation_admin",
     "organisation_staff_viewer",
     "organisation_staff_roles_viewer",
+    "question_bank_viewer",
     "cohort_admin",
     "cohort_viewer",
 )
@@ -71,6 +75,7 @@ ORGANISATION_ROLES: tuple[str, ...] = (
     "organisation_admin",
     "organisation_staff_viewer",
     "organisation_staff_roles_viewer",
+    "question_bank_viewer",
 )
 
 type RoleTarget = Literal["organisation", "cohort"]

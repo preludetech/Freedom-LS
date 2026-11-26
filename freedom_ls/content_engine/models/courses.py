@@ -307,6 +307,12 @@ class Course(MarkdownContent, TitledContent):
             ),
             _course_price_constraint(),
         ]
+        permissions = [
+            (
+                "view_course_questions",
+                "Can view a course's quiz questions, options and correct answers",
+            )
+        ]
 
     @property
     def accent_slot_key(self) -> str:
