@@ -5,8 +5,9 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 1. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
 - [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
+- [ ] (user) Decide whether to add freedom-ls-concrete-template to the concrete-project list in .claude/fls-dev/config.md so /fls-dev:update_concrete_projects applies this spec's upgrade notes to it (spec Open questions)
 
 ## 2. Plan
 
