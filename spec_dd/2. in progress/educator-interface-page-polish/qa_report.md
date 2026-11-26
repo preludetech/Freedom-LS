@@ -131,7 +131,7 @@ The probe flags were empty everywhere, yet the 4.1 and 4.4 screenshots show the 
 | B1 | Courses tab Progress column squeezes the bar to ~22px | **FIXED** (commit: 438f158d7). Bars now 84–100px at 1920px |
 | B2 | Quiz headings in a course section look the same as the course heading | **FIXED** (commit: 67076a7c8). Quiz h4 now 16px under the 18px course h3 |
 | B3 | Settings Name panel Email row is half-width and flush against the form | **FIXED** (commit: 1d1832564). Inline row across the panel, 12px above the form ([after](screenshots/page-2026-11-26T07-50-05-436Z.png)) |
-| B4 | A failed (5xx) bulk confirm request shows no error | **UNRESOLVED** (reason: what a failed in-request run should say, and whether 5xx responses get a global htmx error message or a per-dialog one, is a product decision; the spec only requires the dialog to unlock) |
+| B4 | A failed (5xx) bulk confirm request shows no error | **FIXED** (commit: f8b16e141, 57ea69b5d, a5d03a8ec) — A failed (5xx) bulk confirm request shows no error — after the fix: ![](screenshots/fixed/page-2026-11-26T12-41-57-216Z.png) ![](screenshots/fixed/page-2026-11-26T12-42-54-593Z.png) |
 
 ## General notes
 
@@ -141,4 +141,4 @@ The probe flags were empty everywhere, yet the 4.1 and 4.4 screenshots show the 
 - Test 2.1: at 1280px the Courses tab panel container is about 910px, under the table's 58rem card breakpoint, so it shows cards rather than the table. This is the framework's `cards_when_narrow` rule. The table was checked at 1920.
 - Three demodev learners remain deactivated from test 7.5, so the list shows 263 active/pending learners.
 
-status: ok · reason: 4 bugs — 3 fixed, 1 unresolved; report rendered, screenshots verified
+status: ok · reason: 4 bugs — 4 fixed, 0 unresolved; report rendered, screenshots verified
