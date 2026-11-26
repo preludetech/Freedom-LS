@@ -161,6 +161,9 @@ class AtRiskFlag:
     # flag is. Read off the rule with a fallback, never required of it — see
     # where the flags are built.
     severity: str
+    # False when the reason only restates the label, so a screen that shows the
+    # label as a badge can leave the reason out.
+    reason_adds_information: bool = True
 
 
 @dataclasses.dataclass(frozen=True)

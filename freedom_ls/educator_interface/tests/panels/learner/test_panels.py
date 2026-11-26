@@ -28,6 +28,8 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.educator_interface.tests.helpers import (
+    FAILED_QUIZ_REASON,
+    IDLE_REASON,
     _get_document,
     _interface_url,
     _learner_page,
@@ -35,6 +37,7 @@ from freedom_ls.educator_interface.tests.helpers import (
     _region_text,
     _shared_and_own_course_world,
     _shared_by_notes,
+    cohort_with_idle_and_failed_learners,
     organisation_admin_viewer,
 )
 from freedom_ls.learner_management.factories import (
@@ -486,3 +489,27 @@ def test_learner_courses_tab_names_the_owner_of_a_shared_course_only(
     )
 
     assert _shared_by_notes(document) == ["Shared by Northwind Logistics"]
+
+
+@pytest.mark.django_db
+class TestFlagReasonsOnTheCoursesTab:
+    def test_an_idle_learner_shows_the_badge_without_its_reason(
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
+        cohort, idle, _failed = cohort_with_idle_and_failed_learners()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        text = _courses_panel(client, cohort.organisation.slug, idle)
+
+        assert "No recorded activity" in text
+        assert IDLE_REASON not in text
+
+    def test_a_learner_who_failed_a_quiz_shows_the_failed_quiz_reason(
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
+        cohort, _idle, failed = cohort_with_idle_and_failed_learners()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        text = _courses_panel(client, cohort.organisation.slug, failed)
+
+        assert FAILED_QUIZ_REASON in text

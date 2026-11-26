@@ -57,6 +57,9 @@ class AtRiskRule(Protocol):
     id: str
     label: str
     severity: str
+    # False when the reason only restates the label, so a screen that shows the
+    # label as a badge can leave the reason out; downloads still print it.
+    reason_adds_information: bool
 
     def evaluate(self, learner: LearnerDetailLike) -> str | None: ...
 
@@ -71,6 +74,7 @@ class NoRecordedActivityRule:
     id = "no_activity"
     label = "No recorded activity"
     severity = SEVERITY_ERROR
+    reason_adds_information = False
 
     def evaluate(self, learner: LearnerDetailLike) -> str | None:
         # A learner with no course items to complete -- a cohort registered
@@ -85,6 +89,7 @@ class FailedLatestQuizAttemptRule:
     id = "failed_latest_quiz"
     label = "Failed most recent quiz attempt"
     severity = SEVERITY_ERROR
+    reason_adds_information = True
 
     def evaluate(self, learner: LearnerDetailLike) -> str | None:
         latest: QuizResultLike | None = None
@@ -107,6 +112,7 @@ class InactiveForDaysRule:
     id = "inactive"
     label = "No activity recently"
     severity = SEVERITY_WARNING
+    reason_adds_information = True
 
     def __init__(self, days: int = 7) -> None:
         self.days = days

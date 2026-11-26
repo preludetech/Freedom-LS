@@ -25,6 +25,11 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.educator_interface.panels.dashboard.panels import gathered_figures
+from freedom_ls.educator_interface.tests.helpers import (
+    FAILED_QUIZ_REASON,
+    IDLE_REASON,
+    cohort_with_idle_and_failed_learners,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -635,3 +640,24 @@ def test_more_flagged_learners_with_pictures_cost_no_more_queries_on_the_dashboa
         response = _load_region(client, organisation)
 
     assert len(_dashboard_pictures(response)) == 6
+
+
+@pytest.mark.django_db
+def test_the_dashboard_prints_the_failed_quiz_reason_not_the_idle_one(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+    cohort_with_idle_and_failed_learners(organisation)
+
+    text = " ".join(
+        lxml.html.fromstring(
+            _load_region(logged_in_client(user), organisation).content.decode()
+        )
+        .text_content()
+        .split()
+    )
+
+    assert "No recorded activity" in text
+    assert IDLE_REASON not in text
+    assert FAILED_QUIZ_REASON in text

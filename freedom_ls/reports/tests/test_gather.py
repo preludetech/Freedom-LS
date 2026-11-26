@@ -2392,6 +2392,12 @@ class TestEvaluateAtRiskFlags:
         assert flag.severity == "error"
         assert flag.reason
 
+    def test_a_flag_carries_whether_its_rules_reason_adds_information(self) -> None:
+        flag = _evaluate_at_risk_flags(_a_detail())[0]
+
+        assert flag.rule_id == "no_activity"
+        assert flag.reason_adds_information is False
+
 
 class TestBuildAttentionList:
     def _flagged(self, completion: int) -> LearnerDetail:

@@ -22,6 +22,7 @@ from django.http import HttpRequest
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -30,7 +31,10 @@ from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import record_entry, record_run_summary
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.models import Conversation
-from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+)
 from freedom_ls.content_engine.models import Course, CourseAudience
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
@@ -45,13 +49,16 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
+    CohortMembership,
     Learner,
 )
 from freedom_ls.learner_management.role_assignment import assign_role
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.reports.tests.helpers import form_progress, quiz_form
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 if TYPE_CHECKING:
@@ -167,6 +174,42 @@ def course_per_reach_row(organisation: Organisation) -> dict[str, Course]:
         "held": held,
         "unreached": unreached,
     }
+
+
+IDLE_REASON = "Has not started any course item."
+FAILED_QUIZ_REASON = "Failed their most recent quiz attempt."
+
+
+def cohort_with_idle_and_failed_learners(
+    organisation: Organisation | None = None,
+) -> tuple[Cohort, Learner, Learner]:
+    """A cohort on a one-quiz course: one learner idle, one who failed the quiz.
+
+    Returns the cohort, the idle learner and the learner who failed. The idle
+    learner is flagged "No recorded activity", the other "Failed most recent
+    quiz attempt".
+    """
+    course = CourseFactory()
+    quiz = quiz_form("Unit quiz", 50)
+    ContentCollectionItemFactory(collection_object=course, child_object=quiz, order=0)
+    cohort: Cohort = (
+        CohortFactory(organisation=organisation) if organisation else CohortFactory()
+    )
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    idle, failed = (
+        cast(
+            CohortMembership,
+            CohortMembershipFactory(cohort=cohort, learner__user=UserFactory()),
+        ).learner
+        for _ in range(2)
+    )
+    form_progress(
+        course_progress_record(course, failed.user),
+        quiz,
+        completed_time=timezone.now(),
+        scores={"score": 0, "max_score": 2},
+    )
+    return cohort, idle, failed
 
 
 def _educator_request(

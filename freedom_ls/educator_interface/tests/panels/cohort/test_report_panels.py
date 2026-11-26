@@ -43,12 +43,15 @@ from freedom_ls.educator_interface.panels.common.question_detail import (
     QUESTION_DETAIL_NEEDS_JAVASCRIPT_NOTE,
 )
 from freedom_ls.educator_interface.tests.helpers import (
+    FAILED_QUIZ_REASON,
+    IDLE_REASON,
     _cohort_page,
     _grant,
     _org_admin,
     _pdf_url,
     _ready_report,
     assert_plain_sentence,
+    cohort_with_idle_and_failed_learners,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -585,7 +588,7 @@ class TestNeedsAttentionCard:
         text = " ".join(row.text_content().split())
         assert "Not started" in text
         assert "No recorded activity" in text
-        assert "Has not started any course item." in text
+        assert "Has not started any course item." not in text
         assert region.get("aria-busy") is None
 
     def test_the_attention_list_shows_no_list_markers(
@@ -1756,3 +1759,34 @@ def test_needs_attention_card_renders_a_skeleton_that_fetches_its_body(
     (region,) = card.cssselect("div[aria-busy='true']")
     (fetch,) = region.cssselect("[hx-trigger='load']")
     assert fetch.get("hx-get").endswith("/__panels/attention?loaded=1")
+
+
+@pytest.mark.django_db
+class TestFlagReasonsOnCohortSurfaces:
+    def test_the_needs_attention_list_prints_the_failed_quiz_reason_not_the_idle_one(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort, _idle, _failed = cohort_with_idle_and_failed_learners()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _attention_region(
+            client, _attention_url(cohort.organisation.slug, cohort.pk)
+        )
+
+        text = " ".join(region.text_content().split())
+        assert "No recorded activity" in text
+        assert IDLE_REASON not in text
+        assert FAILED_QUIZ_REASON in text
+
+    def test_the_report_body_prints_the_failed_quiz_reason_not_the_idle_one(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort, _idle, _failed = cohort_with_idle_and_failed_learners()
+        client = logged_in_client(_org_admin(cohort.organisation))
+
+        region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        text = " ".join(region.text_content().split())
+        assert "No recorded activity" in text
+        assert IDLE_REASON not in text
+        assert FAILED_QUIZ_REASON in text
