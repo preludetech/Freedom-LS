@@ -1,21 +1,30 @@
-{% load educator_tags %}
+{% load educator_tags panel_tags %}
 {% comment %}
-One line per course the learner reaches through an active registration, with
-the furthest progress percentage once a course progress record exists.
+The learner's courses through an active registration, at most COURSES_SHOWN of
+them, each a title, its "Shared by" line and a thin bar with the furthest
+progress percentage (an empty bar and 0% before a course progress record
+exists). Courses past the cap collapse into a "+N more" link to the learner's
+Courses tab.
 {% endcomment %}
-{% learner_course_summaries object as summaries %}
-{% if summaries %}
-    <ul class="list-none ml-0 space-y-1">
-        {% for summary in summaries %}
+{% learner_course_cell object as cell %}
+{% if cell.shown %}
+    <ul class="list-none ml-0 space-y-2 {% if not in_secondary_line %}max-w-xs{% endif %}">
+        {% for summary in cell.shown %}
             <li class="py-0">
-                {{ summary.course.title }}
-                {% course_retired_badge summary.course as retired %}{% if retired %}<c-panel-status-badge :badge="retired" data-testid="retired-badge" />{% endif %}
-                {% if summary.progress_percentage is not None %}<span class="text-muted">{{ summary.progress_percentage }}%</span>{% endif %}
+                <span class="flex items-center gap-2 min-w-0">
+                    <span class="block truncate" title="{{ summary.course.title }}">{{ summary.course.title }}</span>
+                    {% course_retired_badge summary.course as retired %}{% if retired %}<c-panel-status-badge :badge="retired" data-testid="retired-badge" />{% endif %}
+                </span>
                 {% course_shared_by summary.course as sharers %}
                 {% include "educator_interface/partials/course_shared_by.html" %}
+                <c-panel-progress-bar size="small" percentage="{{ summary.progress_percentage|default:0 }}" label="{{ summary.course.title }} progress" />
             </li>
         {% endfor %}
     </ul>
+    {% if cell.hidden_count %}
+        {% resolve_url_path_template object 'educator_interface:interface' 'learners/{pk}/__tabs/courses' as courses_url %}
+        <c-button variant="link" size="small" href="{{ courses_url }}" aria_label="+{{ cell.hidden_count }} more course{{ cell.hidden_count|pluralize }} for {{ object.user.display_name }}">+{{ cell.hidden_count }} more</c-button>
+    {% endif %}
 {% else %}
     <span role="img" aria-label="None">—</span>
 {% endif %}

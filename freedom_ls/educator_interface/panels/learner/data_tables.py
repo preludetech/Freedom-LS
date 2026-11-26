@@ -45,11 +45,16 @@ from freedom_ls.panel_framework.tables import (
 
 __all__ = [
     "CohortLearnerDataTable",
+    "LearnerCourseCell",
     "LearnerCourseSummary",
     "LearnerDataTable",
     "_last_active_cell",
+    "learner_course_cell",
     "learner_course_summaries",
 ]
+
+#: How many of a learner's courses the learners list shows before "+N more".
+COURSES_SHOWN = 3
 
 
 @dataclass(frozen=True)
@@ -87,6 +92,21 @@ def learner_course_summaries(learner: Learner) -> list[LearnerCourseSummary]:
         LearnerCourseSummary(course, furthest.get(course_id))
         for course_id, course in courses.items()
     ]
+
+
+@dataclass(frozen=True)
+class LearnerCourseCell:
+    """The courses one learner's Courses cell shows, and how many it leaves out."""
+
+    shown: list[LearnerCourseSummary]
+    hidden_count: int
+
+
+def learner_course_cell(learner: Learner) -> LearnerCourseCell:
+    summaries = learner_course_summaries(learner)
+    return LearnerCourseCell(
+        summaries[:COURSES_SHOWN], max(0, len(summaries) - COURSES_SHOWN)
+    )
 
 
 class LearnerDataTable(DataTable):

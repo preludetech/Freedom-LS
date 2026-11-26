@@ -20,8 +20,8 @@ from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
 from freedom_ls.educator_interface.panels.learner.data_tables import (
-    LearnerCourseSummary,
-    learner_course_summaries,
+    LearnerCourseCell,
+    learner_course_cell,
 )
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.panel_framework.views import StatusBadge
@@ -42,10 +42,10 @@ def flag_badge_tag(flag: AtRiskFlag) -> StatusBadge:
     return flag_badge(flag)
 
 
-@register.simple_tag(name="learner_course_summaries")
-def learner_course_summaries_tag(learner: Learner) -> list[LearnerCourseSummary]:
-    """The learner's courses with progress, for `{% learner_course_summaries object as summaries %}`."""
-    return learner_course_summaries(learner)
+@register.simple_tag(name="learner_course_cell")
+def learner_course_cell_tag(learner: Learner) -> LearnerCourseCell:
+    """The courses a learner's Courses cell shows, for `{% learner_course_cell object as cell %}`."""
+    return learner_course_cell(learner)
 
 
 @register.simple_tag(name="passed_badge")

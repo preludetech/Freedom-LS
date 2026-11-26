@@ -69,3 +69,22 @@ def test_empty_percentage_renders_0() -> None:
 
     assert 'value="0"' in html
     assert "0%</span>" in html
+
+
+def test_small_size_keeps_the_label_value_and_percentage_text() -> None:
+    html = render_cotton(
+        '<c-panel-progress-bar size="small" percentage="40" label="Intro progress" />'
+    )
+
+    assert 'aria-label="Intro progress"' in html
+    assert 'value="40"' in html
+    assert "40%" in html[html.index("</progress>") :]
+
+
+def test_small_size_draws_a_thinner_bar_than_the_default() -> None:
+    default = render_cotton('<c-panel-progress-bar percentage="40" />')
+    small = render_cotton('<c-panel-progress-bar size="small" percentage="40" />')
+
+    assert "h-2 " in default
+    assert "h-1.5 " in small
+    assert "h-2 " not in small

@@ -820,6 +820,89 @@ def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_cour
     assert "20%" not in cell.text_content()
 
 
+def _learner_on_courses(organisation: Organisation, count: int) -> Learner:
+    learner = _make_learner(organisation=organisation)
+    for number in range(count):
+        LearnerCourseRegistrationFactory(
+            learner=learner,
+            course=CourseFactory(title=f"Course {number}"),
+            is_active=True,
+        )
+    return learner
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_caps_at_three_and_links_the_rest_to_the_courses_tab(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    learner = _learner_on_courses(organisation, 5)
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    assert len(cell.cssselect("li")) == 3
+    (more,) = cell.xpath(".//a[starts-with(@aria-label, '+2 more')]")
+    assert more.get("href").endswith(f"learners/{learner.pk}/__tabs/courses")
+    assert "Ada Lovelace" in more.get("aria-label")
+    assert more.text_content().strip() == "+2 more"
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_with_three_courses_has_no_more_link(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    _learner_on_courses(organisation, 3)
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    assert len(cell.cssselect("li")) == 3
+    assert "more" not in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_names_each_bar_after_its_course(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    _learner_on_courses(organisation, 1)
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    (bar,) = cell.cssselect("progress")
+    assert bar.get("aria-label") == "Course 0 progress"
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_without_a_progress_record_reads_an_empty_bar(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    _learner_on_courses(organisation, 1)
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    (bar,) = cell.cssselect("progress")
+    assert bar.get("value") == "0"
+    assert "0%" in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_phone_card_holds_the_capped_courses_cell(role_holder_client):
+    organisation = OrganisationFactory()
+    _learner_on_courses(organisation, 5)
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    document = lxml.html.fromstring(response.content.decode())
+    more_links = document.xpath("//a[starts-with(@aria-label, '+2 more')]")
+    assert len(more_links) == 2  # one in the desktop table, one in the phone card
+
+
 @pytest.mark.django_db
 def test_learners_list_last_active_reads_never_for_a_user_never_active(
     role_holder_client: RoleHolderClient,
