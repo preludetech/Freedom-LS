@@ -450,7 +450,7 @@ class TestLearnerQuickViewMessageBox:
         assert send.xpath(".//svg[@data-icon='send']")
         assert "Organisation admins can read" not in tree.text_content()
 
-    def test_the_messages_heading_sits_above_a_rule_with_room_below(
+    def test_the_messages_section_has_a_rule_above_the_heading_and_none_under_it(
         self, role_holder_client
     ):
         organisation = OrganisationFactory()
@@ -463,14 +463,15 @@ class TestLearnerQuickViewMessageBox:
         tree = html.fromstring(f"<div>{response.content.decode()}</div>")
         (heading,) = tree.xpath("//h3[@id='quick-view-message-heading']")
         row = heading.getparent()
-        assert {"border-b", "pb-3", "mb-4"} <= set(row.get("class").split())
-        assert "mt-6" in row.getparent().get("class").split()
+        assert "mb-4" in row.get("class").split()
+        assert "border-b" not in row.get("class").split()
+        assert "border-t" in row.getparent().get("class").split()
 
     def test_the_composer_draws_no_rule_of_its_own_under_the_messages_heading(
         self, role_holder_client
     ):
-        """The heading row already draws the section's rule; a second one on
-        the composer stacked two rules a few pixels apart."""
+        """The section's only rule sits above the heading; the composer adds
+        none under it."""
         organisation = OrganisationFactory()
         learner = _learner_in(organisation)
 
