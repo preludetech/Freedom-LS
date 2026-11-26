@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import cast
 from uuid import uuid4
 
-from django.db.models import Max
-
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging_views import message_box_context
 from freedom_ls.educator_interface.events import LEARNER_CHANGED
@@ -15,11 +13,11 @@ from freedom_ls.educator_interface.panels.common.badges import learner_status_ba
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
+from freedom_ls.educator_interface.panels.learner.last_active import last_active_text
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.educator_interface.user_display import email_below_name
 from freedom_ls.learner_management.models import CohortMembership, Learner
 from freedom_ls.learner_management.queries import cohorts_visible_to
-from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.queries import (
     LearnerRegistrationProgress,
     registrations_with_progress_for_learner,
@@ -66,16 +64,13 @@ class LearnerQuickView(QuickView):
             .select_related("cohort")
             .order_by("cohort__name")
         )
-        last_active = CourseProgress.objects.filter(learner=learner).aggregate(
-            latest=Max("last_accessed_time")
-        )["latest"]
         registrations = visible_registrations_with_progress(learner, request)
         context: dict[str, object] = {
             "learner": learner,
             "status_badge": learner_status_badge(learner),
             "memberships": memberships,
             "registrations": registrations,
-            "last_active": last_active,
+            "last_active": last_active_text(learner.user),
         }
         if comms_config.MESSAGING_ENABLED:
             context.update(self._message_box_context(learner))

@@ -9,11 +9,7 @@ rows start at their status.
         <c-panel-status-badge :badge="status_badge" />
     </c-panel-definition-row>
     <c-panel-definition-row label="Last active">
-        {% comment %}
-        CourseProgress.last_accessed_time, not User.last_login: last_login
-        is site-wide and records a login, not course activity.
-        {% endcomment %}
-        {% if last_active %}{{ last_active }}{% else %}Never{% endif %}
+        {{ last_active }}
     </c-panel-definition-row>
     <c-panel-definition-row label="Cohorts" class="col-span-2">
         {% include "panel_framework/partials/related_list.html" with items=memberships layout="inline" text_attr="cohort.name" link_object_attr="cohort" url_name="educator_interface:interface" url_path_template="cohorts/{pk}" request=request only %}

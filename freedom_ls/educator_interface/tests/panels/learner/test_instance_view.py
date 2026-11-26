@@ -5,6 +5,7 @@ Its title, header badge, tab set and where each action sits across the tabs.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
 
 import lxml.html
@@ -12,6 +13,7 @@ import pytest
 
 from django.test import Client
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.events import LEARNER_CHANGED
 from freedom_ls.educator_interface.tests.helpers import (
     _add_member,
@@ -250,7 +252,7 @@ def test_the_learner_header_carries_the_email_subtitle_and_no_active_badge(
 
 
 @pytest.mark.django_db
-def test_the_learner_overview_details_card_lists_name_email_status_and_date_added(
+def test_the_learner_overview_details_card_lists_name_email_status_date_added_and_last_active(
     staff_client: Client,
 ):
     learner = LearnerFactory(organisation=OrganisationFactory())
@@ -258,4 +260,35 @@ def test_the_learner_overview_details_card_lists_name_email_status_and_date_adde
     document = _learner_page(staff_client, learner, "overview")
 
     labels = [dt.text_content().strip() for dt in document.cssselect("dl dt")]
-    assert labels == ["Name", "Email", "Status", "Date added"]
+    assert labels == ["Name", "Email", "Status", "Date added", "Last active"]
+
+
+@pytest.mark.django_db
+def test_the_learner_overview_last_active_row_shows_the_date(staff_client: Client):
+    learner = LearnerFactory(
+        organisation=OrganisationFactory(),
+        user=UserFactory(last_active=datetime(2026, 3, 4, 15, 30, tzinfo=UTC)),
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (value,) = document.xpath(
+        "//dt[normalize-space()='Last active']/following-sibling::dd[1]"
+    )
+    assert value.text_content().strip() == "4 Mar 2026"
+
+
+@pytest.mark.django_db
+def test_the_learner_overview_last_active_row_reads_never_without_activity(
+    staff_client: Client,
+):
+    learner = LearnerFactory(
+        organisation=OrganisationFactory(), user=UserFactory(last_active=None)
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (value,) = document.xpath(
+        "//dt[normalize-space()='Last active']/following-sibling::dd[1]"
+    )
+    assert value.text_content().strip() == "Never"

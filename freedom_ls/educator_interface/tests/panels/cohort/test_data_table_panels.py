@@ -461,7 +461,9 @@ def test_the_learners_export_neutralises_a_formula_looking_name_and_leaves_never
         cohort=CohortFactory(organisation=organisation),
         learner__organisation=organisation,
         learner__user=UserFactory(
-            first_name='=HYPERLINK("http://evil","x")', last_name=""
+            first_name='=HYPERLINK("http://evil","x")',
+            last_name="",
+            last_active=None,
         ),
     )
 

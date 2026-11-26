@@ -8,6 +8,7 @@ learners list and instance pages are.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -16,6 +17,7 @@ from lxml import html
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 if TYPE_CHECKING:
     # Stub-only: the test client's response carries `templates`, which a plain
@@ -43,6 +45,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -221,13 +224,31 @@ class TestLearnerQuickView:
         self, role_holder_client
     ):
         organisation = OrganisationFactory()
-        learner = LearnerFactory(organisation=organisation)
+        learner = LearnerFactory(
+            organisation=organisation, user=UserFactory(last_active=None)
+        )
 
         response = _get_quick_view(
             role_holder_client(organisation), organisation, f"learners/{learner.pk}"
         )
 
         assert "Never" in response.content.decode()
+
+    def test_last_active_is_the_users_not_the_latest_course_activity(
+        self, role_holder_client
+    ):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(
+            organisation=organisation,
+            user=UserFactory(last_active=datetime(2020, 1, 2, 9, 0, tzinfo=UTC)),
+        )
+        CourseProgressFactory(learner=learner, last_accessed_time=timezone.now())
+
+        response = _get_quick_view(
+            role_holder_client(organisation), organisation, f"learners/{learner.pk}"
+        )
+
+        assert "2 Jan 2020" in response.content.decode()
 
     def test_a_learner_in_another_organisation_404s(self, role_holder_client):
         organisation = OrganisationFactory()

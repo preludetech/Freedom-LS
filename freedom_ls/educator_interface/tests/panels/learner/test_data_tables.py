@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import cast
 
 import lxml.html
@@ -20,11 +21,15 @@ from django.template.loader import render_to_string
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.educator_interface.panels.learner.data_tables import LearnerDataTable
+from freedom_ls.educator_interface.panels.learner.data_tables import (
+    LearnerDataTable,
+    _last_active_cell,
+)
 from freedom_ls.educator_interface.tests.helpers import (
     _get_document,
     _interface_url,
@@ -60,7 +65,7 @@ def _make_cohort(*, organisation: Organisation) -> Cohort:
     )
 
 
-def _make_learner(*, organisation: Organisation, **user_fields: str) -> Learner:
+def _make_learner(*, organisation: Organisation, **user_fields: object) -> Learner:
     """A learner in ``organisation``, named by default so the tests can assert
     on what the rendered row says."""
     return cast(
@@ -815,11 +820,11 @@ def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_cour
 
 
 @pytest.mark.django_db
-def test_learners_list_last_active_reads_never_without_a_progress_record(
+def test_learners_list_last_active_reads_never_for_a_user_never_active(
     role_holder_client,
 ):
     organisation = OrganisationFactory()
-    _make_learner(organisation=organisation)
+    _make_learner(organisation=organisation, last_active=None)
 
     response = role_holder_client(organisation).get(_learners_url(organisation.slug))
 
@@ -828,26 +833,60 @@ def test_learners_list_last_active_reads_never_without_a_progress_record(
 
 
 @pytest.mark.django_db
-def test_learners_list_sorted_by_last_active_orders_by_most_recent_visit(
+def test_learners_list_last_active_shows_the_users_date_not_course_activity(
     role_holder_client,
 ):
     organisation = OrganisationFactory()
-    for first_name, visited in (("Early", "2024-01-01"), ("Late", "2025-06-01")):
-        learner = _make_learner(
+    learner = _make_learner(
+        organisation=organisation,
+        last_active=datetime(2020, 1, 2, 9, 0, tzinfo=UTC),
+    )
+    CourseProgressFactory(learner=learner, last_accessed_time=timezone.now())
+
+    response = role_holder_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Last active")
+    assert cell.text_content().strip() == "2 Jan 2020"
+
+
+@pytest.mark.django_db
+def test_learners_list_sorted_by_last_active_orders_by_the_most_recent_request(
+    role_holder_client,
+):
+    organisation = OrganisationFactory()
+    for first_name, active in (
+        ("Early", datetime(2024, 1, 1, 10, 0, tzinfo=UTC)),
+        ("Late", datetime(2025, 6, 1, 10, 0, tzinfo=UTC)),
+    ):
+        _make_learner(
             organisation=organisation,
             first_name=first_name,
             email=f"{first_name.lower()}@visit.example.com",
-        )
-        CourseProgressFactory(
-            learner=learner, last_accessed_time=f"{visited}T10:00:00+00:00"
+            last_active=active,
         )
 
     response = role_holder_client(organisation).get(
-        _learners_url(organisation.slug), {"learners-sort": "-last_active"}
+        _learners_url(organisation.slug), {"learners-sort": "-user__last_active"}
     )
 
     content = response.content.decode()
     assert content.index("late@visit") < content.index("early@visit")
+
+
+@pytest.mark.django_db
+def test_learners_export_last_active_cell_is_the_users_local_date():
+    learner = LearnerFactory(
+        user=UserFactory(last_active=datetime(2026, 3, 4, 15, 30, tzinfo=UTC))
+    )
+
+    assert _last_active_cell(learner) == "2026-03-04"
+
+
+@pytest.mark.django_db
+def test_learners_export_last_active_cell_is_empty_for_a_user_never_active():
+    learner = LearnerFactory(user=UserFactory(last_active=None))
+
+    assert _last_active_cell(learner) == ""
 
 
 @pytest.mark.django_db

@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import cast
 from uuid import UUID
 
-from django.db.models import Max, Model, Prefetch, QuerySet
+from django.db.models import Model, Prefetch, QuerySet
 from django.http import HttpRequest
 from django.utils import timezone
 
@@ -131,7 +130,6 @@ class LearnerDataTable(DataTable):
                 ),
                 "course_progress_records",
             )
-            .annotate(last_active=Max("course_progress_records__last_accessed_time"))
             .order_by("user__first_name", "user__last_name")
         )
 
@@ -152,7 +150,7 @@ class LearnerDataTable(DataTable):
             Column(
                 header="Last active",
                 template_name="cotton/data-table-cells/date.html",
-                attr="last_active",
+                attr="user.last_active",
                 sortable=True,
                 empty_text="Never",
             ),
@@ -172,7 +170,7 @@ class LearnerDataTable(DataTable):
 
     @staticmethod
     def get_export_columns() -> list[ExportColumn]:
-        # Every value reads the caches get_queryset prefetches or annotates,
+        # Every value reads the caches get_queryset prefetches or selects,
         # so the export streams without a query per learner.
         return [
             ExportColumn("Name", "user.display_name"),
@@ -199,9 +197,9 @@ class LearnerDataTable(DataTable):
 
 
 def _last_active_cell(row: Model) -> str:
-    """The annotated last_active as a date, matching the on-screen cell."""
-    last_active = getattr(row, "last_active", None)
-    if not isinstance(last_active, datetime):
+    """The user's last_active as a date, matching the on-screen cell."""
+    last_active = cast(Learner, row).user.last_active
+    if last_active is None:
         return ""
     return timezone.localtime(last_active).strftime("%Y-%m-%d")
 

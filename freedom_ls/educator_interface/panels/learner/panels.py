@@ -20,6 +20,7 @@ from freedom_ls.educator_interface.panels.learner.actions import (
     ResendSetupEmailAction,
     learner_state_actions,
 )
+from freedom_ls.educator_interface.panels.learner.last_active import last_active_text
 from freedom_ls.educator_interface.panels.learner.quick_view import (
     visible_registrations_with_progress,
 )
@@ -51,6 +52,7 @@ class LearnerDetailsPanel(InstanceDetailsPanel):
             self.detail_row("Email", learner.user.email),
             self.detail_row("Status", learner_status_badge(learner), "badge"),
             self.detail_row("Date added", learner.created_at, "date"),
+            self.detail_row("Last active", last_active_text(learner.user), "text"),
         ]
 
 
