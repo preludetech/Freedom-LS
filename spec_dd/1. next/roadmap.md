@@ -15,7 +15,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-content-versions-and-access-2-retire-removed-content` (SACAA content versions and access)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA content versions and access)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
-- 🟠 Medium · `referral-tracking-marketing-channels` (Referral tracking and marketing)
 - 🟡 Low · `educator-interface-page-polish` (Educator interface)
 
 ### Ready to start
@@ -328,13 +327,12 @@ Priority: 🟠 Medium
 
 Where signups come from, and what visitors are told about tracking.
 
-- `referral-tracking-marketing-channels` — **in progress** — Classify a signup's first touch into a marketing channel (search, social, email, referral, direct; paid or organic).
 - `referral-tracking-external-referer-first-touch` — **ready** — An opt-in first touch for visitors who arrive untagged from another site.
 - `server-side-conversion-tracking` — **ready** — Send conversions from the server to the Meta, TikTok and Google APIs, deduplicated against the browser tags.
 - `cookie-banner` — **ready** — A cookie banner explains tracking. Once dismissed, it stays dismissed.
 - `landing-page-component-kit` — **ready** — Theme-role cotton components and layouts for building course and campaign landing pages.
 - `lead-capture-forms` — **ready** — Site-aware enquiry forms storing leads with first-touch attribution, with staff notification emails and CSV export.
-- `referral-tracking-labelled-referer-hosts` — **blocked** by `referral-tracking-marketing-channels`, `referral-tracking-external-referer-first-touch` — Staff label unknown referer hosts in the admin so the channel classifier counts them correctly.
+- `referral-tracking-labelled-referer-hosts` — **blocked** by `referral-tracking-external-referer-first-touch` — Staff label unknown referer hosts in the admin so the channel classifier counts them correctly.
 
 ![Referral tracking and marketing](roadmap_diagrams/referral-tracking-and-marketing.svg)
 
