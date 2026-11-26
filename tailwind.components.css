@@ -323,7 +323,7 @@
 
     /* Chip / badge component */
     .chip {
-        @apply inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-lg
+        @apply inline-flex items-center whitespace-nowrap gap-1.5 px-3 py-1 text-sm font-medium rounded-lg
     }
 
     .chip-primary {

@@ -2551,6 +2551,19 @@ class TestRetiredOptionInTheConfusionsPartial:
         assert html.index("Earth") < html.index("Retired") < html.index("Terra")
 
 
+class TestChipStaysOnOneLine:
+    def test_chip_rule_forbids_wrapping(self) -> None:
+        """An option chip with its Retired mark used to break its text onto two
+        lines in a narrow, sideways-scrolling table."""
+        from pathlib import Path
+
+        css = Path("tailwind.components.css").read_text()
+        rule = re.search(r"\n\s*\.chip \{(.*?)\}", css, re.S)
+
+        assert rule is not None
+        assert "whitespace-nowrap" in rule.group(1)
+
+
 class TestRetiredCorrectOptionInTheLearnerDetail:
     def test_only_the_retired_correct_answer_is_marked(self) -> None:
         learner = learner_detail(
