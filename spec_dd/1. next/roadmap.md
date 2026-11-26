@@ -11,7 +11,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 ### In progress
 
-- 🔴 High · `sacaa-complianc-deletion-and-declaration-1-force-delete` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-assessment-controls-2-attempt-limits` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-assessment-controls-3-test-time-limit` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-4-question-access` (SACAA compliance)
@@ -94,7 +93,6 @@ Learner record retention, question versions and access, and assessment controls,
 - `sacaa-compliance-assessment-controls-5-test-disturbance` — **blocked** by `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Leaving a quiz (logout, session end, auto exit, leave and return) auto-fails or auto-marks the attempt.
 - `sacaa-compliance-assessment-controls-6-minimum-learning-time` — **blocked** by `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Active learning time is recorded; topics, course parts and quizzes require a minimum before learners move on.
 - `sacaa-compliance-assessment-controls-7-course-restart` — **ready** — Staff restart a learner's course with a reason; the earlier run is kept read-only.
-- `sacaa-complianc-deletion-and-declaration-1-force-delete` — **in progress** — Admins can no longer delete users; superusers force delete a user or learner with a logged reason; users get a last-active time.
 
 ![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
 
