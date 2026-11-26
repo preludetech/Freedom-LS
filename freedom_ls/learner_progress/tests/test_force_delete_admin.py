@@ -15,8 +15,13 @@ from freedom_ls.accounts.factories import LegalConsentFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import REASON_LENGTH, AuditLogEntry
 from freedom_ls.form_engine.models import FormProgress
-from freedom_ls.learner_progress.factories import CourseFormAttemptFactory
-from freedom_ls.learner_progress.models import CourseFormAttempt
+from freedom_ls.learner_management.factories import LearnerFactory
+from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_progress.factories import (
+    CourseFormAttemptFactory,
+    CourseProgressFactory,
+)
+from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
 from freedom_ls.learner_progress.tests.helpers import stub_unlinked
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
@@ -376,3 +381,121 @@ def test_post_records_the_unlinked_counts_in_the_entry(
     staff_client.post(_url(user), {"ids": str(user.pk), "reason": "Why"})
 
     assert AuditLogEntry.unscoped.get().details["unlinked"] == {"learners": 4}
+
+
+LEARNER_FORCE_DELETE = "admin:freedom_ls_learner_management_learner_force_delete"
+
+
+def _learner_url(*learners: Learner) -> str:
+    ids = ",".join(str(learner.pk) for learner in learners)
+    return f"{reverse(LEARNER_FORCE_DELETE)}?ids={ids}"
+
+
+@pytest.fixture
+def staff_with_every_learner_permission(mock_site_context, logged_in_client) -> Client:
+    user = UserFactory(staff=True)
+    user.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="freedom_ls_learner_management",
+            content_type__model="learner",
+        )
+    )
+    client: Client = logged_in_client(user)
+    return client
+
+
+def test_learner_page_wording_and_links(staff_client) -> None:
+    learner = LearnerFactory()
+
+    response = staff_client.get(_learner_url(learner))
+
+    change_url = reverse(
+        "admin:freedom_ls_learner_management_learner_change", args=[learner.pk]
+    )
+    body = response.content.decode()
+    assert response.status_code == 200
+    assert "deactivate the learner" in body
+    assert f'href="{change_url}"' in body
+    assert (
+        "The user account and their learner records in other organisations stay."
+        in body
+    )
+    assert "recorded against every selected learner" in body
+
+
+def test_learner_page_counts_the_learners_course_progress(staff_client) -> None:
+    learner = LearnerFactory()
+    CourseProgressFactory(learner=learner)
+
+    response = staff_client.get(_learner_url(learner))
+
+    counts = response.context["plan"].counts()
+    assert counts[str(CourseProgress._meta.verbose_name_plural)] == 1
+    assert counts[str(Learner._meta.verbose_name_plural)] == 1
+
+
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_staff_without_superuser_get_403_on_the_learner_view(
+    staff_with_every_learner_permission, method: str
+) -> None:
+    learner = LearnerFactory()
+
+    response = getattr(staff_with_every_learner_permission, method)(
+        _learner_url(learner)
+    )
+
+    assert response.status_code == 403
+
+
+def test_another_sites_learner_is_a_404_and_survives(staff_client) -> None:
+    with site_context(SiteFactory()):
+        other = LearnerFactory()
+
+    response = staff_client.post(
+        _learner_url(other), {"ids": str(other.pk), "reason": "Why"}
+    )
+
+    assert response.status_code == 404
+    assert Learner._base_manager.filter(pk=other.pk).exists()
+
+
+def test_learner_post_removes_the_learner_and_keeps_the_user(staff_client) -> None:
+    learner = LearnerFactory()
+    other = LearnerFactory(user=learner.user)
+
+    response = staff_client.post(
+        _learner_url(learner), {"ids": str(learner.pk), "reason": "Left"}
+    )
+
+    entry = AuditLogEntry.unscoped.get()
+    assert response.status_code == 302
+    assert response.url == reverse(
+        "admin:freedom_ls_learner_management_learner_changelist"
+    )
+    assert not Learner._base_manager.filter(pk=learner.pk).exists()
+    assert Learner._base_manager.filter(pk=other.pk).exists()
+    assert User.objects.filter(pk=learner.user_id).exists()
+    assert entry.action == "learner.removed"
+    assert entry.reason == "Left"
+    assert entry.organisation_id == learner.organisation_id
+
+
+def test_learner_cancel_returns_to_the_change_page(staff_client) -> None:
+    learner = LearnerFactory()
+
+    response = staff_client.get(_learner_url(learner))
+
+    assert response.context["cancel_url"] == reverse(
+        "admin:freedom_ls_learner_management_learner_change", args=[learner.pk]
+    )
+
+
+def test_learner_invalid_reason_is_422_and_deletes_nothing(staff_client) -> None:
+    learner = LearnerFactory()
+
+    response = staff_client.post(
+        _learner_url(learner), {"ids": str(learner.pk), "reason": " "}
+    )
+
+    assert response.status_code == 422
+    assert Learner._base_manager.filter(pk=learner.pk).exists()

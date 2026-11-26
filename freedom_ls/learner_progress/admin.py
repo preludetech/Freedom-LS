@@ -18,13 +18,14 @@ from freedom_ls.accounts.admin import UserAdmin as AccountsUserAdmin
 from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.enums import FormStrategy
 from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.learner_management.models import Learner
 from freedom_ls.site_aware_models.admin import ReadOnlyAdminMixin, SiteAwareModelAdmin
 from freedom_ls.site_aware_models.admin_filters import (
     CompletionListFilter,
     InclusiveRangeDateTimeFilter,
 )
 
-from .force_delete_admin import ForceDeleteAdminMixin
+from .force_delete_admin import LEARNER_TARGET, USER_TARGET, ForceDeleteAdminMixin
 from .models import CourseFormAttempt, CourseProgress, TopicProgress
 
 admin.site.unregister(User)
@@ -38,8 +39,37 @@ class UserAdmin(ForceDeleteAdminMixin, AccountsUserAdmin):
     """The accounts user admin plus force delete, registered here because
     force delete reaches course progress, which accounts cannot import."""
 
+    force_delete_target = USER_TARGET
     actions = ["force_delete_selected"]
     actions_detail = ["force_delete_one"]
+
+
+# A learner force delete takes the learner's rows, whose admins refuse delete.
+USER_ERASURE_CASCADE_MODELS.add(Learner)
+
+
+@admin.register(Learner)
+class LearnerAdmin(ReadOnlyAdminMixin, ForceDeleteAdminMixin, SiteAwareModelAdmin):
+    """Learners are managed in the educator interface. This admin exists to
+    carry learner force delete, so it changes nothing else."""
+
+    force_delete_target = LEARNER_TARGET
+    list_display = ["email", "display_name", "organisation", "is_active", "created_at"]
+    list_select_related = ["user", "organisation"]
+    search_fields = ["user__email", "user__first_name", "user__last_name"]
+    list_filter = [("organisation", RelatedDropdownFilter), "is_active"]
+    fields = ["email", "display_name", "organisation", "is_active", "created_at"]
+    readonly_fields = fields
+    actions = ["force_delete_selected"]
+    actions_detail = ["force_delete_one"]
+
+    @admin.display(description="Email", ordering="user__email")
+    def email(self, obj: Learner) -> str:
+        return obj.user.email
+
+    @admin.display(description="Name", ordering="user__last_name")
+    def display_name(self, obj: Learner) -> str:
+        return obj.user.display_name
 
 
 class TopicCompletionFilter(CompletionListFilter):

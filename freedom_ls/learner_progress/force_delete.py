@@ -6,7 +6,7 @@ The page that asks for confirmation and the delete itself both go through
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 from django.contrib.admin.sites import AdminSite
@@ -209,6 +209,61 @@ def unlinked_counts_for(user: User) -> dict[str, JSONValue]:
     return {**_by_name(unlinked_rows([user]))}
 
 
+def _run_force_delete(
+    locked: Sequence[Model],
+    *,
+    progress_roots: Sequence[Model],
+    unlinked_for: Sequence[User],
+    write_entries: Callable[[], None],
+    delete_rows: Callable[[], None],
+    request: HttpRequest,
+    admin_site: AdminSite,
+) -> int:
+    """Build the plan for rows already locked in the caller's transaction, stop
+    if a model blocks it, then write the entries and delete.
+
+    The plan is built here, not read from the confirmation page, so a row added
+    since that page was shown is counted and a model that now blocks stops the
+    delete.
+    """
+    plan = build_plan(
+        targets=locked,
+        progress_roots=progress_roots,
+        request=request,
+        admin_site=admin_site,
+        unlinked_for=unlinked_for,
+    )
+    if not plan.can_run:
+        raise ForceDeleteBlockedError(plan.blocking_models)
+    write_entries()
+    delete_rows()
+    return len(locked)
+
+
+def _record_learner_removed(
+    learner: Learner,
+    *,
+    actor: User,
+    reason: str,
+    request: HttpRequest,
+    admin_site: AdminSite,
+) -> None:
+    record_learner_entry(
+        learner,
+        "learner.removed",
+        actor,
+        reason=reason,
+        details={
+            "counts": counts_for(
+                learner,
+                learner_progress_roots([learner]),
+                request=request,
+                admin_site=admin_site,
+            )
+        },
+    )
+
+
 def force_delete_users(
     users: Sequence[User],
     *,
@@ -221,9 +276,7 @@ def force_delete_users(
 
     Each user gets one `user.deleted` entry with no organisation, and each of
     their learners one `learner.removed` entry in that learner's organisation.
-    The users are re-read under a lock and the plan rebuilt inside the
-    transaction, so a row added since the confirmation page was shown is
-    counted, and a model that now blocks stops the delete. Everything reads
+    The users are re-read under a lock inside the transaction. Everything reads
     through `_base_manager`: the request's site must not narrow a cascade.
     """
     with transaction.atomic():
@@ -235,56 +288,107 @@ def force_delete_users(
                 "user", "organisation"
             )
         )
-        plan = build_plan(
-            targets=locked,
-            progress_roots=learner_progress_roots(learners),
-            request=request,
-            admin_site=admin_site,
-            unlinked_for=locked,
-        )
-        if not plan.can_run:
-            raise ForceDeleteBlockedError(plan.blocking_models)
-        for user in locked:
-            own_learners = [
-                learner for learner in learners if learner.user_id == user.pk
-            ]
-            record_entry(
-                action="user.deleted",
-                actor=actor,
-                target=user,
-                target_label=user.display_name,
-                organisation=None,
-                subjects=own_learners,
-                reason=reason,
-                details={
-                    "counts": counts_for(
-                        user,
-                        learner_progress_roots(own_learners),
-                        request=request,
-                        admin_site=admin_site,
-                    ),
-                    "unlinked": unlinked_counts_for(user),
-                    "organisations": [
-                        *sorted({learner.organisation.name for learner in own_learners})
-                    ],
-                },
-            )
-            for learner in own_learners:
-                record_learner_entry(
-                    learner,
-                    "learner.removed",
-                    actor,
+
+        def write_entries() -> None:
+            for user in locked:
+                own_learners = [
+                    learner for learner in learners if learner.user_id == user.pk
+                ]
+                record_entry(
+                    action="user.deleted",
+                    actor=actor,
+                    target=user,
+                    target_label=user.display_name,
+                    organisation=None,
+                    subjects=own_learners,
                     reason=reason,
                     details={
                         "counts": counts_for(
-                            learner,
-                            learner_progress_roots([learner]),
+                            user,
+                            learner_progress_roots(own_learners),
                             request=request,
                             admin_site=admin_site,
-                        )
+                        ),
+                        "unlinked": unlinked_counts_for(user),
+                        "organisations": [
+                            *sorted(
+                                {learner.organisation.name for learner in own_learners}
+                            )
+                        ],
                     },
                 )
-        # CourseProgress.learner is PROTECT, so the progress records go first.
-        CourseProgress._base_manager.filter(learner__in=learners).delete()
-        User._base_manager.filter(pk__in=[u.pk for u in locked]).delete()
-    return len(locked)
+                for learner in own_learners:
+                    _record_learner_removed(
+                        learner,
+                        actor=actor,
+                        reason=reason,
+                        request=request,
+                        admin_site=admin_site,
+                    )
+
+        def delete_rows() -> None:
+            # CourseProgress.learner is PROTECT, so the progress records go first.
+            CourseProgress._base_manager.filter(learner__in=learners).delete()
+            User._base_manager.filter(pk__in=[u.pk for u in locked]).delete()
+
+        return _run_force_delete(
+            locked,
+            progress_roots=learner_progress_roots(learners),
+            unlinked_for=locked,
+            write_entries=write_entries,
+            delete_rows=delete_rows,
+            request=request,
+            admin_site=admin_site,
+        )
+
+
+def force_delete_learners(
+    learners: Sequence[Learner],
+    *,
+    actor: User,
+    reason: str,
+    request: HttpRequest,
+    admin_site: AdminSite,
+) -> int:
+    """Delete the learners and what hangs off them in one transaction.
+
+    Each learner gets one `learner.removed` entry in their organisation. The
+    user and the user's other learners stay, and so does any form progress
+    record no deleted course form attempt links.
+    """
+    with transaction.atomic():
+        locked = list(
+            Learner._base_manager.filter(pk__in=[le.pk for le in learners])
+            .select_for_update()
+            .select_related("user", "organisation")
+        )
+        roots = learner_progress_roots(locked)
+        form_progress_ids = [r.pk for r in roots if isinstance(r, FormProgress)]
+
+        def write_entries() -> None:
+            for learner in locked:
+                _record_learner_removed(
+                    learner,
+                    actor=actor,
+                    reason=reason,
+                    request=request,
+                    admin_site=admin_site,
+                )
+
+        def delete_rows() -> None:
+            # CourseProgress.learner is PROTECT, so the progress records go
+            # first; the course form attempts go with them, then the form
+            # progress records they linked.
+            CourseProgress._base_manager.filter(learner__in=locked).delete()
+            FormProgress._base_manager.filter(pk__in=form_progress_ids).delete()
+            Learner._base_manager.filter(pk__in=[le.pk for le in locked]).delete()
+
+        return _run_force_delete(
+            locked,
+            progress_roots=roots,
+            unlinked_for=[],
+            write_entries=write_entries,
+            delete_rows=delete_rows,
+            request=request,
+            admin_site=admin_site,
+        )

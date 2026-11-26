@@ -5,15 +5,17 @@
     {% component "unfold/components/card.html" %}
         {% component "unfold/components/text.html" %}
             SACAA requires records to be kept for five years. To stop someone signing in,
-            {% if change_urls|length == 1 %}{% for user, change_url in change_urls %}<a href="{{ change_url }}" class="underline">deactivate the user</a>{% endfor %}{% else %}deactivate the user{% endif %}
+            {% if change_urls|length == 1 %}{% for label, change_url in change_urls %}<a href="{{ change_url }}" class="underline">deactivate the {{ noun }}</a>{% endfor %}{% else %}deactivate the {{ noun }}{% endif %}
             instead.
         {% endcomponent %}
 
+        {% if stays %}<p class="mt-4" id="stays">{{ stays }}</p>{% endif %}
+
         <section class="mt-6" id="targets">
-            <h2 class="font-semibold">Selected ({{ users|length }})</h2>
+            <h2 class="font-semibold">Selected ({{ targets|length }})</h2>
             <ul class="mt-2 list-disc pl-6">
-                {% for user, change_url in change_urls %}
-                    <li>{% if change_urls|length > 1 %}<a href="{{ change_url }}" class="underline">{{ user.display_name }}</a>{% else %}{{ user.display_name }}{% endif %}</li>
+                {% for label, change_url in change_urls %}
+                    <li>{% if change_urls|length > 1 %}<a href="{{ change_url }}" class="underline">{{ label }}</a>{% else %}{{ label }}{% endif %}</li>
                 {% endfor %}
             </ul>
         </section>
@@ -63,7 +65,7 @@
                     {% for error in form.reason.errors %}
                         <p class="mt-1 text-red-600">{{ error }}</p>
                     {% endfor %}
-                    <p class="mt-1">This reason is recorded against every selected user.</p>
+                    <p class="mt-1">This reason is recorded against every selected {{ noun }}.</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-4">
                     {% component "unfold/components/button.html" with submit=1 variant="danger" %}

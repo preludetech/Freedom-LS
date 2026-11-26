@@ -13,6 +13,7 @@ from collections.abc import Callable
 import pytest
 
 from django.contrib import admin
+from django.contrib.auth.models import Permission
 from django.contrib.sites.models import Site
 from django.db.models import Model
 from django.test import Client, RequestFactory
@@ -21,6 +22,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import FormProgressFactory
+from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_progress.admin import (
     CourseProgressFormAttemptInline,
@@ -372,3 +374,100 @@ def test_the_changelist_refuses_a_learner_filter(
     )
 
     assert response.status_code == 400
+
+
+LEARNER_CHANGELIST = "admin:freedom_ls_learner_management_learner_changelist"
+
+
+def test_learner_admin_offers_no_add_change_or_delete(superuser_client) -> None:
+    learner = LearnerFactory()
+
+    add = superuser_client.get(
+        reverse("admin:freedom_ls_learner_management_learner_add")
+    )
+    delete = superuser_client.get(
+        reverse("admin:freedom_ls_learner_management_learner_delete", args=[learner.pk])
+    )
+    change = superuser_client.post(
+        reverse(
+            "admin:freedom_ls_learner_management_learner_change", args=[learner.pk]
+        ),
+        {"is_active": ""},
+    )
+
+    assert add.status_code == 403
+    assert delete.status_code == 403
+    assert change.status_code == 403
+    assert Learner.objects.get(pk=learner.pk).is_active is True
+
+
+def test_learner_changelist_searches_by_email(superuser_client) -> None:
+    wanted = LearnerFactory(user=UserFactory(email="wanted@example.com"))
+    LearnerFactory(user=UserFactory(email="other@example.com"))
+
+    response = superuser_client.get(reverse(LEARNER_CHANGELIST), {"q": "wanted@"})
+
+    assert list(response.context["cl"].result_list) == [wanted]
+
+
+def test_learner_changelist_filters_by_organisation_and_status(
+    superuser_client,
+) -> None:
+    active = LearnerFactory()
+    inactive = LearnerFactory(is_active=False)
+
+    by_organisation = superuser_client.get(
+        reverse(LEARNER_CHANGELIST), {"organisation__id__exact": active.organisation_id}
+    )
+    by_status = superuser_client.get(
+        reverse(LEARNER_CHANGELIST), {"is_active__exact": "0"}
+    )
+
+    assert list(by_organisation.context["cl"].result_list) == [active]
+    assert list(by_status.context["cl"].result_list) == [inactive]
+
+
+def test_learner_changelist_offers_force_delete_to_a_superuser(
+    superuser_client,
+) -> None:
+    LearnerFactory()
+
+    response = superuser_client.get(reverse(LEARNER_CHANGELIST))
+
+    assert "Force delete selected learners" in response.content.decode()
+
+
+def test_learner_change_page_offers_force_delete_to_a_superuser(
+    superuser_client,
+) -> None:
+    learner = LearnerFactory()
+
+    response = superuser_client.get(
+        reverse("admin:freedom_ls_learner_management_learner_change", args=[learner.pk])
+    )
+
+    assert response.status_code == 200
+    assert "Force delete" in response.content.decode()
+
+
+def test_learner_admin_hides_force_delete_from_staff(
+    mock_site_context, logged_in_client
+) -> None:
+    # Staff holding every learner permission: the admin still shows no action.
+    user = UserFactory(staff=True)
+    user.user_permissions.add(
+        *Permission.objects.filter(
+            content_type__app_label="freedom_ls_learner_management",
+            content_type__model="learner",
+        )
+    )
+    client = logged_in_client(user)
+    learner = LearnerFactory()
+
+    changelist = client.get(reverse(LEARNER_CHANGELIST))
+    change = client.get(
+        reverse("admin:freedom_ls_learner_management_learner_change", args=[learner.pk])
+    )
+
+    assert "Force delete" not in changelist.content.decode()
+    assert "Force delete" not in change.content.decode()

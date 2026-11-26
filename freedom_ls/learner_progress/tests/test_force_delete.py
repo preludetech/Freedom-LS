@@ -43,7 +43,9 @@ from freedom_ls.learner_progress.factories import (
 from freedom_ls.learner_progress.force_delete import (
     ForceDeleteBlockedError,
     build_plan,
+    force_delete_learners,
     force_delete_users,
+    learner_progress_roots,
     user_progress_roots,
 )
 from freedom_ls.learner_progress.models import (
@@ -418,3 +420,102 @@ def test_force_delete_records_unlinked_counts_in_the_entry(
     )
 
     assert AuditLogEntry.unscoped.get().details["unlinked"] == {"learners": 2}
+
+
+def _delete_learners(learners: list[Learner], request: HttpRequest, actor: User) -> int:
+    return force_delete_learners(
+        learners,
+        actor=actor,
+        reason="Left the organisation",
+        request=request,
+        admin_site=admin.site,
+    )
+
+
+def test_force_delete_learners_removes_that_learners_rows_and_keeps_the_rest(
+    loaded_user, request_for, actor
+) -> None:
+    gone, kept = loaded_user.learners
+
+    count = _delete_learners([gone], request_for, actor)
+
+    assert count == 1
+    assert not Learner._base_manager.filter(pk=gone.pk).exists()
+    assert not CohortMembership._base_manager.filter(learner=gone).exists()
+    assert not CourseProgress._base_manager.filter(learner=gone).exists()
+    assert not TopicProgress._base_manager.filter(
+        course_progress__learner=gone
+    ).exists()
+    assert not CourseFormAttempt._base_manager.exists()
+    assert not QuestionAnswerFile._base_manager.exists()
+    assert User._base_manager.filter(pk=loaded_user.user.pk).exists()
+    assert Learner._base_manager.filter(pk=kept.pk).exists()
+    assert CourseProgress._base_manager.filter(learner=kept).exists()
+    assert FormProgress._base_manager.filter(
+        pk=loaded_user.standalone_form_progress.pk
+    ).exists()
+    assert FormProgress._base_manager.count() == 1
+
+
+def test_force_delete_learners_writes_one_entry_per_learner_in_its_organisation(
+    loaded_user, request_for, actor
+) -> None:
+    first, second = loaded_user.learners
+
+    _delete_learners([first, second], request_for, actor)
+
+    entries = AuditLogEntry.unscoped.all()
+    assert {e.action for e in entries} == {"learner.removed"}
+    assert {e.organisation_id for e in entries} == {
+        first.organisation_id,
+        second.organisation_id,
+    }
+    assert {e.reason for e in entries} == {"Left the organisation"}
+    assert entries.count() == 2
+
+
+def test_force_delete_learners_names_the_models_that_block(
+    loaded_user, request_for, actor, monkeypatch
+) -> None:
+    monkeypatch.setattr(accounts_admin, "USER_ERASURE_CASCADE_MODELS", set())
+
+    with pytest.raises(ForceDeleteBlockedError):
+        _delete_learners(loaded_user.learners[:1], request_for, actor)
+
+    assert Learner._base_manager.filter(pk=loaded_user.learners[0].pk).exists()
+    assert not AuditLogEntry.unscoped.exists()
+
+
+def test_learner_progress_roots_hold_the_linked_form_progress(
+    loaded_user,
+) -> None:
+    roots = learner_progress_roots(loaded_user.learners[:1])
+
+    assert {type(root) for root in roots} == {CourseProgress, FormProgress}
+
+
+def test_a_failure_part_way_through_several_learners_rolls_back_every_row_and_entry(
+    mock_site_context, request_for, actor
+) -> None:
+    first: Learner = LearnerFactory()
+    second: Learner = LearnerFactory()
+    CourseProgressFactory(learner=first)
+
+    def fail_for_second(
+        sender: type[Learner], instance: Learner, **kwargs: object
+    ) -> None:
+        if instance.pk == second.pk:
+            raise _SecondDeleteFailedError
+
+    pre_delete.connect(
+        fail_for_second, sender=Learner, dispatch_uid="fail_for_second_learner"
+    )
+    try:
+        with pytest.raises(_SecondDeleteFailedError):
+            _delete_learners([first, second], request_for, actor)
+    finally:
+        pre_delete.disconnect(sender=Learner, dispatch_uid="fail_for_second_learner")
+
+    assert Learner._base_manager.filter(pk__in=[first.pk, second.pk]).count() == 2
+    assert CourseProgress._base_manager.filter(learner=first).exists()
+    assert not AuditLogEntry.unscoped.exists()

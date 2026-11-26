@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
-from dataclasses import replace
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass, replace
 from functools import partial
-from typing import cast
+from typing import Protocol, cast
 from urllib.parse import urlencode
 
 from unfold.decorators import action as unfold_action
@@ -27,16 +27,46 @@ from django.utils.translation import ngettext
 from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import REASON_LENGTH
 from freedom_ls.audit_log.writer import acting_user
+from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_progress.force_delete import (
     ForceDeleteBlockedError,
     ForceDeletePlan,
     build_plan,
+    force_delete_learners,
     force_delete_users,
+    learner_progress_roots,
     user_progress_roots,
 )
 from freedom_ls.site_aware_models.admin import admin_page_context, ids_from
 
-FORCE_DELETE_URL_NAME = "freedom_ls_accounts_user_force_delete"
+ActionEntry = tuple[Callable[..., str], str, str]
+PlanBuilder = Callable[[Sequence[Model], HttpRequest, AdminSite], ForceDeletePlan]
+
+
+class ForceDeleter(Protocol):
+    def __call__(
+        self,
+        targets: Sequence[Model],
+        *,
+        actor: User,
+        reason: str,
+        request: HttpRequest,
+        admin_site: AdminSite,
+    ) -> int: ...
+
+
+@dataclass(frozen=True)
+class ForceDeleteTarget:
+    """What differs between the models a force delete runs on."""
+
+    noun: str
+    noun_plural: str
+    plan: PlanBuilder
+    delete: ForceDeleter
+    # The name a row goes by on the confirmation page.
+    label: Callable[[Model], str]
+    # A sentence naming what a force delete of this model leaves in place.
+    stays: str = ""
 
 
 class ForceDeleteForm(forms.Form):
@@ -44,8 +74,16 @@ class ForceDeleteForm(forms.Form):
     reason = forms.CharField(max_length=REASON_LENGTH, widget=UnfoldAdminTextareaWidget)
 
 
-def _force_delete_url(ids: Iterable[object]) -> str:
-    url = reverse(f"admin:{FORCE_DELETE_URL_NAME}")
+def force_delete_url_name(model: type[Model]) -> str:
+    return f"{model._meta.app_label}_{model._meta.model_name}_force_delete"
+
+
+def _admin_url_name(model: type[Model], page: str) -> str:
+    return f"admin:{model._meta.app_label}_{model._meta.model_name}_{page}"
+
+
+def _force_delete_url(model: type[Model], ids: Iterable[object]) -> str:
+    url = reverse(f"admin:{force_delete_url_name(model)}")
     return f"{url}?{urlencode({'ids': ','.join(str(pk) for pk in ids)})}"
 
 
@@ -54,7 +92,13 @@ def may_force_delete(request: HttpRequest) -> bool:
 
 
 class ForceDeleteAdminMixin:
-    """Force delete for a model admin of users: a button, a view and a permission."""
+    """Force delete for a model admin: a button, a view and a permission.
+
+    A plain class, not a `ModelAdmin` subclass, so a concrete admin lists it
+    before its own base. The admin sets `force_delete_target`.
+    """
+
+    force_delete_target: ForceDeleteTarget
 
     def has_force_delete_permission(
         self, request: HttpRequest, obj: object | None = None
@@ -72,10 +116,23 @@ class ForceDeleteAdminMixin:
                 model_admin.admin_site.admin_view(
                     partial(force_delete_view, model_admin=model_admin)
                 ),
-                name=FORCE_DELETE_URL_NAME,
+                name=force_delete_url_name(model_admin.model),
             )
         ]
         return custom + list(cast(ModelAdmin, super()).get_urls())
+
+    def get_actions(self, request: HttpRequest) -> dict[str, ActionEntry | None]:
+        actions = dict(cast(ModelAdmin, super()).get_actions(request))
+        entry = actions.get("force_delete_selected")
+        if entry is not None:
+            func, name, _ = entry
+            noun_plural = self.force_delete_target.noun_plural
+            actions["force_delete_selected"] = (
+                func,
+                name,
+                f"Force delete selected {noun_plural}",
+            )
+        return actions
 
     @unfold_action(
         description="Force delete",
@@ -86,42 +143,43 @@ class ForceDeleteAdminMixin:
     def force_delete_one(
         self, request: HttpRequest, object_id: str
     ) -> HttpResponseRedirect:
-        return redirect(_force_delete_url([object_id]))
+        model = cast(ModelAdmin, self).model
+        return redirect(_force_delete_url(model, [object_id]))
 
-    @admin.action(
-        description="Force delete selected users", permissions=["force_delete"]
-    )
+    @admin.action(description="Force delete selected", permissions=["force_delete"])
     def force_delete_selected(
         self, request: HttpRequest, queryset: QuerySet[Model]
     ) -> HttpResponseRedirect:
-        return redirect(_force_delete_url(queryset.values_list("pk", flat=True)))
+        return redirect(
+            _force_delete_url(queryset.model, queryset.values_list("pk", flat=True))
+        )
 
 
 def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpResponse:
-    """Confirm on GET, force delete on POST, for the users named by `ids`.
+    """Confirm on GET, force delete on POST, for the rows named by `ids`.
 
     admin_view supplies login and CSRF; the permission is checked here
     because this URL can be typed by hand.
     """
     if not may_force_delete(request):
         raise PermissionDenied
+    target = cast(ForceDeleteAdminMixin, model_admin).force_delete_target
+    model = model_admin.model
     # The admin queryset is filtered to the host's site, so another site's
-    # user is a 404 whichever way its id arrives.
-    users = list(
-        model_admin.get_queryset(request).filter(
-            pk__in=ids_from(request, model_admin.model)
-        )
+    # row is a 404 whichever way its id arrives.
+    targets = list(
+        model_admin.get_queryset(request).filter(pk__in=ids_from(request, model))
     )
-    if not users:
+    if not targets:
         raise Http404
-    plan = _plan_for(users, request, model_admin.admin_site)
+    plan = target.plan(targets, request, model_admin.admin_site)
     form = ForceDeleteForm(request.POST or None)
     if request.method == "POST" and plan.can_run and form.is_valid():
-        # Read before the delete: this may be the actor's own account.
+        # Read before the delete: a user target may be the actor's own account.
         actor = acting_user(request)
         try:
-            count = force_delete_users(
-                users,
+            count = target.delete(
+                targets,
                 actor=actor,
                 reason=form.cleaned_data["reason"],
                 request=request,
@@ -134,25 +192,35 @@ def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpR
             model_admin.message_user(
                 request,
                 ngettext(
-                    "Force deleted %(count)d user.",
-                    "Force deleted %(count)d users.",
+                    "Force deleted %(count)d %(noun)s.",
+                    "Force deleted %(count)d %(noun_plural)s.",
                     count,
                 )
-                % {"count": count},
+                % {
+                    "count": count,
+                    "noun": target.noun,
+                    "noun_plural": target.noun_plural,
+                },
             )
-            return redirect(reverse("admin:freedom_ls_accounts_user_changelist"))
+            return redirect(reverse(_admin_url_name(model, "changelist")))
+    change_name = _admin_url_name(model, "change")
     context = {
-        "users": users,
+        "targets": targets,
+        "noun": target.noun,
+        "noun_plural": target.noun_plural,
+        "stays": target.stays,
         "plan": plan,
         "form": form,
-        "ids": ",".join(str(user.pk) for user in users),
-        "acting_on_self": any(user.pk == request.user.pk for user in users),
-        "cancel_url": _back_url(users),
+        "ids": ",".join(str(row.pk) for row in targets),
+        "acting_on_self": model is User
+        and any(row.pk == request.user.pk for row in targets),
+        "cancel_url": _back_url(model, targets),
         "change_urls": [
-            (user, reverse("admin:freedom_ls_accounts_user_change", args=[user.pk]))
-            for user in users
+            (target.label(row), reverse(change_name, args=[row.pk])) for row in targets
         ],
-        **admin_page_context(request, model_admin, "Force delete users"),
+        **admin_page_context(
+            request, model_admin, f"Force delete {target.noun_plural}"
+        ),
     }
     return TemplateResponse(
         request,
@@ -162,20 +230,82 @@ def force_delete_view(request: HttpRequest, *, model_admin: ModelAdmin) -> HttpR
     )
 
 
-def _plan_for(
-    users: Sequence[User], request: HttpRequest, admin_site: AdminSite
+def user_plan(
+    users: Sequence[Model], request: HttpRequest, admin_site: AdminSite
 ) -> ForceDeletePlan:
     return build_plan(
         targets=users,
-        progress_roots=user_progress_roots(users),
+        progress_roots=user_progress_roots(cast(Sequence[User], users)),
         request=request,
         admin_site=admin_site,
-        unlinked_for=users,
+        unlinked_for=cast(Sequence[User], users),
     )
 
 
-def _back_url(users: Sequence[Model]) -> str:
-    # One user came from their change page; several came from the list.
-    if len(users) == 1:
-        return reverse("admin:freedom_ls_accounts_user_change", args=[users[0].pk])
-    return reverse("admin:freedom_ls_accounts_user_changelist")
+def learner_plan(
+    learners: Sequence[Model], request: HttpRequest, admin_site: AdminSite
+) -> ForceDeletePlan:
+    return build_plan(
+        targets=learners,
+        progress_roots=learner_progress_roots(cast(Sequence[Learner], learners)),
+        request=request,
+        admin_site=admin_site,
+    )
+
+
+def _delete_users(
+    targets: Sequence[Model],
+    *,
+    actor: User,
+    reason: str,
+    request: HttpRequest,
+    admin_site: AdminSite,
+) -> int:
+    return force_delete_users(
+        cast(Sequence[User], targets),
+        actor=actor,
+        reason=reason,
+        request=request,
+        admin_site=admin_site,
+    )
+
+
+def _delete_learners(
+    targets: Sequence[Model],
+    *,
+    actor: User,
+    reason: str,
+    request: HttpRequest,
+    admin_site: AdminSite,
+) -> int:
+    return force_delete_learners(
+        cast(Sequence[Learner], targets),
+        actor=actor,
+        reason=reason,
+        request=request,
+        admin_site=admin_site,
+    )
+
+
+USER_TARGET = ForceDeleteTarget(
+    noun="user",
+    noun_plural="users",
+    plan=user_plan,
+    delete=_delete_users,
+    label=lambda row: cast(User, row).display_name,
+)
+LEARNER_TARGET = ForceDeleteTarget(
+    noun="learner",
+    noun_plural="learners",
+    plan=learner_plan,
+    delete=_delete_learners,
+    label=lambda row: cast(Learner, row).user.display_name,
+    stays="The user account and their learner records in other organisations stay.",
+)
+
+
+def _back_url(model: type[Model], targets: Sequence[Model]) -> str:
+    # One row came from its change page; several came from the list.
+    if len(targets) == 1:
+        return reverse(_admin_url_name(model, "change"), args=[targets[0].pk])
+    return reverse(_admin_url_name(model, "changelist"))
