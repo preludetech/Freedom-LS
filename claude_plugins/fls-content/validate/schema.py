@@ -1046,6 +1046,11 @@ class Form(
         False,
         description="QUIZ only. If True, each sitting serves each question's options in a random order. Default False.",
     )
+    time_limit_minutes: int | None = Field(
+        default=None,
+        gt=0,
+        description="QUIZ only. Minutes a learner has to finish a sitting, counted from when it starts. Default none.",
+    )
     requires_declaration: bool = Field(
         False,
         description="QUIZ only. If True, the learner signs a declaration before every attempt. Default False.",
@@ -1085,6 +1090,7 @@ class Form(
                 "shuffle_pages": self.shuffle_pages,
                 "shuffle_questions": self.shuffle_questions,
                 "shuffle_options": self.shuffle_options,
+                "time_limit_minutes": self.time_limit_minutes,
                 "requires_declaration": self.requires_declaration,
                 "declaration_text": self.declaration_text,
             }
