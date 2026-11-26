@@ -1093,7 +1093,7 @@ class TestCohortReportBody:
         self, logged_in_client: Callable[[AbstractBaseUser], Client]
     ) -> None:
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         quiz = QuizColumn(
             form_id=uuid4(),
             title="Orbit Quiz",
@@ -1147,7 +1147,7 @@ class TestCohortReportBody:
     ) -> None:
         """A retired incorrect answer used to be listed in the confusions like a live one."""
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         _seed_report_cache(
             cohort,
             _confusion(
@@ -1172,7 +1172,7 @@ class TestCohortReportBody:
     ) -> None:
         """A retired correct option used to be listed like a live one."""
         cohort = CohortFactory()
-        client = logged_in_client(_org_admin(cohort.organisation))
+        client = logged_in_client(_question_holder(cohort.organisation))
         _seed_report_cache(
             cohort,
             _confusion(
