@@ -21,7 +21,7 @@ _Last updated: 2026-11-27_
 
 ![Dashboard with learner, cohort, average progress and needs-attention tiles above the list of learners needing attention](screenshots/educator_dashboard.png)
 
-The dashboard is the first page an educator sees. It covers every active cohort they can see in the current organisation: tiles for learners, cohorts, average progress and learners needing attention, a list of flagged learners across those cohorts, and one progress row per cohort. A cohort larger than the report's learner limit is left out, and the dashboard says so. There are no charts.
+The dashboard is the first page an educator sees. It covers every active cohort they can see in the current organisation: tiles for learners, cohorts, average progress and learners needing attention, a list of flagged learners across those cohorts, and one progress row per cohort. A cohort larger than the report's learner limit is left out, and the dashboard says so. There are no charts. Learner, cohort and course names link to their pages, the learner and cohort tiles open their lists, and a named learner or cohort also opens its quick view.
 
 A learner with nothing to do yet, because their cohort is not registered for a course, is never flagged as needing attention, and nor is a learner who has finished everything. Overdue learners are not flagged either; see [Limits](#limits). The figures are recalculated every few minutes rather than live, and the page says when they are from. See [Reports](#reports).
 
@@ -31,7 +31,7 @@ A learner with nothing to do yet, because their cohort is not registered for a c
 
 ![Learners list with search, status filter and Export CSV above a table of each learner's status, cohorts and course progress](screenshots/educator_learners_list.png)
 
-The Learners list shows the learners of the current organisation the educator has access to: learners in cohorts they can see, plus, for an educator holding an organisation-wide role, everyone associated with the organisation, whether or not they are registered for anything yet. Someone studying with more than one organisation appears once per organisation, with only that organisation's cohorts and registrations.
+The Learners list shows the learners of the current organisation the educator has access to: learners in cohorts they can see, plus, for an educator holding an organisation-wide role, everyone associated with the organisation, whether or not they are registered for anything yet. Someone studying with more than one organisation appears once per organisation, with only that organisation's cohorts and registrations. The Courses column shows up to three of each learner's courses with their progress, courses with at-risk flags first, then those in progress, and links to the rest on the learner's Courses tab.
 
 Each learner is **Active**, **Pending** (staff created their account and they have not yet set a password and signed in) or **Inactive**. The list shows Active and Pending until the Status filter asks for others, and clearing the filter returns to that view. A learner with no name is shown by email. The list can be searched, filtered and sorted, and **Export CSV** downloads what the list shows (name, email, status, cohorts, courses and last active date), narrowed by the current search and filters. A cohort's Learners tab exports the same way.
 
@@ -42,9 +42,9 @@ Each learner is **Active**, **Pending** (staff created their account and they ha
 The header shows the name and email, and a badge only while the learner is Pending or Inactive. The tabs are:
 
 - **Overview**: details, cohorts and course registrations. The Cohorts panel is where the learner's cohorts are changed.
-- **Courses**: for each registered course, completion, a progress status and any at-risk flags, the items completed and the last one, and every quiz attempt with its score and the quiz's pass mark. A completed attempt opens, in a quick view or on its own page, to show the paper the learner was served, in their order, with their answers and how each question was marked, and whether the learner submitted it or [time ran out](./learner-experience.md#quiz-time-limit), with the time limit that applied. The paper is shown only to a question bank viewer; anyone else sees a note in its place. Questions and options use the quiz's current wording, and an attempt sat before FLS recorded the served order says so. This tab is where the learner is registered for a course.
+- **Courses**: every registration with its progress, status and any at-risk flags, then a section for each course with the items completed and every quiz attempt with its score and the quiz's pass mark. A completed attempt opens, in a quick view or on its own page, to show the paper the learner was served, in their order, with their answers and how each question was marked, and whether the learner submitted it or [time ran out](./learner-experience.md#quiz-time-limit), with the time limit that applied. The paper is shown only to a question bank viewer; anyone else sees a note in its place. Questions and options use the quiz's current wording, and an attempt sat before FLS recorded the served order says so. This tab is where the learner is registered for a course.
 - **Messages**: when direct messaging is turned on. See [Messaging from a learner](#messaging-from-a-learner).
-- **Settings**: the actions with no home elsewhere: the name, the setup email, and deactivating or reactivating. Shown to anyone who may take at least one of them.
+- **Settings**: the actions with no home elsewhere: the name (shown with the learner's email, which is read-only here), the setup email, and deactivating or reactivating. Shown to anyone who may take at least one of them.
 - **History**: see [History](#history).
 
 Each control sits beside what it changes:
@@ -89,7 +89,7 @@ Tick rows in the Learners or Cohorts list and a selection bar takes the place of
 - **Learners**: add to a cohort, remove from a cohort, register for a course, deactivate a course registration, deactivate, reactivate, and resend the account setup email.
 - **Cohorts**: register for a course, deactivate a course registration, deactivate and reactivate.
 
-Each action offers only what the educator could do to a single learner or cohort, and each row is checked on its own. Rows the educator may not change are skipped rather than blocking the rest. Nothing runs before a confirmation that says what will change and how many rows will be skipped, and why. Afterwards a result gives the counts (how many changed, how many were skipped and why) and names only the rows that failed. Each row is handled as if done by hand, so [webhook](./webhooks.md) events and emails fire once per learner or cohort changed.
+Each action offers only what the educator could do to a single learner or cohort, and each row is checked on its own. Rows the educator may not change are skipped rather than blocking the rest. Nothing runs before a confirmation that says what will change and how many rows will be skipped, and why. Afterwards a result gives the counts (how many changed, how many were skipped and why) and names only the rows that failed. Each row is handled as if done by hand, so [webhook](./webhooks.md) events and emails fire once per learner or cohort changed. A run that happens within the request cannot be closed or cancelled until it finishes; if it fails, the educator is told to reload the list and run it again.
 
 Runs over `BULK_BACKGROUND_THRESHOLD` rows (default 250) continue in the background: the educator can leave the list, and an in-app notification says when the run is done.
 
