@@ -1,8 +1,7 @@
 """FLS names the installed `panel_framework` package, never the old in-tree app.
 
-The framework moved out of `freedom_ls` into its own package. The only files that still
-spell the old import path or the old `freedom_ls_panel_framework` app label are the
-migration that drops the legacy rows and the tests and helpers that exercise it.
+Only the migration that drops the legacy rows and the tests and helpers that exercise it
+may spell the old import path or the `freedom_ls_panel_framework` app label.
 """
 
 import re
