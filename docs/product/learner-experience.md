@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-11-24_
+_Last updated: 2026-11-27_
 
 ## Summary
 
@@ -14,7 +14,7 @@ _Last updated: 2026-11-24_
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - A course can offer **reference material**, such as a glossary or regulations, outside its learning path. A learner who can open the course reads it from the course player at any time, without unlocking anything first, and reading it records no progress. Visitors see it listed on the course detail page. See [Reference Material](#reference-material).
 - A registered learner can **revise a course's questions** in the course player. Once they finish a section, its scored choice questions join their revision bank, and a spaced-repetition scheduler decides which come back and when. See [Revision](#revision).
-- Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in. A quiz can be set to shuffle its pages, questions and answer options, with a different order for each learner and each re-sit. A quiz page can also serve a set number of questions drawn at random from a larger pool, with its own selection for each learner and each re-sit. A quiz can also require the learner to sign a declaration before every attempt.
+- Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in. A quiz can be set to shuffle its pages, questions and answer options, with a different order for each learner and each re-sit. A quiz page can also serve a set number of questions drawn at random from a larger pool, with its own selection for each learner and each re-sit. A quiz can also require the learner to sign a declaration before every attempt. A quiz can carry a time limit, with a countdown while the learner sits it and an automatic submit when time runs out; see [quiz time limit](#quiz-time-limit).
 - A form, whether an application form or one in a course, can show a page, a question or a block of text only to learners whose earlier answers call for it. A learner sees and is counted against only what applies to them. See [Multi-Page Forms](#multi-page-forms).
 - A form question can ask for text, a number, a date, a time, an email address, a URL, a phone number, a file upload, or a choice made from radio buttons, checkboxes or a dropdown. An answer that does not fit its question's type is refused at submission, with the reason shown on the question itself, rather than stored as typed.
 - A registered learner sees each deadline as upcoming, due today, missed or closed, in the course player and on the dashboard card; the course detail page shows only the course's time limit as a length, the same for everyone. By default nothing is enforced, but staff can switch the mark off, close incomplete items after their deadline, and end course access after the time limit, each after an optional grace window, while the learner's progress is kept. A learner's course can carry a pause or extensions, which the learner sees, but nothing in the product creates one today. See [Deadlines](#deadlines).
@@ -288,6 +288,14 @@ An author can make a page, a question or a block of text conditional on an earli
 ## Quiz Declaration
 
 An author can make a quiz require a signed declaration; see [content editing workflow](./content-editing-workflow.md#course-frontmatter-options). Before each attempt, including every re-sit, the learner reads the declaration, ticks a box and types their full name, and only then reaches the first page. The typed name is not compared with the name on their account: the signature is attestation evidence, not identity verification. It is kept as a record of the text shown, the name typed, the time and the learner's IP address. Staff can see it in the Django admin on the attempt's record; the educator interface does not show it yet. A quiz that does not require a declaration behaves as before.
+
+## Quiz Time Limit
+
+![Quiz countdown and five-minute warning](screenshots/learner_quiz_time_limit_warning.png)
+
+An author can give a quiz a time limit; see [content editing workflow](./content-editing-workflow.md#course-frontmatter-options). The learner is told the limit on the quiz's start page before they begin, and sees a countdown while they sit. On a quiz longer than five minutes they are warned when 5 minutes and when 1 minute remain. When time runs out the quiz is submitted with the answers the learner had saved, even if a required question is unanswered, and their results say that time ran out. The clock keeps running if the learner leaves, closes the tab or logs out: a quiz whose time has run out is submitted, not resumed. Nobody can pause or extend a quiz's time limit. A quiz with no time limit behaves as before.
+
+Staff see whether an attempt was submitted by the learner or ran out of time on the attempt review, along with the limit that applied, and in the [cohort report](./reports.md).
 
 ## Quiz Feedback
 

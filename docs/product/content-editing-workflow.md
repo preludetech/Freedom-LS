@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-11-24_
+_Last updated: 2026-11-27_
 
 ## Summary
 
@@ -113,6 +113,8 @@ shared_with:
 **Question pools.** A page of a QUIZ form can set `draw: N` to serve each sitting N of that page's questions or groups, picked at random, so a quiz can be built from a larger question bank. A `group` counts as one item to draw. Validation rejects `draw` on any other form type, a `draw` larger than the page can supply, and a drawing page whose questions or groups differ in size. A page without `draw` serves everything. What learners see is in [learner experience](./learner-experience.md#quiz-feedback).
 
 **Quiz declarations.** A QUIZ form can set `requires_declaration: true` to make the learner sign a declaration before every attempt. The author can give the wording in `declaration_text`; a quiz that leaves it empty shows the site's default text, which an operator can change with the `FORM_DECLARATION_DEFAULT_TEXT` setting. Validation rejects both keys on any other form type, rejects `declaration_text` without `requires_declaration`, and rejects `requires_declaration` on a form a course names as its `application_form`. What learners see is in [learner experience](./learner-experience.md#quiz-declaration).
+
+**Quiz time limit.** A QUIZ form can set `time_limit_minutes` to limit how long one sitting may run, in minutes; without it the quiz has no limit. It is separate from a course's `time_limit_days`, which counts days from registration. Removing the option and re-running `content_save` removes the limit, and a change applies to sittings already open, not only to new ones. What learners see is in [learner experience](./learner-experience.md#quiz-time-limit).
 
 Other course metadata — learning outcomes, difficulty (`beginner`, `intermediate`, `advanced`, `all_levels`), estimated duration, description, `price` — is authored the same way. A price is set only in the course file. See [course prices](./learner-experience.md#course-prices) for what a price can be and where it shows.
 

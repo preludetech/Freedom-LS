@@ -1,6 +1,6 @@
 # Cohort Reports
 
-_Last updated: 2026-11-26_
+_Last updated: 2026-11-27_
 
 ## Summary
 
@@ -31,7 +31,7 @@ The audience is internal educators and staff, so the report uses learners' real 
 
 ![](screenshots/cohort_report_summary_table.png)
 
-**Details per learner** — one section per learner, alphabetical by surname, starting on a fresh page and carrying their name in the running header. It shows every at-risk flag they tripped, every item they completed and when, and every quiz attempt with its score. The PDF does not list which questions or options a learner got wrong. A learner with nothing recorded gets an explicit "No activity recorded" line, and a learner with no flags is told so — silent omission reads as a data bug.
+**Details per learner** — one section per learner, alphabetical by surname, starting on a fresh page and carrying their name in the running header. It shows every at-risk flag they tripped, every item they completed and when, and every quiz attempt with its score and whether the learner submitted it or [time ran out](./learner-experience.md#quiz-time-limit). The PDF does not list which questions or options a learner got wrong. A learner with nothing recorded gets an explicit "No activity recorded" line, and a learner with no flags is told so — silent omission reads as a data bug.
 
 ## At-Risk Flags
 
