@@ -87,7 +87,7 @@ class NoRecordedActivityRule:
 
 class FailedLatestQuizAttemptRule:
     id = "failed_latest_quiz"
-    label = "Failed most recent quiz attempt"
+    label = "Failed most recent quiz"
     severity = SEVERITY_ERROR
     reason_adds_information = True
 

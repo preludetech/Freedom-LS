@@ -63,6 +63,10 @@ class TestNoRecordedActivityRule:
 
 
 class TestFailedLatestQuizAttemptRule:
+    def test_label_is_short_enough_for_a_badge_on_a_phone_card(self) -> None:
+        """The label used to read "Failed most recent quiz attempt", which overflowed a card at 375px."""
+        assert FailedLatestQuizAttemptRule.label == "Failed most recent quiz"
+
     def test_silent_when_no_quiz_results(self) -> None:
         learner = _Learner(quiz_results=[])
 
