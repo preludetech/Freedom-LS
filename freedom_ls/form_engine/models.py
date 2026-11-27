@@ -727,13 +727,20 @@ class FormProgress(SiteAwareModel):
         )
 
     def complete(
-        self, reason: CompletionReason = CompletionReason.LEARNER_SUBMITTED
+        self,
+        reason: CompletionReason = CompletionReason.LEARNER_SUBMITTED,
+        *,
+        time_up_lead: timedelta = timedelta(0),
     ) -> None:
         """Finish the sitting: keep only the answers it was asked, record what it
         was asked, score it, record why it ended, then tell the apps above.
 
         Idempotent and safe under concurrency: the first completion wins and a
         later one changes nothing and sends no signal.
+
+        A `time_expired` completion is refused, and the sitting stays open, unless
+        its time has run out by the form's limit as it is now. `time_up_lead` is
+        how far ahead of the expiry a time-up post is still believed.
         """
         # Local import: conditions imports this module.
         from .conditions import current_path
@@ -754,8 +761,11 @@ class FormProgress(SiteAwareModel):
             if reason == CompletionReason.LEARNER_SUBMITTED and self.is_expired(now):
                 # A manual submit that lost the race to the clock.
                 reason = CompletionReason.TIME_EXPIRED
-            if reason == CompletionReason.TIME_EXPIRED and expiry is None:
-                # The limit was removed: the sitting is untimed and stays open.
+            if reason == CompletionReason.TIME_EXPIRED and (
+                expiry is None or now < expiry - time_up_lead
+            ):
+                # The caller judged a copy read before the lock. The limit has
+                # since been removed or raised, so the sitting stays open.
                 return
             ensure_served_paper(self)
             path = current_path(self)

@@ -10,11 +10,12 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import NamedTuple
 
-from django.db import DatabaseError, transaction
+import sentry_sdk
+
 from django.db.models import DateTimeField, ExpressionWrapper, F, QuerySet, Value
 from django.utils import timezone
 
-from freedom_ls.form_engine.models import EXPIRY_GRACE, CompletionReason, FormProgress
+from freedom_ls.form_engine.models import EXPIRY_GRACE, FormProgress
 
 
 class ExpiredSittingSweep(NamedTuple):
@@ -44,30 +45,22 @@ def complete_expired_sittings() -> ExpiredSittingSweep:
     have both passed, with reason `time_expired`.
 
     Returns how many sittings were completed and how many failed. A failure is
-    counted and the sweep carries on, so one malformed quiz cannot strand the
-    rest.
+    reported, counted and the sweep carries on, so one malformed quiz cannot
+    strand the rest.
     """
     completed = failed = 0
     now = timezone.now()
-    # No lock here: each sitting is locked on its own below.
-    pks = list(_expired_sittings(now).values_list("pk", flat=True))
-    for pk in pks:
+    sittings = _expired_sittings(now).select_related("form")
+    for sitting in sittings:
         try:
-            with transaction.atomic():
-                sitting = (
-                    _expired_sittings(now)
-                    .select_for_update(skip_locked=True, of=("self",))
-                    .filter(pk=pk)
-                    .first()
-                )
-                if sitting is None:
-                    # Completed meanwhile, or a request holds it.
-                    continue
-                sitting.complete(reason=CompletionReason.TIME_EXPIRED)
-                # complete() refreshes from the locked row, so a no-op leaves this
-                # None.
-                if sitting.completed_time is not None:
-                    completed += 1
-        except (DatabaseError, ValueError):  # ValueError: scoring a malformed quiz
+            # No lock or transaction of the sweep's own. complete() locks the
+            # sitting, checks again that it is open and expired, and releases the
+            # lock before its receivers write the course progress record. A
+            # request locks that record first and the sitting second, so holding
+            # the sitting across the receivers would deadlock against it.
+            if sitting.complete_if_expired(timezone.now()):
+                completed += 1
+        except Exception as exc:
+            sentry_sdk.capture_exception(exc)
             failed += 1
     return ExpiredSittingSweep(completed, failed)

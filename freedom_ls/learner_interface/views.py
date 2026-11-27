@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING, cast
 
@@ -1280,15 +1280,18 @@ def _save_page_and_complete(
     page_number: int | None,
     post_data: QueryDict,
     now: datetime,
-    in_window: Callable[[FormProgress, datetime], bool],
+    *,
+    time_up: bool,
 ) -> bool:
     """Save the posted page to a sitting whose time has just run out, then
     complete it, as one step no other request can come between.
 
-    `in_window` is the model's own test of whether a post arriving `now` is still
-    accepted. It is checked on the locked row, so it is false for a sitting
-    another request completed meanwhile, and nothing is saved then.
+    `time_up` says the countdown sent the post, which is believed from just
+    before the sitting expiry; any other post only from the expiry on. The window
+    is checked on the locked row, so it is closed for a sitting another request
+    completed meanwhile, and nothing is saved then.
     """
+    in_window = FormProgress.accepts_time_up if time_up else FormProgress.in_grace
     with transaction.atomic():
         # Record first, then sitting: the order start_attempt takes them in.
         # complete()'s receivers write the record while the sitting is held.
@@ -1304,7 +1307,10 @@ def _save_page_and_complete(
                 # Rejected answers are dropped: the valid ones are stored, and a
                 # rejection must not re-render the page or leave the sitting open.
                 submit_page(page, post_data, locked, require_answers=False)
-        locked.complete(CompletionReason.TIME_EXPIRED)
+        locked.complete(
+            CompletionReason.TIME_EXPIRED,
+            time_up_lead=TIME_UP_LEAD if time_up else timedelta(0),
+        )
         return locked.completed_time is not None
 
 
@@ -2417,7 +2423,7 @@ def form_fill_page(
             page_number,
             request.POST,
             now,
-            FormProgress.in_grace,
+            time_up=False,
         )
     ):
         return redirect(
@@ -3367,30 +3373,33 @@ def form_submit_and_exit(
     collection_item = get_form_collection_item_for_index(course, index)
     found = _open_sitting_at(cast("User", request.user), course, collection_item)
     now = timezone.now()
-    # An untimed sitting has no expiry to honour, so time_up is ignored and this
-    # is a plain exit.
-    expiry = None if found is None else found.sitting.expires_at()
-    if found is not None and expiry is not None and "time_up" in request.POST:
-        sitting = found.sitting
-        if sitting.accepts_time_up(now):
-            if _save_page_and_complete(
-                found.course_progress,
-                sitting,
-                _posted_page_number(request.POST),
-                request.POST,
-                now,
-                FormProgress.accepts_time_up,
-            ):
-                return redirect(
-                    "learner_interface:course_form_complete",
-                    course_slug=course_slug,
-                    index=index,
-                )
-            # Completed by another request inside the window: fall through.
-        elif now < expiry - TIME_UP_LEAD:
-            # The server never takes the client's word that time is up.
-            return _form_page_redirect(course_slug, index, sitting)
-        # Past the grace window: fall through; nothing is saved.
+    # The countdown's post at zero. The server never takes its word that time is
+    # up: one that arrives early saves its page below and completes nothing.
+    time_up = "time_up" in request.POST
+    # The page a post was made from is still the learner's work when the post
+    # lands just after the clock ran out, whichever button sent it. Past the
+    # window nothing is saved, and the sitting completes just below.
+    if (
+        found is not None
+        and (
+            found.sitting.accepts_time_up(now)
+            if time_up
+            else found.sitting.in_grace(now)
+        )
+        and _save_page_and_complete(
+            found.course_progress,
+            found.sitting,
+            _posted_page_number(request.POST),
+            request.POST,
+            now,
+            time_up=time_up,
+        )
+    ):
+        return redirect(
+            "learner_interface:course_form_complete",
+            course_slug=course_slug,
+            index=index,
+        )
     expired = _expired_sitting_redirect(
         cast("User", request.user), course, collection_item, index, found
     )
@@ -3421,7 +3430,7 @@ def form_submit_and_exit(
     closed = decision.access_ended_at is not None or _is_closed_for_learner(
         course_progress, collection_item, timezone.now()
     )
-    if not form.submit_on_exit and not closed:
+    if not form.submit_on_exit and not closed and not time_up:
         return redirect(
             "learner_interface:view_course_item",
             course_slug=course_slug,
@@ -3465,6 +3474,13 @@ def form_submit_and_exit(
                     decision=decision,
                     now=now,
                 )
+        if time_up and not closed:
+            # Time is not up by the server's clock: the device's ran ahead, or
+            # the limit was raised or removed while the page was open. The page
+            # is saved and the learner carries on from it.
+            if posted is None:
+                return _form_page_redirect(course_slug, index, form_progress)
+            return redirect(_form_page_url(course_slug, index, posted.number))
         form_progress.complete()  # idempotent
 
     return redirect(
@@ -3475,7 +3491,7 @@ def form_submit_and_exit(
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Mapping
 
     from django.db.models import QuerySet
 

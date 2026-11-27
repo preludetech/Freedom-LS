@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
+from datetime import timedelta
 
 import pytest
+import time_machine
 
+from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.template.loader import render_to_string
@@ -264,6 +268,33 @@ def test_a_submitted_application_refuses_a_new_file(mock_site_context, client, s
     )
 
     assert response.status_code == 409
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url_of", [_upload_url, _remove_url], ids=["upload", "remove"])
+def test_a_sitting_whose_time_has_run_out_refuses_file_changes(
+    mock_site_context: Site,
+    client: Client,
+    sitting: tuple[FormProgress, FormQuestion],
+    url_of: Callable[[FormProgress, FormQuestion], str],
+) -> None:
+    form_progress, question = sitting
+    type(form_progress.form)._base_manager.filter(pk=form_progress.form_id).update(
+        time_limit_minutes=30
+    )
+    client.force_login(form_progress.user)
+
+    with time_machine.travel(
+        form_progress.start_time + timedelta(minutes=31), tick=False
+    ):
+        response = client.post(
+            url_of(form_progress, question),
+            {"file": _png_upload()},
+            HTTP_HX_REQUEST="true",
+        )
+
+    assert response.status_code == 409
+    assert not form_progress.answers.exists()
 
 
 @pytest.mark.django_db

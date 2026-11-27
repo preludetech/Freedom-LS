@@ -34,6 +34,7 @@ from freedom_ls.form_engine.factories import (
     served_paper_of,
 )
 from freedom_ls.form_engine.models import (
+    TIME_UP_LEAD,
     CompletionReason,
     Form,
     FormContent,
@@ -1536,9 +1537,44 @@ def test_an_early_time_expired_completion_is_stamped_now(mock_site_context):
     now = EXPIRY - timedelta(seconds=3)
 
     with time_machine.travel(now, tick=False):
-        sitting.complete(CompletionReason.TIME_EXPIRED)
+        sitting.complete(CompletionReason.TIME_EXPIRED, time_up_lead=TIME_UP_LEAD)
 
     assert sitting.completed_time == now
+
+
+@pytest.mark.django_db
+def test_a_time_expired_completion_ahead_of_the_lead_stays_open(mock_site_context):
+    sitting = _timed_sitting()
+
+    with time_machine.travel(EXPIRY - timedelta(minutes=1), tick=False):
+        sitting.complete(CompletionReason.TIME_EXPIRED, time_up_lead=TIME_UP_LEAD)
+
+    assert FormProgress.objects.get(pk=sitting.pk).completed_time is None
+
+
+@pytest.mark.django_db
+def test_a_time_expired_completion_before_the_expiry_stays_open(mock_site_context):
+    sitting = _timed_sitting()
+
+    with time_machine.travel(EXPIRY - timedelta(seconds=3), tick=False):
+        sitting.complete(CompletionReason.TIME_EXPIRED)
+
+    assert FormProgress.objects.get(pk=sitting.pk).completed_time is None
+
+
+@pytest.mark.django_db
+def test_a_time_expired_completion_on_a_form_whose_limit_was_raised_stays_open(
+    mock_site_context,
+):
+    stale = _timed_sitting()
+    assert stale.form.time_limit_minutes == LIMIT_MINUTES
+    Form.objects.filter(pk=stale.form_id).update(time_limit_minutes=60)
+
+    with time_machine.travel(EXPIRY + timedelta(minutes=1), tick=False):
+        completed = stale.complete_if_expired(timezone.now())
+
+    assert completed is False
+    assert FormProgress.objects.get(pk=stale.pk).completed_time is None
 
 
 @pytest.mark.django_db

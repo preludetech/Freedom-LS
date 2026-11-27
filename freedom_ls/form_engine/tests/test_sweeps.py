@@ -9,15 +9,19 @@ import pytest
 import time_machine
 from pytest_mock import MockerFixture
 
-from django.db import connection, transaction
+from django.contrib.sites.models import Site
+from django.db import DatabaseError, connection, transaction
 
+from freedom_ls.form_engine.conditions import SittingPath
 from freedom_ls.form_engine.enums import FormStrategy
 from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
 from freedom_ls.form_engine.models import (
     EXPIRY_GRACE,
     CompletionReason,
+    Form,
     FormProgress,
 )
+from freedom_ls.form_engine.signals import form_attempt_completed
 from freedom_ls.form_engine.sweeps import (
     ExpiredSittingSweep,
     complete_expired_sittings,
@@ -98,21 +102,22 @@ def test_an_untimed_sitting_is_left_open(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("error", [ValueError, DatabaseError, RuntimeError])
 def test_a_sitting_whose_completion_raises_is_counted_and_the_next_still_completes(
-    mock_site_context, mocker: MockerFixture
+    mock_site_context: Site, mocker: MockerFixture, error: type[Exception]
 ) -> None:
     first, second = _sitting(), _sitting()
-    real_complete = FormProgress.complete
+    real_score = FormProgress.score
 
-    def complete(
-        self: FormProgress,
-        reason: CompletionReason = CompletionReason.LEARNER_SUBMITTED,
-    ) -> None:
+    def score(self: FormProgress, path: SittingPath) -> None:
         if self.pk == first.pk:
-            raise ValueError("malformed quiz")
-        real_complete(self, reason)
+            raise error("malformed quiz")
+        real_score(self, path)
 
-    mocker.patch.object(FormProgress, "complete", complete)
+    mocker.patch.object(FormProgress, "score", score)
+    captured = mocker.patch(
+        "freedom_ls.form_engine.sweeps.sentry_sdk.capture_exception"
+    )
 
     with time_machine.travel(PAST_GRACE, tick=False):
         result = complete_expired_sittings()
@@ -120,34 +125,61 @@ def test_a_sitting_whose_completion_raises_is_counted_and_the_next_still_complet
     assert result == ExpiredSittingSweep(completed=1, failed=1)
     assert _reload(first).completed_time is None
     assert _reload(second).completed_time is not None
+    assert captured.call_count == 1
+
+
+@pytest.mark.django_db
+def test_a_sitting_whose_limit_was_raised_after_it_was_picked_is_left_open(
+    mock_site_context: Site, mocker: MockerFixture
+) -> None:
+    sitting = _sitting()
+    real_complete_if_expired = FormProgress.complete_if_expired
+
+    def raise_the_limit_first(self: FormProgress, now: datetime) -> bool:
+        Form._base_manager.filter(pk=sitting.form_id).update(time_limit_minutes=600)
+        return real_complete_if_expired(self, now)
+
+    mocker.patch.object(FormProgress, "complete_if_expired", raise_the_limit_first)
+
+    with time_machine.travel(PAST_GRACE, tick=False):
+        result = complete_expired_sittings()
+
+    assert result == ExpiredSittingSweep(completed=0, failed=0)
+    assert _reload(sitting).completed_time is None
 
 
 @pytest.mark.django_db(transaction=True)
-def test_a_sitting_another_connection_holds_locked_is_skipped(
-    mock_site_context,
+def test_the_sweep_holds_no_sitting_lock_while_course_progress_is_updated(
+    mock_site_context: Site,
 ) -> None:
+    """A receiver of the completion signal, as the course progress update is,
+    must find the sitting's row lock already released: a request takes the
+    course progress lock first and the sitting's second."""
     sitting = _sitting()
-    locked = threading.Event()
-    release = threading.Event()
+    lockable: list[bool] = []
 
-    def hold_lock() -> None:
+    def try_the_lock_from_another_connection() -> None:
         try:
             with transaction.atomic():
-                FormProgress._base_manager.select_for_update().get(pk=sitting.pk)
-                locked.set()
-                release.wait(timeout=10)
+                lockable.append(
+                    FormProgress._base_manager.select_for_update(skip_locked=True)
+                    .filter(pk=sitting.pk)
+                    .exists()
+                )
         finally:
             connection.close()
 
-    holder = threading.Thread(target=hold_lock)
-    holder.start()
-    assert locked.wait(timeout=10)
+    def receiver(sender: type[FormProgress], **kwargs: object) -> None:
+        other = threading.Thread(target=try_the_lock_from_another_connection)
+        other.start()
+        other.join(timeout=10)
+
+    form_attempt_completed.connect(receiver)
     try:
         with time_machine.travel(PAST_GRACE, tick=False):
             result = complete_expired_sittings()
     finally:
-        release.set()
-        holder.join()
+        form_attempt_completed.disconnect(receiver)
 
-    assert result == ExpiredSittingSweep(completed=0, failed=0)
-    assert _reload(sitting).completed_time is None
+    assert result == ExpiredSittingSweep(completed=1, failed=0)
+    assert lockable == [True]
