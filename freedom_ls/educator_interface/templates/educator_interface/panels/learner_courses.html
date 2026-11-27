@@ -35,7 +35,7 @@
                     {% for detail, sharers in details %}
                         <c-panel-table-card>
                             <c-slot name="content">{% partial course-cell %}</c-slot>
-                            <c-panel-definition-row label="Status"><div class="[&_.panel-chip]:max-w-full [&_.panel-chip]:whitespace-normal">{% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}</div></c-panel-definition-row>
+                            <c-panel-definition-row label="Status">{% include "educator_interface/partials/learner_badges.html" with completion_percentage=detail.completion_percentage flags=detail.flags %}</c-panel-definition-row>
                             <c-panel-definition-row label="Progress"><c-panel-progress-bar percentage="{{ detail.completion_percentage }}" label="{{ detail.course_title }} progress" /></c-panel-definition-row>
                             <c-panel-definition-row label="Items">{{ detail.completed_item_count }} of {{ detail.total_item_count }}</c-panel-definition-row>
                             <c-panel-definition-row label="Last completed">{% partial last-completed %}</c-panel-definition-row>
