@@ -6,7 +6,8 @@ allowed-tools: Read, Grep, Glob
 
 # Panel framework
 
-`freedom_ls/panel_framework` is a toolkit for building management pages from panels: tables,
+`panel_framework` is an installed package (`github.com/preludetech/django-panel-framework`): a toolkit
+for building management pages from panels: tables,
 record pages, actions, filters, dialogs. A rule about how a panel-framework page looks or behaves
 lives here, not in the brand guidelines and not in a generic plugin: a trigger size, a table
 footer, a sheet's chrome. An app built on the framework keeps its own page-by-page rules (which
@@ -116,7 +117,7 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
 - Public names: a framework module lists what a host may import in `__all__`; `tasks`, `checks`,
   `field_display` and `templatetags` are private.
 
-Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
+Components live in `panel_framework/templates/cotton/` inside the installed package: `data-table`,
 `data-table-card`, `data-table-actions`, `data-table-cells/{text,link,datetime,date,badge,related_list}`,
 `modal-header`, `modal-body`, `modal-footer`, `modal-trigger`, `quick-view-trigger` and the
 `panel-*` set (`panel-page-header`, `panel-toolbar`, `panel-search-field`, `panel-filter-toggle`,
@@ -129,7 +130,7 @@ Components live in `freedom_ls/panel_framework/templates/cotton/`: `data-table`,
 `table_empty`, `quick_view_host`, `modal_host`, `discard_prompt`, `reason_field`, `error_summary`,
 `sidebar_nav`, `breadcrumbs`. The dialogs are `templates/panel_framework/modal/`: `confirm.html`,
 `delete_confirmation.html`, `form.html` and `message.html`.
-`ls freedom_ls/panel_framework/templates/cotton/` is the current list.
+`panel_framework.__file__` locates the package; `ls <package dir>/templates/cotton/` is the current list.
 
 ## Sites, bulk runs and the task backend
 
@@ -138,7 +139,7 @@ which site a request belongs to. The host says so through a setting.
 
 - `PANEL_FRAMEWORK_SITE_RESOLVER` is the dotted path of a callable that takes the request and
   returns its `Site`, or `None` or a `RequestSite` when the request belongs to no site. Whatever it
-  raises propagates. The default is `freedom_ls.panel_framework.sites.current_site_or_none`, which
+  raises propagates. The default is `panel_framework.sites.current_site_or_none`, which
   wraps `django.contrib.sites.shortcuts.get_current_site` and answers an unknown host with `None`.
   There `SITE_ID` wins over the host name: a project serving several sites from one process must
   set its own resolver, or every request shares one site's runs. FLS sets
@@ -154,12 +155,12 @@ which site a request belongs to. The host says so through a setting.
   `PermittedBulkAction` does this itself, from `resolve_site(ctx.request)`. When no site
   resolves, the bulk-action view answers 422 ("This request belongs to no site.") before the
   preview, and `execute` raises `PermissionDenied` as a backstop.
-- `freedom_ls_panel_framework.W001` is a system-check warning (`checks.check_task_backend`). It
+- `panel_framework.W001` is a system-check warning (`checks.check_task_backend`). It
   fires when `TASKS["default"]["BACKEND"]` is, or subclasses, Django's or the `django_tasks`
   backport's immediate or dummy backend and `DEBUG` is off, because a bulk action over
   `BULK_BACKGROUND_THRESHOLD` rows then runs inline or never. Run a durable backend with a worker,
   or add the id to `SILENCED_SYSTEM_CHECKS` when that is intended.
-- `freedom_ls_panel_framework.W002` (`checks.check_site_resolver`) fires when `SITE_ID` is set,
+- `panel_framework.W002` (`checks.check_site_resolver`) fires when `SITE_ID` is set,
   `PANEL_FRAMEWORK_SITE_RESOLVER` is still the default, and the database holds more than one
   `Site`: every site's runs would be recorded under `SITE_ID`'s. It counts sites, so it runs only
   under `migrate` or `manage.py check --database default`. FLS sets its own resolver and never
@@ -184,7 +185,7 @@ which site a request belongs to. The host says so through a setting.
   `<c-modal-trigger>`). The dialog footer's pair is full size from `md` up and small below it. A
   panel holds at most one `primary` button outside a dialog.
 - A button looks the same at every width. Below `md` the shared rule in
-  `freedom_ls/panel_framework/css/panel_framework.css` gives every panel button an invisible 44px-tall hit area and leaves
+  `css/panel_framework.css` in the package gives every panel button an invisible 44px-tall hit area and leaves
   its look alone, so a small button stays about 32px tall on a phone, a dialog footer's included
   (the footer's 16px padding holds the 6px the hit area reaches past the button). A text field is
   44px tall on a phone. No template or button rule adds a height to a button.
@@ -236,8 +237,8 @@ their own `c-panel-*` primitives (`panel-button`, `panel-button-group`, `panel-c
 forward to its own `c-button`, `c-back-link` and the rest; the rules here name
 the component an FLS panel template writes. The panel framework's own styles (`.panel-surface`,
 `.panel-canvas`, `.panel-heading`, `.panel-btn`, the modal host, the selection bar and the compact
-table) live in `freedom_ls/panel_framework/css/panel_framework.css`, not in `tailwind.components.css`.
-`freedom_ls/panel_framework/HOST_CONTRACT.md` lists every primitive and what a host must supply.
+table) live in `css/panel_framework.css` in the package, not in `tailwind.components.css`.
+`HOST_CONTRACT.md` in the package lists every primitive and what a host must supply.
 
 Every anchor in a panel-framework page is a control. The base layer underlines every `<a>`, and
 that underline means "a link inside prose", which these templates never hold. A control takes the
@@ -610,8 +611,10 @@ page of an app holds which action is that app's skill.
 
 ## What enforces it
 
-`freedom_ls/panel_framework/tests/invariants/test_templates.py` fails on most of the above before
-QA looks: `test_no_control_link_is_hand_styled`, `test_every_anchor_with_visible_text_carries_its_own_classes`,
+`tests/invariants/test_templates.py` in the package repo fails on most of the above before
+QA looks. FLS applies the same rules to its own templates through
+`panel_framework.testing.template_rules`, in `freedom_ls/educator_interface/tests/invariants/test_panel_template_rules.py`
+and `freedom_ls/base/tests/invariants/test_panel_template_rules.py`. The package's tests: `test_no_control_link_is_hand_styled`, `test_every_anchor_with_visible_text_carries_its_own_classes`,
 `test_every_framework_action_trigger_is_small`, `test_every_dialog_ends_in_the_modal_footer_not_a_button_group`,
 `test_the_modal_host_and_the_side_panel_clip_horizontal_overflow`, `test_the_filter_sheet_has_a_close_control`,
 `test_the_quick_view_is_never_modal`, `test_the_base_select_rule_draws_its_own_chevron_inside_the_end_padding`,
@@ -635,7 +638,7 @@ template outside the callout, the field-error partial and the components listed 
 `test_every_expand_chevron_turns_when_its_control_opens` and
 `test_every_entry_trigger_names_its_entry` (every `<c-modal-trigger>` in
 `editable_list_entry_triggers.html` passes an `aria_label` naming its entry). In the browser,
-`assert_canvas_holds_only_boxes` (`panel_framework/tests/playwright/assertions.py`) fails on any
+`assert_canvas_holds_only_boxes` (`freedom_ls/tests/playwright_helpers.py`) fails on any
 visible text or control on `.panel-canvas` with no `[data-panel-box]` ancestor; the section smoke
 test, the dashboard, import and account-page flows call it. Call it from the browser test of any
 new page. `educator_interface/tests/playwright/test_touch_targets.py` checks that a small button keeps its
@@ -650,36 +653,27 @@ outside the content engine. `test_app_templates_hand_build_no_admonition_look` i
 fails on a thick start border (`border-s-4`/`border-l-4` and up, or an arbitrary width) in any of
 those templates: that is the admonition look, built by hand.
 
-Four guards cover the standalone backend:
+Three guards cover the standalone backend:
 
-- `freedom_ls/panel_framework/tests/test_import_guard.py` parses every `.py` file under the
-  framework and fails on any import of a `freedom_ls` module outside `freedom_ls.panel_framework`
-  (including a bare `import freedom_ls`). Relative imports pass. No directory is exempt, tests
-  included. Reach host behaviour through a setting, as the site resolver does.
-- `freedom_ls/educator_interface/tests/invariants/test_bulk_run_scoping.py` parses every production
-  `.py` file under `freedom_ls/` (`tests/` and `migrations/` directories excluded) and fails on any
-  `BulkActionRun.objects.<method>` other than `for_site`, `for_request` and `create`, on
+- `tests/test_import_guard.py` in the package repo parses every `.py` file in the package and fails
+  on any import of a `freedom_ls` module. Reach host behaviour through a setting, as the site
+  resolver does. It runs in the package repo.
+- `tests/invariants/test_bulk_run_scoping.py` in the package repo, and
+  `freedom_ls/educator_interface/tests/invariants/test_bulk_run_scoping.py` for FLS's own code,
+  parse every production `.py` file (`tests/` and `migrations/` directories excluded) and fail on
+  any `BulkActionRun.objects.<method>` other than `for_site`, `for_request` and `create`, on
   `BulkActionRun.objects` kept in a variable, and on any use of `BulkActionRun._default_manager` or
-  `_base_manager`. A bare `.filter()`, `.get()` or `.all()` reads every site's runs. Its one
-  allowance is the worker's `_base_manager` read in `panel_framework/bulk_runs.py`, which filters by
-  the site id its task was given. `BulkActionRun.site` has `related_name="+"`, so there is no
+  `_base_manager`. A bare `.filter()`, `.get()` or `.all()` reads every site's runs. The package's
+  one allowance is the worker's `_base_manager` read in `bulk_runs.py`, which filters by the site id
+  its task was given. `BulkActionRun.site` has `related_name="+"`, so there is no
   `site.bulkactionrun_set` to read through.
-- `freedom_ls/educator_interface/tests/invariants/test_framework_copies_match_base.py` holds the
-  framework's private copies to their `freedom_ls.base` originals: `escape_csv_formula`,
-  `EchoWriter`, `Setting` and `AppSettings` must have identical source, and `FORMULA_TRIGGERS`,
-  `UTF8_BOM`, `_E164_PHONE_NUMBER` and the date display formats identical values. It also pins
-  `pagination_suffix` (`freedom_ls/base/templatetags/pagination_tags.py` and the framework's
-  `data_table_tags.py`), `assert_no_horizontal_overflow` and `QA_VIEWPORTS` (`freedom_ls/tests/playwright_helpers.py`
-  and `freedom_ls/panel_framework/tests/playwright/helpers.py`), and the body of the `panelDropdownMenu`
-  Alpine component against `dropdownMenu` in `base`'s `alpine-components.js`. Change each pair in
-  both places at once.
-- `freedom_ls/panel_framework/checks.py` holds `REQUIRED_ICON_NAMES`, the icon names the
-  framework's templates draw. A framework template draws an icon with `<c-panel-icon>`, never
-  `<c-icon>`; FLS's wrapper in `freedom_ls/base/templates/cotton/panel-icon.html` forwards it to
-  `<c-icon>`. The framework's default reads each icon's paths from
-  `templates/panel_framework/icons/<name>.html`. `uv run manage.py check` reports E010 for a name
-  `c-panel-icon` cannot render and W003 for one it renders empty. When a framework template draws
-  a new icon, add its name there and its body template beside the others.
+- `REQUIRED_ICON_NAMES` in the package's `checks.py` lists the icon names the framework's templates
+  draw. A framework template draws an icon with `<c-panel-icon>`, never `<c-icon>`; FLS's wrapper in
+  `freedom_ls/base/templates/cotton/panel-icon.html` forwards it to `<c-icon>`. The framework's
+  default reads each icon's paths from `templates/panel_framework/icons/<name>.html`.
+  `uv run manage.py check` reports E010 for a name `c-panel-icon` cannot render and W003 for one it
+  renders empty. When a framework template draws a new icon, add its name there and its body
+  template beside the others, in the package repo.
 
 `freedom_ls/base/tests/invariants/test_panel_form_buttons.py` fails on any panel template whose `panel_body`, or a
 template it includes, renders a submit button. `accounts/tests/test_allauth_pages.py` checks an

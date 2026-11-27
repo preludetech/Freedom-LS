@@ -20,7 +20,7 @@ FreedomLS tests live at `freedom_ls/<app_name>/tests/test_<module>.py`.
 
 ### Mirroring
 
-Test-only helper and URLconf modules that sit correctly beside their tests: `panel_framework/tests/root_urls.py`, `panel_framework/tests/stub_panels.py`, `health/tests/root_urls.py`, `reports/tests/gather_input_builders.py` and `reports/tests/report_data_builders.py`.
+Test-only helper and URLconf modules that sit correctly beside their tests: `health/tests/root_urls.py`, `deployment/tests/root_urls.py`, `reports/tests/gather_input_builders.py` and `reports/tests/report_data_builders.py`.
 
 ### Cross-cutting tests
 
@@ -56,7 +56,7 @@ Where access resolves through role assignments, `assign_perm` grants nothing and
 
 Pattern to follow: `accounts/tests/conftest.py`, two fixtures plus the private `_seed_default_legal_docs`.
 
-A helper that tests import by hand goes in `helpers.py` beside the tests: `content_engine/tests/helpers.py`, `learner_progress/tests/helpers.py` and `panel_framework/tests/helpers.py` are examples. `panel_framework/tests/stub_models.py` holds that foundational app's stub models. Shared modules for the whole suite live in `freedom_ls/tests/`: `site_context.py` (`site_context`, `drop_ambient_request`), `demo_content_fixtures.py` (module-scoped fixtures that import the shipped `demo_content/` tree) and `app_guards.py`. `factories.py` holds `SiteFactory`, the factory for the `Site` row itself: `Site` belongs to no FLS app, so any app's tests can import it without adding a dependency.
+A helper that tests import by hand goes in `helpers.py` beside the tests: `content_engine/tests/helpers.py`, `learner_progress/tests/helpers.py` and `educator_interface/tests/helpers.py` are examples. Shared modules for the whole suite live in `freedom_ls/tests/`: `site_context.py` (`site_context`, `drop_ambient_request`), `demo_content_fixtures.py` (module-scoped fixtures that import the shipped `demo_content/` tree) and `app_guards.py`. `factories.py` holds `SiteFactory`, the factory for the `Site` row itself: `Site` belongs to no FLS app, so any app's tests can import it without adding a dependency.
 
 ### Fixture placement
 
@@ -68,15 +68,7 @@ A test that checks real hashing, such as an Argon2 hash or a hash prefix, opts i
 
 ### Stub-model technique
 
-The FLS instance is `panel_framework/tests/`. `stub_models.py` holds `StubModel`, `StubChild`, `StubProtectedChild` and `StubGrandchild` (whose docstring says why it exists), `helpers.py` their `_make_stub*` constructors, and `conftest.py` the fixtures that create their tables. A new foundational app's stub models go in a plain `stub_models.py` the same way. The migration-drift probe, `contrib/conformance/test_migrations.py`, skips models defined under a `tests` package, so stubs stay out of it when their app has real migrations.
-
-`panel_framework/tests/stub_panels.py` shows the double-import hazard. Django's URL resolver loads it under a different module path from the one pytest gives the conftest, so it fetches `StubModel` with `apps.get_model` at call time. Its docstring explains why.
-
-`site_aware_models` and `role_based_permissions` still borrow downstream models in their tests and need this technique.
-
-### Fixture scope and idempotent reset
-
-The FLS worked example is `_panel_test_tables` in `panel_framework/tests/conftest.py`: session-scoped table creation that unblocks the database only around the schema work on either side of the `yield`. Never hold the unblock open across the `yield`.
+`site_aware_models` and `role_based_permissions` still borrow downstream models in their tests and need the stub-model technique in `ds:testing`.
 
 ### The thin-wrapper rule
 
@@ -111,7 +103,6 @@ FreedomLS ships to downstream projects, so markers control which tests are *port
 - **`ci_only`** — slow / real-time tests.
 - **`dev_tooling`** — tests of developer tooling: QA seeders, `danger_` commands, dev scripts and the content validator.
 - **`weasyprint`** — invokes WeasyPrint and needs Pango/cairo/gdk-pixbuf/HarfBuzz.
-- **`needs_fls_host`** — a `panel_framework` test that needs FLS's real templates, icon set or URLconf. The standalone run deselects it.
 
 What runs where:
 
@@ -121,17 +112,11 @@ What runs where:
   - `unit-1` to `unit-6` run `-m "not playwright" --cov` (`UNIT_MARKERS`), so they include `ci_only`, `weasyprint` and `dev_tooling` tests; CI has the system libraries.
   - `playwright-1` and `playwright-2` run `-m playwright` (`BROWSER_MARKERS`), both with `-n auto` (the root conftest caps it at four workers).
   - Each group takes its share of the tests with `pytest-split`, from `.test_durations`, and a random seed set from the run ID.
-  - `standalone-panel_framework` and `standalone-icons` run the two standalone commands below, each with its own `standalone_pytest.ini`.
+  - `standalone-icons` runs the standalone command below, with its own `standalone_pytest.ini`.
   - `coverage` combines the unit groups' coverage data and fails under 92%.
   - `test-verdict` fails unless every test job and `coverage` succeeded, and checks that the groups' reports together hold each collected test exactly once.
-- The panel framework's unit tests also run with no FLS around them, in CI's `standalone-panel_framework` job. This is a documented command, not a `[tool.test_tiers]` tier:
-
-```bash
-uv run pytest -c freedom_ls/panel_framework/tests/standalone_pytest.ini freedom_ls/panel_framework/tests
-```
-
-  `standalone_pytest.ini` sets `--ds=freedom_ls.panel_framework.tests.standalone_settings` (in-memory SQLite, `standalone_app/` for the user model, no stand-in templates: the framework ships every template it renders), adds `-m "not needs_fls_host"`, skips only `playwright` (`norecursedirs`), so the `components` and `invariants` tiers run too, and blocks network access. `standalone_fixtures.py` supplies the `site` and `mock_site_context` fixtures; FLS's conftest does not load.
-- The icons app's tests run the same way, in CI's `standalone-icons` job:
+- The panel framework's own tests live in the package repo (`github.com/preludetech/django-panel-framework`) and run there with `uv run pytest`. FLS's tests of its panels run in the normal tiers.
+- The icons app's tests run with no FLS around them, in CI's `standalone-icons` job. This is a documented command, not a `[tool.test_tiers]` tier:
 
 ```bash
 uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/tests
@@ -143,8 +128,6 @@ uv run pytest -c freedom_ls/icons/tests/standalone_pytest.ini freedom_ls/icons/t
 ```bash
 uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling" -n auto --dist loadfile
 ```
-
-Add `needs_fls_host` to a `panel_framework` test that fails under the standalone run because the framework's default templates, icons or URLconf lack something it asserts on (a rendered FLS template, a real icon, an FLS URL name). Mark the individual test, as `test_reference.py` and `test_tables.py` do. The marker is not `fls_internal`: the FLS run keeps the test, and a downstream that installs the framework runs it too.
 
 **Reach for `fls_internal` last.** Every portable test is integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.
 

@@ -14,7 +14,7 @@ Where `ds:app-settings` uses `myproject/base/app_settings.py`, FLS ships the bas
 
 ## Standalone apps carry their own copy
 
-An app meant to run without FLS (`freedom_ls/panel_framework`, `freedom_ls/icons`) must not import `freedom_ls.base`. It keeps its own `app_settings.py` holding a byte-for-byte copy of `Setting`, `project_value` and `AppSettings` from `freedom_ls/base/app_settings.py`, and declares its settings in its own `AppSettings` subclass as usual.
+An app meant to run without FLS (the installed `panel_framework` package, `freedom_ls/icons`) must not import `freedom_ls.base`. It keeps its own `app_settings.py` holding a byte-for-byte copy of `Setting`, `project_value` and `AppSettings` from `freedom_ls/base/app_settings.py`, and declares its settings in its own `AppSettings` subclass as usual.
 
 - **Copy the two classes and `project_value` only.** `required_settings_errors` is not copied: it builds Django system-check messages for FLS's required-settings check, which a standalone app does not register. A standalone app does not define it.
 - **The invariant keeps the copies in sync.** `SAME_SOURCE` in `freedom_ls/educator_interface/tests/invariants/test_framework_copies_match_base.py` lists each `(original, copy)` pair and asserts `inspect.getsource` is identical for both. Each standalone app's `Setting`, `project_value` and `AppSettings` are in that list. Change one in `base` and in every copy together, or the test fails.

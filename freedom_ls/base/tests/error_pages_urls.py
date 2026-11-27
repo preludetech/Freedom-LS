@@ -2,8 +2,7 @@
 
 Adds routes that raise the exceptions Django's default handlers watch for,
 alongside the app urlconfs those pages reverse against. Standalone, the way
-`freedom_ls/health/tests/root_urls.py` and
-`freedom_ls/panel_framework/tests/root_urls.py` are: this module ships in the
+`freedom_ls/health/tests/root_urls.py` is: this module ships in the
 `freedom_ls` package, so importing the demo project's `config.urls` would kill
 collection in a downstream install that has no `config` module.
 

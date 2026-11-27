@@ -12,7 +12,7 @@ Every icon is a `<c-icon />` Cotton component referenced by **semantic name** (`
 
 The full list is `SEMANTIC_ICON_NAMES` in `freedom_ls/icons/semantic_names.py`, grouped by purpose. Read it before choosing. If nothing fits, add a semantic name: see [resources/configuring-icons.md](resources/configuring-icons.md).
 
-An icon a panel-framework template draws by a fixed name is listed in `REQUIRED_ICON_NAMES` in `freedom_ls/panel_framework/checks.py`. A template inside `freedom_ls/panel_framework/` draws its icons with `<c-panel-icon>`, the framework's own primitive, and never with `<c-icon>`; every other FLS template uses `<c-icon>`. FLS's wrapper `freedom_ls/base/templates/cotton/panel-icon.html` forwards `<c-panel-icon>` to `<c-icon>`, so both draw from the active icon set. `uv run manage.py check` renders each listed name through `c-panel-icon` and reports E010 for a name it cannot render and W003 for one that renders empty. Renaming or removing a semantic name in that list fails the check.
+An icon a panel-framework template draws by a fixed name is listed in `REQUIRED_ICON_NAMES` in `checks.py` of the installed `panel_framework` package. A template inside that package draws its icons with `<c-panel-icon>`, the framework's own primitive, and never with `<c-icon>`; every other FLS template uses `<c-icon>`. FLS's wrapper `freedom_ls/base/templates/cotton/panel-icon.html` forwards `<c-panel-icon>` to `<c-icon>`, so both draw from the active icon set. `uv run manage.py check` renders each listed name through `c-panel-icon` and reports E010 for a name it cannot render and W003 for one that renders empty. Renaming or removing a semantic name in that list fails the check.
 
 ## Rendering
 
