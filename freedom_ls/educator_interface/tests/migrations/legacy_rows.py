@@ -36,10 +36,6 @@ class Built:
         return self.model._base_manager.filter(pk=self.pk).exists()
 
 
-def _site() -> Site:
-    return Site.objects.get_current()
-
-
 def _other_permission() -> Permission:
     return Permission.objects.exclude(
         content_type__app_label="freedom_ls_panel_framework"
@@ -84,7 +80,6 @@ def group_object_permission(ct: ContentType) -> Built:
 
 def collection_item_by_collection(ct: ContentType) -> Built:
     row = ContentCollectionItem.objects.create(
-        site=_site(),
         collection_type=ct,
         collection_id=uuid.uuid4(),
         child_type=_other_permission().content_type,
@@ -95,7 +90,6 @@ def collection_item_by_collection(ct: ContentType) -> Built:
 
 def collection_item_by_child(ct: ContentType) -> Built:
     row = ContentCollectionItem.objects.create(
-        site=_site(),
         collection_type=_other_permission().content_type,
         collection_id=uuid.uuid4(),
         child_type=ct,
@@ -109,7 +103,6 @@ def conversion(ct: ContentType) -> Built:
     # one has no other reason to import.
     Conversion = apps.get_model("freedom_ls_referral_tracking", "Conversion")
     row = Conversion.objects.create(
-        site=_site(),
         user=UserFactory(),
         kind="account_signup",
         content_type=ct,
@@ -122,10 +115,11 @@ def conversion(ct: ContentType) -> Built:
 
 def object_role_assignment(ct: ContentType) -> Built:
     # `bulk_create`: a post-save signal looks up the object the content type names.
+    # `bulk_create` skips the `save()` that fills in the site, so the site is set here.
     row = ObjectRoleAssignment.objects.bulk_create(
         [
             ObjectRoleAssignment(
-                site=_site(),
+                site=Site.objects.get_current(),
                 user=UserFactory(),
                 content_type=ct,
                 object_id="1",
@@ -138,7 +132,6 @@ def object_role_assignment(ct: ContentType) -> Built:
 
 def notification(ct: ContentType) -> Built:
     row = Notification.objects.create(
-        site=_site(),
         user=UserFactory(),
         category="legacy",
         content_type=ct,

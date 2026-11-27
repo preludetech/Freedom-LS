@@ -167,6 +167,7 @@ def test_current_panel_framework_table_and_its_rows_are_untouched(
 ) -> None:
     from panel_framework.models import BulkActionRun
 
+    # The installed package's model does not fill in the site on save.
     run = BulkActionRun.objects.create(
         site=Site.objects.get_current(),
         requested_by=UserFactory(),
