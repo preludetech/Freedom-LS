@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import cast
-from unittest.mock import patch
 
 import pytest
 import time_machine
@@ -1831,10 +1830,18 @@ def test_save_answers_records_the_pinned_version_over_a_later_one(
     assert progress.answers.get().question_version == pinned
 
 
+# One query: the single lookup of every question's latest version.
+BATCH_LOOKUP_QUERIES = 1
+# Queries save_answers spends writing one answer (measured, no lookup included).
+WRITE_QUERIES_PER_ANSWER = 7
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("count", [2, 6])
 def test_save_answers_looks_up_the_latest_versions_in_one_batch(
-    mock_site_context: Site, count: int
+    mock_site_context: Site,
+    count: int,
+    django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
     form: Form = FormFactory()
     questions = [_text_question(form, order) for order in range(count)]
@@ -1843,10 +1850,9 @@ def test_save_answers_looks_up_the_latest_versions_in_one_batch(
     progress: FormProgress = FormProgressFactory(form=form)
     post = _post(questions)
 
-    with patch(
-        "freedom_ls.form_engine.models.latest_versions", wraps=latest_versions
-    ) as lookup:
+    with django_assert_max_num_queries(
+        BATCH_LOOKUP_QUERIES + WRITE_QUERIES_PER_ANSWER * count
+    ):
         progress.save_answers(questions, post)
 
-    lookup.assert_called_once()
     assert progress.answers.count() == count
