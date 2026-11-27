@@ -95,8 +95,8 @@ Manifestations: test 9.7 (desktop), test 9.7 (mobile), test 9.7 (tablet).
 | Bug | Title | Status |
 |---|---|---|
 | B1 | Progress bar track disappears on a hovered table row | **FIXED** (commit: eee8623ee): the track now uses the border token, visible on a hovered row (rgb(209,213,219) on rgb(243,244,246)) ![](screenshots/page-2026-11-27T03-58-59-373Z.png) |
-| B2 | Flag badge overflows the Courses tab phone card | **UNRESOLVED**: the fix (7a2be04f4) targeted `.panel-chip`, but the badge renders as `span.chip`, so at 375px it still ended at 363px past the 359px card edge; reverted in 1fbfe8e2f. Needs a fix that targets the chip the badges partial renders (reason: one fix attempt per bug, re-verification failed) ![](screenshots/page-2026-11-27T04-07-18-480Z.png) |
-| B3 | Dashboard text links have no 44px hit area on a phone | **UNRESOLVED**: meeting a 44px target for stacked dashboard text links needs a spacing decision; the spec and the panel-framework rule give hit areas to buttons only |
+| B2 | Flag badge overflows the Courses tab phone card | **FIXED** (commit: 01aab8b1a) — Flag badge overflows the Courses tab phone card — after the fix: ![](screenshots/fixed/page-2026-11-27T05-33-03-989Z.png) |
+| B3 | Dashboard text links have no 44px hit area on a phone | **FIXED** (commit: d6c4de404) — Dashboard text links have no 44px hit area on a phone — after the fix: ![](screenshots/fixed/page-2026-11-27T05-32-33-317Z.png) |
 | B4 | Sign out page content is not inside the shell's content region | **FIXED** (commit: 375922549): the card sits in a canvas wrapper as on Personal details; the probe passes at 1920, 375 and 768 with the look unchanged ![](screenshots/page-2026-11-27T04-11-05-932Z.png) |
 
 ## General notes
@@ -109,4 +109,4 @@ Manifestations: test 9.7 (desktop), test 9.7 (mobile), test 9.7 (tablet).
 - Screenshots `page-2026-11-27T03-36-30-000Z.png` and `page-2026-11-27T03-36-40-000Z.png` come from a second browser context (cohort viewer, test 4.6) with the debug toolbar open. They are not used as evidence images.
 - Tests 2.9 and 1.9 passed at tablet (768) and 1.9 at mobile; the failures are limited to the badge overflow (B2) at 375px.
 
-status: ok · reason: 4 bugs — 2 fixed, 2 unresolved; report rendered
+status: ok · reason: 4 bugs — 4 fixed, 0 unresolved; report rendered
