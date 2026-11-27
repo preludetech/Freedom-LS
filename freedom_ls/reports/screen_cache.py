@@ -34,7 +34,7 @@ from freedom_ls.reports.report_data import (
 
 # Bump whenever a cached dataclass changes shape, so a deploy never unpickles
 # the old shape into the new code.
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 KINDS = ("progress", "report")
 
