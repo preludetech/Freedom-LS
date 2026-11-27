@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -15,6 +16,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import Storage
 from django.core.validators import MinValueValidator
 from django.db import connection, models, transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.safestring import SafeString
 from django.utils.translation import gettext
@@ -255,6 +257,14 @@ class FormContent(MarkdownContent):
             raise ValidationError(error)
 
 
+def _refuse_when_version_backed(instance: FormQuestion | QuestionOption) -> None:
+    """A version-backed instance is a read-only view of a version, not a row."""
+    if instance.pinned_version is not None:
+        raise ValueError(
+            "A version-backed question or option is read-only: it has no row of its own"
+        )
+
+
 class FormQuestion(BaseContent):
     """A question within a form page."""
 
@@ -390,6 +400,16 @@ class FormQuestion(BaseContent):
     class Meta:
         ordering = ["order"]
 
+    def save(self, *args: object, **kwargs: object) -> None:
+        _refuse_when_version_backed(self)
+        super().save(*args, **kwargs)
+
+    def delete(
+        self, using: str | None = None, keep_parents: bool = False
+    ) -> tuple[int, dict[str, int]]:
+        _refuse_when_version_backed(self)
+        return super().delete(using=using, keep_parents=keep_parents)
+
     def __str__(self):
         return self.question[:50]
 
@@ -452,8 +472,21 @@ class QuestionOption(SiteAwareModel, TimestampedModel):
 
     objects = RetirableManager()
 
+    # The version this instance was built from; None for a live row.
+    pinned_version: FormQuestionVersion | None = None
+
     class Meta:
         ordering = ["order"]
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        _refuse_when_version_backed(self)
+        super().save(*args, **kwargs)
+
+    def delete(
+        self, using: str | None = None, keep_parents: bool = False
+    ) -> tuple[int, dict[str, int]]:
+        _refuse_when_version_backed(self)
+        return super().delete(using=using, keep_parents=keep_parents)
 
     @property
     def is_retired(self) -> bool:
@@ -573,6 +606,46 @@ class FormQuestionVersion(SiteAwareModel):
         ]
         return [name for name, held, current in compared if held != current]
 
+    def as_question(self, live: FormQuestion) -> FormQuestion:
+        """A copy of the live question that reads as this version: its wording,
+        settings and options, with `pinned_version` set to this version."""
+        # A shallow copy keeps every non-versioned field and the cached form_page and
+        # condition_option, so building one costs no query.
+        question = copy.copy(live)
+        question.__dict__.pop("_prefetched_objects_cache", None)
+        question.question = self.question_text
+        question.type, question.required = self.type, self.required
+        question.min, question.max = self.min, self.max
+        question.decimal_places, question.explanation = (
+            self.decimal_places,
+            self.explanation,
+        )
+        question.pinned_version = self
+        options = [self._option(row, question) for row in self.option_rows()]
+        # The related manager returns a prefetched relation straight from this cache,
+        # so question.options.all() yields the version's options with no query.
+        # Readers must use .all(): .filter() and .order_by() would query the live rows.
+        cached: QuerySet[QuestionOption] = QuerySet(model=QuestionOption)
+        cached._result_cache = options
+        vars(cached)["_prefetch_done"] = True
+        vars(question)["_prefetched_objects_cache"] = {"options": cached}
+        return question
+
+    def _option(
+        self, row: QuestionVersionOption, question: FormQuestion
+    ) -> QuestionOption:
+        option = QuestionOption(
+            id=UUID(row.id),
+            question=question,
+            site_id=question.site_id,
+            text=row.text,
+            value=row.value,
+            order=row.order,
+            correct=row.correct,
+        )
+        option.pinned_version = self
+        return option
+
     def __str__(self) -> str:
         return f"{self.question_id} v{self.number}"
 
@@ -677,6 +750,8 @@ def marking_options(
     offered, plus any live option added since, so a correct option added after
     submission shows the stored score as outdated."""
     offered = _offered_options(question, served)
+    if question.pinned_version is not None:
+        return offered
     offered_ids = {option.id for option in offered}
     added = [
         option
@@ -1041,7 +1116,7 @@ class FormProgress(SiteAwareModel):
                 # Check if this question has been answered
                 value = 0  # Default to 0 if not answered
                 try:
-                    answer = self.answers.get(question=question)
+                    answer = self.answers.get(question_id=question.id)
                     selected_options = answer.selected_options.all()
                     if selected_options.exists():
                         selected_option = selected_options.first()
@@ -1268,7 +1343,7 @@ class FormProgress(SiteAwareModel):
             # empty selection, or the learner is marked down for a question
             # the review list never names.
             try:
-                answer = self.answers.get(question=question)
+                answer = self.answers.get(question_id=question.id)
             except QuestionAnswer.DoesNotExist:
                 selected_options = []
             else:

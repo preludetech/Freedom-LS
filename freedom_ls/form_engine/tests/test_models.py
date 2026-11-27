@@ -47,10 +47,12 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
     QuestionOption,
     latest_versions,
+    marking_options,
     question_answer_file_upload_to,
     save_question_version,
 )
 from freedom_ls.form_engine.signals import form_attempt_completed
+from freedom_ls.form_engine.tests.helpers import revise_question
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import site_context
@@ -1856,3 +1858,106 @@ def test_save_answers_looks_up_the_latest_versions_in_one_batch(
         progress.save_answers(questions, post)
 
     assert progress.answers.count() == count
+
+
+@pytest.fixture
+def versioned_choice(mock_site_context: Site) -> FormQuestion:
+    """A multiple-choice question with two options and version 1 saved."""
+    question: FormQuestion = FormQuestionFactory(type="multiple_choice")
+    QuestionOptionFactory(question=question, order=0, correct=True)
+    QuestionOptionFactory(question=question, order=1, correct=False)
+    save_question_version(question, list(question.options.all()), "c1")
+    return question
+
+
+def _version_backed(question: FormQuestion) -> FormQuestion:
+    version = question.versions.get()
+    return version.as_question(question)
+
+
+@pytest.mark.django_db
+def test_saving_a_version_backed_question_raises(versioned_choice: FormQuestion):
+    backed = _version_backed(versioned_choice)
+
+    with pytest.raises(ValueError, match="read-only"):
+        backed.save()
+
+
+@pytest.mark.django_db
+def test_deleting_a_version_backed_question_raises(versioned_choice: FormQuestion):
+    backed = _version_backed(versioned_choice)
+
+    with pytest.raises(ValueError, match="read-only"):
+        backed.delete()
+
+
+@pytest.mark.django_db
+def test_saving_a_version_backed_option_raises(versioned_choice: FormQuestion):
+    option = _version_backed(versioned_choice).options.all()[0]
+
+    with pytest.raises(ValueError, match="read-only"):
+        option.save()
+
+
+@pytest.mark.django_db
+def test_deleting_a_version_backed_option_raises(versioned_choice: FormQuestion):
+    option = _version_backed(versioned_choice).options.all()[0]
+
+    with pytest.raises(ValueError, match="read-only"):
+        option.delete()
+
+
+@pytest.mark.django_db
+def test_options_of_a_version_backed_question_are_the_versions_options(
+    versioned_choice: FormQuestion,
+    django_assert_num_queries: DjangoAssertNumQueries,
+):
+    QuestionOptionFactory(question=versioned_choice, order=2)
+    backed = _version_backed(versioned_choice)
+
+    with django_assert_num_queries(0):
+        options = list(backed.options.all())
+
+    assert [o.id for o in options] == [o.id for o in versioned_choice.options.all()[:2]]
+    assert [o.correct for o in options] == [True, False]
+
+
+@pytest.mark.django_db
+def test_as_question_issues_no_query_for_a_question_loaded_with_its_page(
+    versioned_choice: FormQuestion,
+    django_assert_num_queries: DjangoAssertNumQueries,
+):
+    live = FormQuestion.objects.select_related("form_page").get(pk=versioned_choice.pk)
+    version = versioned_choice.versions.get()
+
+    with django_assert_num_queries(0):
+        backed = version.as_question(live)
+
+    assert backed.form_page == live.form_page
+
+
+@pytest.mark.django_db
+def test_save_answers_records_the_pinned_version_of_a_version_backed_question(
+    versioned_choice: FormQuestion,
+):
+    backed = _version_backed(versioned_choice)
+    revise_question(versioned_choice, question="Reworded")
+    progress: FormProgress = FormProgressFactory(form=versioned_choice.form_page.form)
+    post = QueryDict(mutable=True)
+    post[f"question_{backed.id}"] = str(backed.options.all()[0].id)
+
+    progress.save_answers([backed], post)
+
+    assert progress.answers.get().question_version == backed.pinned_version
+
+
+@pytest.mark.django_db
+def test_marking_options_of_a_pinned_question_hold_no_option_added_later(
+    versioned_choice: FormQuestion,
+):
+    backed = _version_backed(versioned_choice)
+    QuestionOptionFactory(question=versioned_choice, order=2)
+
+    options = marking_options(backed, None)
+
+    assert [o.id for o in options] == [o.id for o in backed.options.all()]

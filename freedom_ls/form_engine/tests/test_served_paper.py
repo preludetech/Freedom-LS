@@ -33,6 +33,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     FormStrategy,
     QuestionOption,
+    save_question_version,
 )
 from freedom_ls.form_engine.served_paper import (
     build_served_paper,
@@ -769,3 +770,86 @@ def test_build_served_paper_leaves_out_a_live_page_whose_children_are_all_retire
         str(kept_page.id),
         str(authored_empty.id),
     ]
+
+
+def _save_versions(form: Form) -> dict[str, str]:
+    """Save a version of every question the form holds; question id -> version id."""
+    saved: dict[str, str] = {}
+    for question in FormQuestion.objects.filter(form_page__form=form):
+        result = save_question_version(question, list(question.options.all()), "c1")
+        assert result.version is not None
+        saved[str(question.id)] = str(result.version.id)
+    return saved
+
+
+@pytest.mark.django_db
+def test_build_served_paper_pins_every_served_question_to_its_latest_version(
+    quiz_form: Form,
+) -> None:
+    saved = _save_versions(quiz_form)
+
+    paper = build_served_paper(Form.objects.get(pk=quiz_form.pk))
+
+    assert paper["versions"] == saved
+    assert len(saved) == 2
+
+
+@pytest.mark.django_db
+def test_build_served_paper_pins_a_question_that_has_no_options(
+    quiz_form: Form,
+) -> None:
+    question_without_options = quiz_form.pages.all()[1].questions.get()
+    saved = _save_versions(quiz_form)
+
+    paper = build_served_paper(Form.objects.get(pk=quiz_form.pk))
+
+    assert (
+        paper["versions"][str(question_without_options.id)]
+        == saved[str(question_without_options.id)]
+    )
+
+
+@pytest.mark.django_db
+def test_build_served_paper_gives_a_question_with_no_version_no_entry(
+    quiz_form: Form,
+) -> None:
+    paper = build_served_paper(Form.objects.get(pk=quiz_form.pk))
+
+    assert paper["versions"] == {}
+
+
+@pytest.mark.django_db
+def test_build_served_paper_pins_every_question_when_questions_are_shuffled(
+    grouped_page_form: Form,
+) -> None:
+    saved = _save_versions(grouped_page_form)
+
+    paper = build_served_paper(Form.objects.get(pk=grouped_page_form.pk))
+
+    assert paper["versions"] == saved
+
+
+@pytest.mark.django_db
+def test_build_served_paper_pins_every_question_of_a_keep_together_group(
+    mock_site_context: object,
+) -> None:
+    form, _page = _drawing_page_form(units=2, draw=None, grouped=True)
+    saved = _save_versions(form)
+
+    paper = build_served_paper(Form.objects.get(pk=form.pk))
+
+    assert paper["versions"] == saved
+    assert len(saved) == 4
+
+
+@pytest.mark.django_db
+def test_build_served_paper_pins_only_the_questions_a_draw_serves(
+    mock_site_context: object,
+) -> None:
+    form, _page = _drawing_page_form(units=5, draw=2)
+    _save_versions(form)
+
+    paper = build_served_paper(Form.objects.get(pk=form.pk))
+
+    assert set(paper["versions"]) == set(paper["pages"][0]["children"])
+    assert len(paper["versions"]) == 2

@@ -28,11 +28,13 @@ from freedom_ls.form_engine.models import (
     FormProgress,
     FormQuestion,
     QuestionOption,
+    save_question_version,
 )
 from freedom_ls.form_engine.paging import (
     answered_counts,
     build_page_links,
     first_page_number_with_unanswered_required,
+    is_answered,
     page_accessibility_limit,
     rejected_answers_message,
     resume_page_number,
@@ -701,3 +703,14 @@ def test_first_unanswered_required_with_no_after_starts_at_the_first_served_page
         )
         == 3
     )
+
+
+@pytest.mark.django_db
+def test_is_answered_works_for_a_version_backed_question(mock_site_context):
+    question: FormQuestion = FormQuestionFactory(type="short_text")
+    version = save_question_version(question, [], "c1").version
+    assert version is not None
+    progress: FormProgress = FormProgressFactory(form=question.form_page.form)
+    QuestionAnswerFactory(form_progress=progress, question=question)
+
+    assert is_answered(version.as_question(question), progress) is True

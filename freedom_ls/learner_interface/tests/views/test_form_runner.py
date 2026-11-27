@@ -47,8 +47,10 @@ from freedom_ls.form_engine.models import (
     FormStrategy,
     QuestionAnswer,
     QuestionOption,
+    save_question_version,
 )
 from freedom_ls.form_engine.queries import count_form_questions
+from freedom_ls.form_engine.tests.helpers import revise_question
 from freedom_ls.learner_interface.tests.helpers import (
     course_with_form,
     form_attempt,
@@ -5165,3 +5167,84 @@ def test_form_start_page_shows_no_time_limit_for_an_untimed_quiz(
     content = _start_page_content(client, time_limit_minutes=None)
 
     assert "time limit" not in content
+
+
+# ---------------------------------------------------------------------------
+# A sitting runs on the question versions it was served
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class RevisedQuiz:
+    course: Course
+    question: FormQuestion
+    learner: User
+    client: Client
+
+
+@pytest.fixture
+def revisable_quiz(mock_site_context: object, client: Client) -> RevisedQuiz:
+    """A one-question quiz whose number question allows up to 10, with version 1 saved
+    and a learner logged in who has not yet started."""
+    form = FormFactory(strategy=FormStrategy.QUIZ)
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page,
+        type="number",
+        order=0,
+        required=True,
+        question="Original wording",
+        max="10",
+    )
+    save_question_version(question, [], "c1")
+    learner: User = UserFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, learner)
+    client.force_login(learner)
+    return RevisedQuiz(course, question, learner, client)
+
+
+def _start_sitting(quiz: RevisedQuiz) -> None:
+    quiz.client.get(_form_start_url(quiz.course))
+
+
+@pytest.mark.django_db
+def test_a_sitting_started_before_a_revision_shows_version_one_wording(
+    revisable_quiz: RevisedQuiz,
+) -> None:
+    _start_sitting(revisable_quiz)
+    revise_question(revisable_quiz.question, question="Revised wording", max="5")
+
+    body = revisable_quiz.client.get(_fill_page_url(revisable_quiz.course, 1)).content
+
+    assert b"Original wording" in body
+    assert b"Revised wording" not in body
+
+
+@pytest.mark.django_db
+def test_a_sitting_started_before_a_revision_accepts_an_answer_valid_under_version_one(
+    revisable_quiz: RevisedQuiz,
+) -> None:
+    _start_sitting(revisable_quiz)
+    revise_question(revisable_quiz.question, max="5")
+
+    response = revisable_quiz.client.post(
+        _fill_page_url(revisable_quiz.course, 1),
+        {f"question_{revisable_quiz.question.id}": "8"},
+    )
+
+    assert response.status_code != 422
+    assert QuestionAnswer.objects.get().text_answer == "8"
+
+
+@pytest.mark.django_db
+def test_a_sitting_started_after_a_revision_shows_version_two_wording(
+    revisable_quiz: RevisedQuiz,
+) -> None:
+    revise_question(revisable_quiz.question, question="Revised wording")
+    _start_sitting(revisable_quiz)
+
+    body = revisable_quiz.client.get(_fill_page_url(revisable_quiz.course, 1)).content
+
+    assert b"Revised wording" in body
+    assert b"Original wording" not in body

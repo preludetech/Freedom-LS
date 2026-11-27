@@ -2969,7 +2969,7 @@ def _revision_review_of(
     """The latest review of this question written during this session, if any."""
     review: RevisionReview | None = (
         session_reviews(user, state, course)
-        .filter(question=question)
+        .filter(question_id=question.id)
         .order_by("-reviewed_at")
         .first()
     )
