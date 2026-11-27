@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('freedom_ls_form_engine', '0018_form_retired_at_formcontent_retired_at_and_more'),
+        ('freedom_ls_form_engine', '0019_form_time_limit_minutes_and_more'),
         ('sites', '0002_alter_domain_unique'),
     ]
 

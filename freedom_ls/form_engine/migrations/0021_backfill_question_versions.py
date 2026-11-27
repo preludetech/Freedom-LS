@@ -131,7 +131,7 @@ def reverse(apps: StateApps, schema_editor: BaseDatabaseSchemaEditor) -> None:
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("freedom_ls_form_engine", "0019_formquestionversion"),
+        ("freedom_ls_form_engine", "0020_formquestionversion"),
     ]
 
     operations = [migrations.RunPython(forward, reverse)]

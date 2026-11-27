@@ -26,7 +26,7 @@ DROP FUNCTION {FUNCTION}();
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("freedom_ls_form_engine", "0020_backfill_question_versions"),
+        ("freedom_ls_form_engine", "0021_backfill_question_versions"),
     ]
 
     operations = [migrations.RunSQL(CREATE, DROP)]

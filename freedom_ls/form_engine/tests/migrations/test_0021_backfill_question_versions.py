@@ -27,8 +27,8 @@ from freedom_ls.form_engine.models import (
 )
 
 APP = "freedom_ls_form_engine"
-BEFORE = "0019_formquestionversion"
-FORWARD = "0020_backfill_question_versions"
+BEFORE = "0020_formquestionversion"
+FORWARD = "0021_backfill_question_versions"
 
 
 @dataclass
