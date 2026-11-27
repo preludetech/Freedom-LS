@@ -2,6 +2,14 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.views import (
+    NavGroup,
+    build_menu_items,
+    first_visible_section,
+    panel_framework_view,
+    sections_by_url_name,
+)
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Model
@@ -33,13 +41,6 @@ from freedom_ls.learner_management.queries import (
     organisations_accessible_to,
 )
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.views import (
-    NavGroup,
-    build_menu_items,
-    first_visible_section,
-    panel_framework_view,
-    sections_by_url_name,
-)
 
 # TODO
 # Data Tables

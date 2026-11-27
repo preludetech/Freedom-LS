@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import pytest
+from panel_framework.models import BulkActionRun
 
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.notification_urls import bulk_run_table_url
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.models import BulkActionRun
 
 
 @pytest.mark.django_db

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.filters import TableFilter, ToggleFilter
+from panel_framework.tables import Column, DataTable, TableQuery
+
 from django.db.models import Count, Prefetch, Q, QuerySet
 from django.http import HttpRequest
 
@@ -19,8 +22,6 @@ from freedom_ls.educator_interface.panels.common.tables import (
 )
 from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
 from freedom_ls.learner_management.queries import cohorts_visible_to
-from freedom_ls.panel_framework.filters import TableFilter, ToggleFilter
-from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
 
 __all__ = [
     "CohortCourseRegistrationDataTable",

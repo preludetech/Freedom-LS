@@ -18,11 +18,9 @@ from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes
 from freedom_ls.accounts.validators import WRONG_TYPE
 from freedom_ls.conftest import reverse_url
-from freedom_ls.panel_framework.tests.playwright.assertions import (
-    assert_canvas_holds_only_boxes,
-)
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
+    assert_canvas_holds_only_boxes,
     assert_no_horizontal_overflow,
     assert_no_space_below_field_row,
 )

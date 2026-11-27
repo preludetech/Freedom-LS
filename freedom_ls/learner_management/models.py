@@ -3,13 +3,14 @@ from __future__ import annotations
 from collections.abc import Collection, Iterable
 from typing import TYPE_CHECKING, Self
 
+from panel_framework.models import RunStatus
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from freedom_ls.panel_framework.models import RunStatus
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 User = get_user_model()

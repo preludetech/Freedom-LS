@@ -26,10 +26,10 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.tests.playwright.assertions import (
+from freedom_ls.tests.playwright_helpers import (
+    QA_VIEWPORTS,
     assert_canvas_holds_only_boxes,
 )
-from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
 
 from .helpers import interface_url, no_console_errors
 

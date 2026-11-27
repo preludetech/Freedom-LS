@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.panels import DataTablePanel, Panel
+from panel_framework.views import StatusBadge
+
 from django.db.models import OuterRef, QuerySet, Subquery
 from django.http import HttpRequest
 
@@ -45,9 +49,6 @@ from freedom_ls.learner_management.queries import (
     available_to_organisation_expression,
     cohorts_visible_to,
 )
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.panels import DataTablePanel, Panel
-from freedom_ls.panel_framework.views import StatusBadge
 
 __all__ = [
     "LearnerCohortsPanel",

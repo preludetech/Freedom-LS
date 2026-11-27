@@ -4,6 +4,17 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import (
+    count_noun,
+    count_phrase,
+    join_prose,
+)
+from panel_framework.bulk_actions import (
+    BulkCount,
+    BulkOutcome,
+    register_bulk_action,
+)
+
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Model, QuerySet, prefetch_related_objects
@@ -60,16 +71,6 @@ from freedom_ls.learner_management.queries import (
     learners_permitted_for,
 )
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.actions import (
-    count_noun,
-    count_phrase,
-    join_prose,
-)
-from freedom_ls.panel_framework.bulk_actions import (
-    BulkCount,
-    BulkOutcome,
-    register_bulk_action,
-)
 
 __all__ = [
     "AddToCohortBulkAction",

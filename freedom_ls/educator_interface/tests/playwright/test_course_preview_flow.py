@@ -429,9 +429,11 @@ def test_a_non_holder_sees_quiz_previews_disabled_as_needs_permission(
     preview_requests: list[str] = []
     page.on(
         "request",
-        lambda request: preview_requests.append(request.url)
-        if "preview_content" in request.url
-        else None,
+        lambda request: (
+            preview_requests.append(request.url)
+            if "preview_content" in request.url
+            else None
+        ),
     )
 
     for viewport in QA_VIEWPORTS:

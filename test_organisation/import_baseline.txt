@@ -13,7 +13,6 @@ freedom_ls.base.tests.components.test_analytics_events_partial -> freedom_ls.con
 freedom_ls.base.tests.components.test_analytics_events_partial -> freedom_ls.content_engine.models
 freedom_ls.base.tests.components.test_header_bar_user_menu -> freedom_ls.organisations.factories
 freedom_ls.base.tests.components.test_header_bar_user_menu -> freedom_ls.role_based_permissions.utils
-freedom_ls.base.tests.invariants.test_panel_template_rules -> freedom_ls.panel_framework.tests.invariants.template_rules
 
 # comms
 freedom_ls.comms.factories -> freedom_ls.content_engine.factories
@@ -70,8 +69,6 @@ freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.learner_manage
 
 # organisations
 freedom_ls.organisations.tests.test_models -> freedom_ls.role_based_permissions.utils
-
-# panel_framework
 
 # registration_rules
 freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.comms.models

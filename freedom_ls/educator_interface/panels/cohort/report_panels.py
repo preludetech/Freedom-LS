@@ -8,6 +8,15 @@ from collections import defaultdict
 from typing import Literal, cast
 from uuid import UUID
 
+from panel_framework.actions import PanelAction
+from panel_framework.context import PanelContext
+from panel_framework.lazy_panels import (
+    LOADED_PARAM,
+    LazyBodyPanel,
+    render_region,
+)
+from panel_framework.panels import Panel, PanelStack
+
 from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -31,14 +40,6 @@ from freedom_ls.learner_management.capabilities import record_question_view
 from freedom_ls.learner_management.models import (
     Cohort,
 )
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.lazy_panels import (
-    LOADED_PARAM,
-    LazyBodyPanel,
-    render_region,
-)
-from freedom_ls.panel_framework.panels import Panel, PanelStack
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.report_data import (
     CohortReportData,

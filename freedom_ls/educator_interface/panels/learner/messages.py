@@ -6,6 +6,10 @@ from functools import cached_property
 from typing import cast
 from uuid import UUID, uuid4
 
+from panel_framework.actions import PanelAction
+from panel_framework.context import PanelContext
+from panel_framework.panels import Panel, PanelStack
+
 from django.contrib.sites.models import Site
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -37,9 +41,6 @@ from freedom_ls.learner_management.queries import (
     VIEW_CONVERSATION,
     site_level_admins,
 )
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.panels import Panel, PanelStack
 from freedom_ls.site_aware_models.models import get_cached_site
 
 __all__ = [

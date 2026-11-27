@@ -6,6 +6,9 @@ from collections.abc import Callable, Mapping
 from typing import cast
 from uuid import UUID
 
+from panel_framework.actions import ReasonMixin, refusal_response
+from panel_framework.context import PanelContext
+
 from django import forms
 from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse
@@ -14,8 +17,6 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.forms import EducatorReasonForm
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.actions import ReasonMixin, refusal_response
-from freedom_ls.panel_framework.context import PanelContext
 
 __all__ = [
     "EducatorReasonMixin",

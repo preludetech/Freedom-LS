@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from freedom_ls.panel_framework.panels import PanelStack
-from freedom_ls.panel_framework.views import InstanceView
+from panel_framework.panels import PanelStack
+from panel_framework.views import InstanceView
 
 from .panels import (
     EmailAddressesPanel,

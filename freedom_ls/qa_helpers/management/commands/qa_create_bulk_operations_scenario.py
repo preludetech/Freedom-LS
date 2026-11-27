@@ -29,6 +29,7 @@ from collections.abc import Iterable
 
 import djclick as click
 from allauth.account.models import EmailAddress
+from panel_framework.models import BulkActionRun, scope_lookup
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
@@ -53,7 +54,6 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.models import BulkActionRun, scope_lookup
 from freedom_ls.qa_helpers.management.commands.qa_create_cohort_administration_scenario import (
     _ensure_cohort,
     _ensure_cohort_registration,

@@ -1,9 +1,0 @@
-<c-vars value="" short="" />
-{% comment %}
-A date as "3 Nov 2026", in the current time zone. Renders "-" without a value.
-With short, the day and month only, "3 Nov".
-
-Usage: <c-panel-date :value="learner.created_at" />
-       <c-panel-date :value="pause.planned_resume_on" short />
-{% endcomment %}
-{% if value %}<time datetime="{{ value|date:'Y-m-d' }}">{% if short %}{{ value|date:"j M" }}{% else %}{{ value|date:"j M Y" }}{% endif %}</time>{% else %}-{% endif %}

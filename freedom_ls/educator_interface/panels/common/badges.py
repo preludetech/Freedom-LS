@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from panel_framework.views import StatusBadge
+
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import LearnerStatus, learner_status
-from freedom_ls.panel_framework.views import StatusBadge
 
 __all__ = [
     "_LEARNER_STATUS_TONES",

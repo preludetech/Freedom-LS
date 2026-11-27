@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import count_noun
+from panel_framework.bulk_actions import BulkOutcome, register_bulk_action
+
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Model, QuerySet
@@ -31,8 +34,6 @@ from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
 )
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.actions import count_noun
-from freedom_ls.panel_framework.bulk_actions import BulkOutcome, register_bulk_action
 
 __all__ = [
     "CohortBulkAction",

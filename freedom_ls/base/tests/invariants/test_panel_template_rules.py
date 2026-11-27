@@ -12,9 +12,9 @@ import re
 from pathlib import Path
 
 import pytest
+from panel_framework.testing import template_rules
 
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
-from freedom_ls.panel_framework.tests.invariants import template_rules
 
 pytestmark = pytest.mark.fls_internal
 

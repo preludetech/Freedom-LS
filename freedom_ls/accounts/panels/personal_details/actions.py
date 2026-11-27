@@ -14,6 +14,14 @@ from allauth.account.internal.flows.email_verification import (
 from allauth.account.models import EmailAddress
 from allauth.core import ratelimit
 from allauth.utils import get_form_class
+from panel_framework.actions import (
+    ConfirmAction,
+    EditAction,
+    FormPanelAction,
+    PanelAction,
+)
+from panel_framework.context import PanelContext
+from panel_framework.events import build_hx_trigger
 
 from django import forms
 from django.contrib import messages
@@ -28,14 +36,6 @@ from freedom_ls.accounts.forms import (
 )
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.utils import get_own_user
-from freedom_ls.panel_framework.actions import (
-    ConfirmAction,
-    EditAction,
-    FormPanelAction,
-    PanelAction,
-)
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.events import build_hx_trigger
 
 ACCOUNT_CHANGED = "accountChanged"
 EMAIL_ADDRESSES_CHANGED = "accountEmailAddressesChanged"

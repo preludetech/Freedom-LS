@@ -7,6 +7,9 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.context import PanelContext
+
 from django.db.models import Model
 
 from freedom_ls.content_engine.models import Course
@@ -19,8 +22,6 @@ from freedom_ls.learner_management.queries import (
     can_on_any,
     is_course_available_to_organisation,
 )
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.context import PanelContext
 
 __all__ = ["CoursePageActionMixin", "scoped"]
 

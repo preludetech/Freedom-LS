@@ -11,6 +11,18 @@ from typing import TYPE_CHECKING, cast
 
 import lxml.html
 import pytest
+from panel_framework.bulk_actions import (
+    BULK_ACTIONS,
+    BulkCount,
+    BulkResult,
+)
+from panel_framework.bulk_runs import (
+    NOT_FOUND,
+    report_finished,
+    run_bulk_action,
+    run_summary,
+)
+from panel_framework.models import BulkActionRun, RunStatus
 
 from django.contrib.sites.models import Site
 from django.db.models import QuerySet
@@ -48,18 +60,6 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.bulk_actions import (
-    BULK_ACTIONS,
-    BulkCount,
-    BulkResult,
-)
-from freedom_ls.panel_framework.bulk_runs import (
-    NOT_FOUND,
-    report_finished,
-    run_bulk_action,
-    run_summary,
-)
-from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 
 if TYPE_CHECKING:
     from django_tasks_db.models import DBTaskResult
@@ -166,7 +166,7 @@ def test_the_task_tells_the_requester_where_a_failed_run_stopped(
     def _explode(*args: object, **kwargs: object) -> None:
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("freedom_ls.panel_framework.bulk_runs.run_apply", _explode)
+    monkeypatch.setattr("panel_framework.bulk_runs.run_apply", _explode)
     run = _run_over(_learner())
 
     with (

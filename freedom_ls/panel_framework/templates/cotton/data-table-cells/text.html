@@ -1,1 +1,0 @@
-{% load data_table_tags %}{% with value=object|getattr_str:column.attr %}{% if value or value == 0 %}{{ value }}{% else %}-{% endif %}{% endwith %}

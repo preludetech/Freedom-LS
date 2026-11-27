@@ -354,4 +354,4 @@ def test_production_task_default_raises_no_task_backend_warning() -> None:
         message_ids = [message.id for message in run_checks()]
 
     # Assert
-    assert "freedom_ls_panel_framework.W001" not in message_ids
+    assert "panel_framework.W001" not in message_ids

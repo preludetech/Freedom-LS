@@ -9,6 +9,18 @@ from __future__ import annotations
 
 from typing import NamedTuple, cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.context import PanelContext
+from panel_framework.panels import Panel
+from panel_framework.views import (
+    BaseViewConfig,
+    ListViewConfig,
+    ListViewPanel,
+    ObjectViewConfig,
+    SectionConfig,
+    sections_by_url_name,
+)
+
 from django.db.models import Model
 from django.http import HttpRequest
 from django.test import RequestFactory
@@ -29,17 +41,6 @@ from freedom_ls.learner_progress.factories import (
     CourseProgressFactory,
 )
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.panels import Panel
-from freedom_ls.panel_framework.views import (
-    BaseViewConfig,
-    ListViewConfig,
-    ListViewPanel,
-    ObjectViewConfig,
-    SectionConfig,
-    sections_by_url_name,
-)
 
 SECTIONS = list(sections_by_url_name(interface_config).values())
 

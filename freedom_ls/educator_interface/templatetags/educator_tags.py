@@ -7,6 +7,8 @@ from collections.abc import Mapping
 from typing import cast
 from uuid import UUID
 
+from panel_framework.views import StatusBadge
+
 from django import template
 
 from freedom_ls.content_engine.models import Course
@@ -24,7 +26,6 @@ from freedom_ls.educator_interface.panels.learner.data_tables import (
     learner_course_cell,
 )
 from freedom_ls.learner_management.models import Learner
-from freedom_ls.panel_framework.views import StatusBadge
 from freedom_ls.reports.report_data import AtRiskFlag
 
 register = template.Library()

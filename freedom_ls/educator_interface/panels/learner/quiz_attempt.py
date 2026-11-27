@@ -11,6 +11,11 @@ from dataclasses import dataclass
 from typing import Literal, cast
 from uuid import UUID
 
+from panel_framework.lazy_panels import LazyBodyPanel
+from panel_framework.panels import InstanceDetailsPanel, PanelStack
+from panel_framework.quick_view import QuickView
+from panel_framework.views import HeaderStat, InstanceView, ListViewConfig
+
 from django.db.models import F, Model, prefetch_related_objects
 from django.http import HttpRequest
 
@@ -48,10 +53,6 @@ from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import learners_visible_to
 from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.learner_progress.queries import LearnerRegistrationProgress
-from freedom_ls.panel_framework.lazy_panels import LazyBodyPanel
-from freedom_ls.panel_framework.panels import InstanceDetailsPanel, PanelStack
-from freedom_ls.panel_framework.quick_view import QuickView
-from freedom_ls.panel_framework.views import HeaderStat, InstanceView, ListViewConfig
 from freedom_ls.reports.gather import attempt_number_of, score_attempt
 
 __all__ = [

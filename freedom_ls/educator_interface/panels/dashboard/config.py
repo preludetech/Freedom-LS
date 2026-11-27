@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from panel_framework.views import BaseViewConfig
+
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationSectionConfig,
 )
 from freedom_ls.educator_interface.panels.dashboard.panels import DashboardPanel
-from freedom_ls.panel_framework.views import BaseViewConfig
 
 __all__ = ["DashboardConfig"]
 

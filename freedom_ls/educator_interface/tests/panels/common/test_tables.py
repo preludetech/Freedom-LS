@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import cast
 
 import pytest
+from panel_framework.tables import DataTable
 
 from django.contrib.sites.models import Site
 from django.template.loader import render_to_string
@@ -51,7 +52,6 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.tables import DataTable
 
 EDUCATOR_TABLES: list[type[DataTable]] = [
     LearnerDataTable,

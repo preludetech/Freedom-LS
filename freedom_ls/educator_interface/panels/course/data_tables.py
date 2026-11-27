@@ -6,6 +6,13 @@ from collections.abc import Sequence
 from typing import cast
 from uuid import UUID
 
+from panel_framework.tables import (
+    BadgeColumn,
+    Column,
+    DataTable,
+    TableQuery,
+)
+
 from django.core.paginator import Page
 from django.db.models import Count, Prefetch, Q, QuerySet
 from django.http import HttpRequest
@@ -31,12 +38,6 @@ from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     courses_visible_to,
     learners_visible_to,
-)
-from freedom_ls.panel_framework.tables import (
-    BadgeColumn,
-    Column,
-    DataTable,
-    TableQuery,
 )
 
 __all__ = [

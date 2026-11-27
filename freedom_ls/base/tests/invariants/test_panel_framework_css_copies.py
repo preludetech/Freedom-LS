@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import panel_framework
 import pytest
 
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
@@ -19,7 +20,8 @@ pytestmark = pytest.mark.fls_internal
 
 REPO_ROOT: Path = FREEDOM_LS_PACKAGE_DIR.parent
 COMPONENTS_CSS: Path = REPO_ROOT / "tailwind.components.css"
-FRAMEWORK_CSS: Path = FREEDOM_LS_PACKAGE_DIR / "panel_framework/css/panel_framework.css"
+PACKAGE_DIR: Path = Path(panel_framework.__file__).parent
+FRAMEWORK_CSS: Path = PACKAGE_DIR / "css/panel_framework.css"
 PANEL_SCOPE = ":is(.panel-surface, .panel-canvas) "
 
 
@@ -54,10 +56,7 @@ def test_the_select_chevron_matches_the_frameworks_copy(selectors: list[str]) ->
 def test_the_data_table_actions_nowrap_rule_is_copied_onto_btn() -> None:
     assert (
         "[&_.panel-btn]:whitespace-nowrap"
-        in (
-            FREEDOM_LS_PACKAGE_DIR
-            / "panel_framework/templates/cotton/data-table-actions.html"
-        ).read_text()
+        in (PACKAGE_DIR / "templates/cotton/data-table-actions.html").read_text()
     )
     assert (
         _rule_body(COMPONENTS_CSS.read_text(), ".panel-data-table-actions .btn")

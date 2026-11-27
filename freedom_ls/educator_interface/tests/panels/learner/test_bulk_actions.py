@@ -8,6 +8,16 @@ from typing import TYPE_CHECKING, cast
 
 import lxml.html
 import pytest
+from panel_framework.bulk_actions import (
+    BulkCount,
+    BulkOutcome,
+    BulkResult,
+    run_apply,
+)
+from panel_framework.bulk_runs import (
+    run_bulk_action,
+)
+from panel_framework.models import BulkActionRun, RunStatus
 from pytest_mock import MockerFixture
 
 from django.contrib.sites.models import Site
@@ -67,16 +77,6 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.learner_management.tests.scenario_world import custom_role_config
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.bulk_actions import (
-    BulkCount,
-    BulkOutcome,
-    BulkResult,
-    run_apply,
-)
-from freedom_ls.panel_framework.bulk_runs import (
-    run_bulk_action,
-)
-from freedom_ls.panel_framework.models import BulkActionRun, RunStatus
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
 

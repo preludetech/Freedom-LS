@@ -5,6 +5,22 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import cast
 
+from panel_framework.actions import (
+    ConfirmAction,
+    EditAction,
+    FormPanelAction,
+    ModalPanelAction,
+    PanelAction,
+    changed_response,
+    current_page_within,
+    denied_response,
+    join_prose,
+    navigation_response,
+    refusal_response,
+)
+from panel_framework.context import PanelContext
+from panel_framework.events import build_hx_trigger
+
 from django import forms
 from django.db import transaction
 from django.db.models import Model, QuerySet
@@ -84,21 +100,6 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.learner_progress.utils import move_progress_preview
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.panel_framework.actions import (
-    ConfirmAction,
-    EditAction,
-    FormPanelAction,
-    ModalPanelAction,
-    PanelAction,
-    changed_response,
-    current_page_within,
-    denied_response,
-    join_prose,
-    navigation_response,
-    refusal_response,
-)
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.events import build_hx_trigger
 
 __all__ = [
     "AddLearnerAction",

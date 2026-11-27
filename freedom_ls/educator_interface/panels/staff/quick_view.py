@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from panel_framework.quick_view import QuickView
+
 from freedom_ls.educator_interface.events import STAFF_CHANGED
 from freedom_ls.educator_interface.staff import current_role_entries
 from freedom_ls.educator_interface.user_display import email_below_name
-from freedom_ls.panel_framework.quick_view import QuickView
 
 if TYPE_CHECKING:
     from freedom_ls.accounts.models import User

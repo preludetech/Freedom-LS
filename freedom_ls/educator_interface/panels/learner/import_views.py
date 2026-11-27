@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import NamedTuple, cast
 
+from panel_framework.config import config as panel_framework_config
+from panel_framework.models import RunStatus
+from panel_framework.panels import entry_count_text
+
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
@@ -76,9 +80,6 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import VIEW_CONVERSATION, cohorts_visible_to
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.config import config as panel_framework_config
-from freedom_ls.panel_framework.models import RunStatus
-from freedom_ls.panel_framework.panels import entry_count_text
 
 __all__ = [
     "IMPORT_PREVIEW_PAGE_SIZE",

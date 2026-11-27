@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.views import SectionConfigBase
+
 from django.db.models import Model
 from django.http import HttpRequest
 
@@ -17,7 +19,6 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.learner_management.role_assignment import GrantableRole
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.views import SectionConfigBase
 
 __all__ = [
     "LAST_ORGANISATION_SESSION_KEY",

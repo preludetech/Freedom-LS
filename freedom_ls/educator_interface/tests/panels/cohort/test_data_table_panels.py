@@ -9,6 +9,7 @@ from typing import cast
 
 import lxml.html
 import pytest
+from panel_framework.tables import DataTable
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -48,7 +49,6 @@ from freedom_ls.learner_management.utils import register_cohort_for_course
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.tests.site_context import drop_ambient_request
 
 

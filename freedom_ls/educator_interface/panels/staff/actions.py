@@ -6,6 +6,18 @@ from collections.abc import Mapping
 from dataclasses import replace
 from typing import NamedTuple, cast
 
+from panel_framework.actions import (
+    ConfirmAction,
+    ModalPanelAction,
+    PanelAction,
+    changed_response,
+    denied_response,
+    field_error_count,
+    join_prose,
+    refusal_response,
+)
+from panel_framework.context import PanelContext
+
 from django import forms
 from django.db import transaction
 from django.db.models import Model, QuerySet
@@ -84,17 +96,6 @@ from freedom_ls.learner_management.utils import (
     ensure_staff_member,
 )
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.actions import (
-    ConfirmAction,
-    ModalPanelAction,
-    PanelAction,
-    changed_response,
-    denied_response,
-    field_error_count,
-    join_prose,
-    refusal_response,
-)
-from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
@@ -286,8 +287,9 @@ def staff_member_changed_response(user: User, ctx: PanelContext) -> HttpResponse
     Organisation admin on Staff), it also sends them to the first section
     they can still see, or the educator root when none shows, so they are
     not left on a page that now 404s."""
+    from panel_framework.views import first_visible_section
+
     from freedom_ls.educator_interface.views import interface_config
-    from freedom_ls.panel_framework.views import first_visible_section
 
     response = changed_response({STAFF_CHANGED: [str(user.pk)]})
     request = ctx.request

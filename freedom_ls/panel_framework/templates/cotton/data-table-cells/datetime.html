@@ -1,5 +1,0 @@
-{% comment %}
-A date-time column: the row's `column.attr` rendered through <c-panel-datetime>, so every table shows
-the same format.
-{% endcomment %}
-{% load data_table_tags %}{% with value=object|getattr_str:column.attr %}<c-panel-datetime :value="value" />{% endwith %}

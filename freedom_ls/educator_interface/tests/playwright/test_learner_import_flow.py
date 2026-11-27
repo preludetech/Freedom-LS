@@ -24,11 +24,9 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.tests.playwright.assertions import (
-    assert_canvas_holds_only_boxes,
-)
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
+    assert_canvas_holds_only_boxes,
     assert_no_horizontal_overflow,
 )
 

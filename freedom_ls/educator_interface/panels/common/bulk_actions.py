@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.bulk_actions import (
+    PermittedBulkAction,
+    RecordedBulkAction,
+)
+from panel_framework.bulk_runs import run_summary
+from panel_framework.models import BulkActionRun
+
 from django import forms
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, QueryDict
@@ -18,12 +25,6 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.learner_management.queries import can_on_any, registerable_courses
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.bulk_actions import (
-    PermittedBulkAction,
-    RecordedBulkAction,
-)
-from freedom_ls.panel_framework.bulk_runs import run_summary
-from freedom_ls.panel_framework.models import BulkActionRun
 
 __all__ = [
     "CoursePickerMixin",

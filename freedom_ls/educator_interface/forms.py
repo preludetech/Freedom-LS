@@ -1,6 +1,8 @@
 from collections.abc import Mapping
 from typing import cast
 
+from panel_framework.forms import ReasonForm
+
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
 from django.db.models import Model, QuerySet
@@ -21,7 +23,6 @@ from freedom_ls.learner_management.queries import (
     registerable_courses_for_learner,
 )
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.forms import ReasonForm
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 

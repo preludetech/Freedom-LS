@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.views import ListViewConfig
+
 from django.db.models import Model
 from django.http import HttpRequest
 
@@ -28,8 +31,6 @@ from freedom_ls.educator_interface.panels.staff.filters import may_see_staff_rol
 from freedom_ls.educator_interface.panels.staff.quick_view import StaffQuickView
 from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.learner_management.queries import VIEW_ORGANISATION_STAFF, staff_of
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.views import ListViewConfig
 
 __all__ = ["StaffConfig"]
 

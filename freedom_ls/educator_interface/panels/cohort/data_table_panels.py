@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.panels import DataTablePanel
+
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
@@ -36,8 +39,6 @@ from freedom_ls.educator_interface.panels.learner.data_tables import (
     CohortLearnerDataTable,
 )
 from freedom_ls.learner_management.models import Cohort
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.panels import DataTablePanel
 
 __all__ = [
     "CohortCoursesPanel",

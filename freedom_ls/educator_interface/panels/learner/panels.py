@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.panels import InstanceDetailsPanel, Panel
+
 from django.http import HttpRequest
 
 from freedom_ls.educator_interface.events import (
@@ -29,8 +32,6 @@ from freedom_ls.educator_interface.panels.learner.quiz_attempt import (
 )
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import learner_status
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.panels import InstanceDetailsPanel, Panel
 from freedom_ls.reports.gather import gather_learner_course_details
 
 __all__ = [

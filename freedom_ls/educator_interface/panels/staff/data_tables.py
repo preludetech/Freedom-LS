@@ -5,6 +5,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import cast
 
+from panel_framework.filters import TableFilter
+from panel_framework.tables import (
+    Column,
+    DataTable,
+    TableQuery,
+)
+
 from django.core.paginator import Page
 from django.db.models import (
     Prefetch,
@@ -33,12 +40,6 @@ from freedom_ls.learner_management.queries import (
     site_level_admins,
     staff_assignments,
     staff_of,
-)
-from freedom_ls.panel_framework.filters import TableFilter
-from freedom_ls.panel_framework.tables import (
-    Column,
-    DataTable,
-    TableQuery,
 )
 
 __all__ = [

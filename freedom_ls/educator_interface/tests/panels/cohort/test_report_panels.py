@@ -12,6 +12,7 @@ from uuid import uuid4
 import lxml.html
 import pytest
 import time_machine
+from panel_framework.context import PanelContext
 from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -63,7 +64,6 @@ from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.gather import gather_cohort_report_data
 from freedom_ls.reports.models import GeneratedReport

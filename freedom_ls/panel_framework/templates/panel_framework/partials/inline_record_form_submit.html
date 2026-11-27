@@ -1,8 +1,0 @@
-{% comment %}
-The submit button of an inline panel form, rendered in the panel card's footer
-(the panel template's panel_actions block), never beside the fields. It names
-its form with form=, and the form points hx-indicator and hx-disabled-elt at
-its id. Context: form_id, label (default "Save"), loading_text (default
-"Saving…").
-{% endcomment %}
-<c-panel-button type="submit" form="{{ form_id }}" id="{{ form_id }}-submit" variant="primary" size="small" loading="true" loading_text="{{ loading_text|default:'Saving…' }}">{{ label|default:"Save" }}</c-panel-button>

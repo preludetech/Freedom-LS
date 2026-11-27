@@ -7,6 +7,14 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import (
+    ConfirmAction,
+    changed_response,
+    count_noun,
+    join_prose,
+)
+from panel_framework.context import PanelContext
+
 from django.db.models import QuerySet
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -39,13 +47,6 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.learner_management.utils import deactivate_cohort_registration
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.panel_framework.actions import (
-    ConfirmAction,
-    changed_response,
-    count_noun,
-    join_prose,
-)
-from freedom_ls.panel_framework.context import PanelContext
 
 __all__ = [
     "ADD_COHORT_REGISTRATION",

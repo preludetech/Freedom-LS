@@ -11,6 +11,9 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from typing import cast
 
+from panel_framework.models import RunStatus
+from panel_framework.run_records import claim_run, record_run
+
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.db.models import F, Q, QuerySet
@@ -43,8 +46,6 @@ from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
 )
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.models import RunStatus
-from freedom_ls.panel_framework.run_records import claim_run, record_run
 
 HEADERS = ("email", "first_name", "last_name", "cohort")
 EMAIL_MAX_LENGTH = 254

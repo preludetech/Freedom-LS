@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import cast
 
 from allauth.account.internal import flows
+from panel_framework.actions import PanelAction
+from panel_framework.panels import Panel
 
 from django.http import HttpRequest
 
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.utils import get_own_user
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.panels import Panel
 
 from .actions import (
     ACCOUNT_CHANGED,

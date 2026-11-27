@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import pytest
+from panel_framework.bulk_actions import (
+    BulkCount,
+    BulkOutcome,
+    run_apply,
+)
 from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 from pytest_mock import MockerFixture
 
@@ -38,11 +43,6 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.bulk_actions import (
-    BulkCount,
-    BulkOutcome,
-    run_apply,
-)
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse

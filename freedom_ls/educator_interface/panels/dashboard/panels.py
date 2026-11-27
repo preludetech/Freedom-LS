@@ -10,6 +10,8 @@ from functools import cached_property
 from typing import cast
 from uuid import UUID
 
+from panel_framework.lazy_panels import LazyBodyPanel
+
 from django.db.models import Count, Prefetch, QuerySet
 
 from freedom_ls.educator_interface.avatars import learner_avatars
@@ -27,7 +29,6 @@ from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     courses_visible_to,
 )
-from freedom_ls.panel_framework.lazy_panels import LazyBodyPanel
 from freedom_ls.reports.config import config as reports_config
 from freedom_ls.reports.report_data import (
     ATTENTION_LIST_MAX,

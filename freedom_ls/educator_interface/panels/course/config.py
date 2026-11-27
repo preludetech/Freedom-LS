@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.views import ListViewConfig
+
 from django.db.models import Model
 from django.http import HttpRequest
 
@@ -18,7 +20,6 @@ from freedom_ls.educator_interface.panels.course.instance_view import (
     CourseInstanceView,
 )
 from freedom_ls.learner_management.queries import courses_visible_to
-from freedom_ls.panel_framework.views import ListViewConfig
 
 __all__ = ["CourseConfig"]
 

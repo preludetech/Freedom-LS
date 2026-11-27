@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 import pytest
+from panel_framework.context import PanelContext
 
 from django.contrib.sites.models import Site
 from django.test import Client
@@ -12,7 +13,6 @@ from django.test import Client
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.panels.personal_details.config import PersonalDetailsConfig
 from freedom_ls.accounts.panels.personal_details.panels import ProfilePicturePanel
-from freedom_ls.panel_framework.context import PanelContext
 
 pytestmark = pytest.mark.django_db
 

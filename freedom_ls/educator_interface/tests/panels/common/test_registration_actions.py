@@ -7,6 +7,7 @@ from typing import cast
 from unittest import mock
 
 import pytest
+from panel_framework.context import PanelContext
 
 from django.contrib.sites.models import Site
 from django.db.models import QuerySet
@@ -43,7 +44,6 @@ from freedom_ls.learner_management.queries import (
     CourseNotOpenError,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.context import PanelContext
 
 
 class _OneCohortDeactivation(CohortRegistrationDeactivation):

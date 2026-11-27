@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from panel_framework.views import ObjectViewConfig
+
 from django.db.models import Model
 from django.http import Http404, HttpRequest
 
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.utils import get_own_user
-from freedom_ls.panel_framework.views import ObjectViewConfig
 
 from .actions import ACCOUNT_CAPABILITIES
 from .instance_view import PersonalDetailsInstanceView

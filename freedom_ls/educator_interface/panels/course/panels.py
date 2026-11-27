@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import ClassVar, cast
 
+from panel_framework.panels import InstanceDetailsPanel
+
 from django.utils.html import format_html, format_html_join
 
 from freedom_ls.content_engine.models import Course
-from freedom_ls.panel_framework.panels import InstanceDetailsPanel
 
 __all__ = ["CourseDetailsPanel"]
 

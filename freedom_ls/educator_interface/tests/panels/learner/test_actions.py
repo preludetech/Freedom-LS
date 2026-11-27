@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, cast
 
 import lxml.html
 import pytest
+from panel_framework.context import PanelContext
 
 from django.contrib.sites.models import Site
 from django.core import mail
@@ -92,7 +93,6 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.tests.audit_assertions import assert_entry
 from freedom_ls.tests.retire import retire
 

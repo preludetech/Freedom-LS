@@ -17,6 +17,12 @@ attribute.
 from __future__ import annotations
 
 import pytest
+from panel_framework.models import BulkActionRun
+from panel_framework.views import (
+    BaseViewConfig,
+    ListViewConfig,
+    SectionConfig,
+)
 
 from django.contrib.sites.models import Site
 from django.urls import reverse
@@ -42,12 +48,6 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import Cohort, LearnerImport
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.models import BulkActionRun
-from freedom_ls.panel_framework.views import (
-    BaseViewConfig,
-    ListViewConfig,
-    SectionConfig,
-)
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 

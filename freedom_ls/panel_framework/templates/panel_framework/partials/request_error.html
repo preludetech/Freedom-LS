@@ -1,9 +1,0 @@
-{% comment %}
-Where a form's failed request says so: an error callout, hidden until the
-script in alpine-components.js sets its text. It is the one
-[data-request-error] holder; a form or dialog includes it and never writes
-its own. Context (optional): message, the text to show in place of the
-script's generic one, for a request whose failure that text misdescribes;
-extra_class, classes for the callout.
-{% endcomment %}
-<c-panel-callout tone="error" data-request-error tabindex="-1" hidden data-request-error-message="{{ message }}" class="{{ extra_class }}"><p data-request-error-text></p></c-panel-callout>

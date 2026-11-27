@@ -9,7 +9,7 @@ from django.urls import reverse
 from freedom_ls.organisations.models import Organisation
 
 if TYPE_CHECKING:
-    from freedom_ls.panel_framework.models import BulkActionRun
+    from panel_framework.models import BulkActionRun
 
 
 def bulk_run_table_url(run: BulkActionRun) -> str | None:

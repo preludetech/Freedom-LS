@@ -17,8 +17,7 @@ from django.contrib.sites.models import Site
 SCOPED = ("for_site", "for_request", "create")
 # Managers with no for_site or for_request: any use of them is reported.
 UNSCOPED_MANAGERS = ("_default_manager", "_base_manager")
-# The worker reads a run by the site id its task was given, through _base_manager.
-ALLOWED = {("panel_framework/bulk_runs.py", "_base_manager")}
+ALLOWED: set[tuple[str, str]] = set()
 
 PACKAGE_ROOT = Path(__file__).parents[3]
 EXCLUDED_DIRECTORIES = {"tests", "migrations"}
@@ -109,14 +108,6 @@ def test_a_scoped_read_is_not_reported(tmp_path: Path, source: str) -> None:
     module.write_text(f"{source}\n")
 
     assert unscoped_run_reads(module) == []
-
-
-def test_the_allowed_base_manager_read_is_the_workers_own() -> None:
-    worker = PACKAGE_ROOT / "panel_framework" / "bulk_runs.py"
-
-    assert [read.split(": ")[-1] for read in unscoped_run_reads(worker)] == [
-        "_base_manager"
-    ]
 
 
 def test_a_site_has_no_reverse_accessor_to_its_runs() -> None:

@@ -9,6 +9,15 @@ from functools import cached_property
 from typing import Literal, cast
 from uuid import UUID
 
+from panel_framework.actions import (
+    PanelAction,
+    count_phrase,
+    denied_response,
+)
+from panel_framework.context import PanelContext
+from panel_framework.panels import DataTablePanel
+from panel_framework.tables import Column, DataTable, TableQuery
+
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Page, Paginator
 from django.db.models import QuerySet, prefetch_related_objects
@@ -39,14 +48,6 @@ from freedom_ls.learner_management.capabilities import (
     record_question_view,
 )
 from freedom_ls.learner_management.queries import is_course_available_to_organisation
-from freedom_ls.panel_framework.actions import (
-    PanelAction,
-    count_phrase,
-    denied_response,
-)
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.panels import DataTablePanel
-from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
 
 __all__ = [
     "CourseContentPanel",

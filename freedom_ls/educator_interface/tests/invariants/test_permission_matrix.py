@@ -24,6 +24,7 @@ from typing import NamedTuple, cast
 
 import pytest
 from guardian.shortcuts import get_perms
+from panel_framework.context import PanelContext
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -73,7 +74,6 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role

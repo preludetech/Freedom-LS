@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import CreateInstanceAction, PanelAction
+from panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
+from panel_framework.context import PanelContext
+from panel_framework.views import ListViewConfig
+
 from django import forms
 from django.db import transaction
 from django.db.models import Model
@@ -29,10 +34,6 @@ from freedom_ls.educator_interface.paths import interface_path
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.queries import cohorts_visible_to
 from freedom_ls.learner_management.utils import record_cohort_entry
-from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
-from freedom_ls.panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.views import ListViewConfig
 
 __all__ = [
     "CohortConfig",

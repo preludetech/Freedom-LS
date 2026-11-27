@@ -8,6 +8,15 @@ from datetime import datetime
 from typing import cast
 from uuid import UUID
 
+from panel_framework.filters import TableFilter
+from panel_framework.tables import (
+    BadgeColumn,
+    Column,
+    DataTable,
+    ExportColumn,
+    TableQuery,
+)
+
 from django.core.paginator import Page
 from django.db.models import Model, Prefetch, QuerySet
 from django.http import HttpRequest
@@ -37,14 +46,6 @@ from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     learner_status,
     learners_visible_to,
-)
-from freedom_ls.panel_framework.filters import TableFilter
-from freedom_ls.panel_framework.tables import (
-    BadgeColumn,
-    Column,
-    DataTable,
-    ExportColumn,
-    TableQuery,
 )
 from freedom_ls.reports.gather import (
     active_registrations,

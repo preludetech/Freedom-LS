@@ -1,9 +1,0 @@
-{% extends "panel_framework/panels/panel.html" %}
-
-{% block panel_body %}
-    <c-panel-definition-list>
-        {% for row in rows %}
-            <c-panel-definition-row label="{{ row.label|capfirst }}">{% include "panel_framework/panels/_details_value.html" with row=row only %}</c-panel-definition-row>
-        {% endfor %}
-    </c-panel-definition-list>
-{% endblock panel_body %}

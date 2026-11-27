@@ -8,6 +8,7 @@ from typing import cast
 import lxml.html
 import pytest
 from allauth.account.models import EmailAddress
+from panel_framework.context import PanelContext
 
 from django.core import mail
 from django.test import Client, RequestFactory
@@ -55,7 +56,6 @@ from freedom_ls.learner_management.role_assignment import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,

@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.panels import InstanceDetailsPanel, Panel
+
 from django.db.models import Count, F, Q
 from django.http import HttpRequest
 
@@ -40,8 +43,6 @@ from freedom_ls.learner_management.queries import (
     cohort_counts,
     cohort_educators,
 )
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.panels import InstanceDetailsPanel, Panel
 
 __all__ = [
     "CohortCourseCompletionPanel",

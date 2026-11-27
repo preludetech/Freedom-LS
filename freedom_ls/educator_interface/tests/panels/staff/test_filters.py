@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from panel_framework.tables import TableQuery
 
 from django.http import HttpRequest
 from django.test import RequestFactory
@@ -14,7 +15,6 @@ from freedom_ls.educator_interface.tests.helpers import _educator_request
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.tables import TableQuery
 
 pytestmark = pytest.mark.usefixtures("_site_context")
 

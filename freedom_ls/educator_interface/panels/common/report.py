@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from panel_framework.views import StatusBadge
+
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.queries import cohort_learner_count
-from freedom_ls.panel_framework.views import StatusBadge
 from freedom_ls.reports.config import config as reports_config
 from freedom_ls.reports.report_data import AtRiskFlag, over_limit_message
 from freedom_ls.reports.statuses import ProgressStatus, progress_status

@@ -142,7 +142,7 @@ INSTALLED_APPS = [
     "freedom_ls.revision",
     "freedom_ls.deadlines",
     "freedom_ls.site_aware_models",
-    "freedom_ls.panel_framework",
+    "panel_framework",
     "freedom_ls.educator_interface",
     "freedom_ls.reports",
     "freedom_ls.role_based_permissions",

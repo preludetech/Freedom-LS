@@ -8,6 +8,8 @@ from typing import cast
 
 import lxml.html
 import pytest
+from panel_framework.filters import TableFilter, ToggleFilter
+from panel_framework.tables import TableQuery
 
 from django.contrib.sites.models import Site
 from django.db import connection
@@ -47,8 +49,6 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.filters import TableFilter, ToggleFilter
-from freedom_ls.panel_framework.tables import TableQuery
 from freedom_ls.tests.retire import retire
 
 # the table hides inactive cohorts only while it offers the toggle

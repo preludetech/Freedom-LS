@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import cast
 from uuid import uuid4
 
+from panel_framework.quick_view import QuickView
+
 from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging_views import message_box_context
 from freedom_ls.educator_interface.events import LEARNER_CHANGED
@@ -22,7 +24,6 @@ from freedom_ls.learner_progress.queries import (
     LearnerRegistrationProgress,
     registrations_with_progress_for_learner,
 )
-from freedom_ls.panel_framework.quick_view import QuickView
 
 __all__ = ["LearnerQuickView", "visible_registrations_with_progress"]
 

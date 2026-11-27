@@ -49,8 +49,6 @@ freedom_ls/dev_tools/tests/test_danger_content_delete.py
 
 # meta_pixel
 
-# panel_framework
-
 # qa_helpers
 freedom_ls/qa_helpers/tests/test_qa_create_application_review_accounts.py
 freedom_ls/qa_helpers/tests/test_qa_create_report_fixtures.py

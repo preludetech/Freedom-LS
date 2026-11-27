@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.panels import DataTablePanel
+
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 
@@ -12,7 +14,6 @@ from freedom_ls.educator_interface.panels.audit_log.data_tables import (
     AuditLogEntryTable,
     _record_export,
 )
-from freedom_ls.panel_framework.panels import DataTablePanel
 
 __all__ = [
     "HistoryPanel",

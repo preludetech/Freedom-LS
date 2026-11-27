@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import inspect
 
+from panel_framework.actions import ReasonMixin
+
 from freedom_ls.educator_interface.panels.cohort import actions as cohort_actions
 from freedom_ls.educator_interface.panels.common import actions as common_actions
 from freedom_ls.educator_interface.panels.learner import actions as learner_module
 from freedom_ls.educator_interface.panels.staff import actions as staff_actions
-from freedom_ls.panel_framework.actions import ReasonMixin
 
 
 def _reason_actions() -> set[type[ReasonMixin]]:

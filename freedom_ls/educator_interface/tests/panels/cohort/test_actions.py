@@ -23,6 +23,8 @@ from unittest import mock
 
 import lxml.html
 import pytest
+from panel_framework.context import PanelContext
+from panel_framework.events import build_hx_trigger
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -89,8 +91,6 @@ from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.audit_assertions import assert_entry
 

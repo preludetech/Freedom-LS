@@ -6,6 +6,14 @@ from collections.abc import Sequence
 from typing import cast
 from uuid import UUID
 
+from panel_framework.filters import PeriodFilter, TableFilter
+from panel_framework.tables import (
+    Column,
+    DataTable,
+    ExportColumn,
+    TableQuery,
+)
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.paginator import Page
 from django.db.models import Count, F, Model, Q, QuerySet, Window
@@ -26,13 +34,6 @@ from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
 from freedom_ls.learner_management.models import Learner, StaffMember
-from freedom_ls.panel_framework.filters import PeriodFilter, TableFilter
-from freedom_ls.panel_framework.tables import (
-    Column,
-    DataTable,
-    ExportColumn,
-    TableQuery,
-)
 
 __all__ = [
     "_PERSON_TARGETS",

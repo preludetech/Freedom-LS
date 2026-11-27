@@ -6,6 +6,8 @@ from functools import reduce
 from operator import or_
 from typing import cast
 
+from panel_framework.filters import ChoiceFilter, RelatedChoiceFilter
+
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
@@ -20,7 +22,6 @@ from freedom_ls.learner_management.queries import (
     holds_registration_for_any_expression,
     learner_status_q,
 )
-from freedom_ls.panel_framework.filters import ChoiceFilter, RelatedChoiceFilter
 
 __all__ = [
     "LearnerCohortFilter",

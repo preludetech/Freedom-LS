@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.views import ListViewConfig
+
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
@@ -17,7 +19,6 @@ from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
     OrganisationSectionConfig,
 )
-from freedom_ls.panel_framework.views import ListViewConfig
 
 __all__ = [
     "AuditLogConfig",

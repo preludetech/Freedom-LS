@@ -11,8 +11,6 @@ freedom_ls/learner_interface/tests/demo_content/  # reads the shipped demo_conte
 freedom_ls/base/tests/invariants/  # repo-wide checks over templates, settings and theme files, which mirror no module
 freedom_ls/content_engine/tests/invariants/  # checks over vendored assets, which mirror no module
 freedom_ls/learner_interface/tests/views/  # tests of views.py, one module per page it renders
-freedom_ls/panel_framework/tests/components/  # tests of Cotton component templates, which have no Python module
-freedom_ls/panel_framework/tests/invariants/  # repo-wide checks over the app's templates, which mirror no module
 freedom_ls/base/tests/components/  # tests of Cotton component templates, which have no Python module
 freedom_ls/form_engine/tests/invariants/  # proves the app imports without optional apps; mirrors no module
 freedom_ls/form_engine/tests/components/  # tests of Cotton component templates, which have no Python module
@@ -25,8 +23,6 @@ freedom_ls/learner_interface/tests/components/  # tests of Cotton component temp
 freedom_ls/audit_log/tests/invariants/  # checks the audit-action and webhook-event codes against the glossary vocabulary, and that a user's own account saves write no entry; mirrors no module
 freedom_ls/messaging_policy/tests/test_messages_button.py  # renders the comms header button under the shipped policy, which mirrors no single module
 freedom_ls/api/tests/invariants/  # compiles the code example in docs/api.md, which mirrors no module
-freedom_ls/panel_framework/tests/test_import_guard.py  # checks every module's imports, which mirrors no single module
-freedom_ls/panel_framework/tests/test_standalone_fixtures.py  # checks which modules the standalone run loads, which mirrors no single module
 freedom_ls/content_engine/tests/components/  # tests of Cotton component templates, which have no Python module
 freedom_ls/accounts/tests/test_allauth_pages.py  # tests of allauth's management page layout, a template with no Python module
 freedom_ls/deadlines/tests/invariants/  # loads content through content_save and checks what a moved part leaves behind in deadlines; mirrors no module

@@ -14,6 +14,7 @@ from uuid import uuid4
 import lxml.html
 import pytest
 import time_machine
+from panel_framework.models import RunStatus
 
 from django.contrib.sites.models import Site
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -71,7 +72,6 @@ from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.learner_management.tests.scenario_world import custom_role_config
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.models import RunStatus
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 from freedom_ls.role_based_permissions.utils import assign_object_role
 

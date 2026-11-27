@@ -20,6 +20,8 @@ from collections.abc import Callable
 
 import lxml.html
 import pytest
+from panel_framework.context import PanelContext
+from panel_framework.events import build_hx_trigger
 
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.sites.models import Site
@@ -40,8 +42,6 @@ from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.audit_assertions import assert_entry
 

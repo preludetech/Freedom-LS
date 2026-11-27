@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from panel_framework.errors import PanelBodyTooLargeError
+
 from freedom_ls.form_engine.models import CompletionReason
-from freedom_ls.panel_framework.errors import PanelBodyTooLargeError
 from freedom_ls.reports.report_data import (
     QuizAttempt,
     ReportTooLargeError,

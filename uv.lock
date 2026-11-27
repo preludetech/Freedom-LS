@@ -796,6 +796,15 @@ wheels = [
 ]
 
 [[package]]
+name = "django-panel-framework"
+version = "0.1.0"
+source = { git = "https://github.com/preludetech/django-panel-framework.git?rev=v0.1.0#590c235f6f004947c9029c87a59c630b0498466a" }
+dependencies = [
+    { name = "django" },
+    { name = "django-cotton" },
+]
+
+[[package]]
 name = "django-storages"
 version = "1.14.6"
 source = { registry = "https://pypi.org/simple" }
@@ -1134,6 +1143,7 @@ dependencies = [
     { name = "django-guardian" },
     { name = "django-health-check" },
     { name = "django-import-export" },
+    { name = "django-panel-framework" },
     { name = "django-storages", extra = ["s3"] },
     { name = "django-tasks-db" },
     { name = "django-unfold" },
@@ -1250,6 +1260,7 @@ requires-dist = [
     { name = "django-guardian", specifier = ">=3.3.0" },
     { name = "django-health-check", specifier = ">=4.4.3" },
     { name = "django-import-export", specifier = ">=4.4.1" },
+    { name = "django-panel-framework", git = "https://github.com/preludetech/django-panel-framework.git?rev=v0.1.0" },
     { name = "django-storages", extras = ["s3"], specifier = ">=1.14.6" },
     { name = "django-stubs", extras = ["compatible-mypy"], marker = "extra == 'dev'", specifier = ">=5.2.9" },
     { name = "django-tasks-db", specifier = "==0.12.0" },

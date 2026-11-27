@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.views import (
+    NavGroup,
+    first_visible_section,
+    panel_framework_view,
+)
+
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.decorators import login_required
@@ -10,11 +16,6 @@ from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpRespons
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from freedom_ls.panel_framework.views import (
-    NavGroup,
-    first_visible_section,
-    panel_framework_view,
-)
 from freedom_ls.site_aware_models.models import get_cached_site
 
 from .legal_docs import get_legal_doc, render_legal_doc

@@ -1,8 +1,0 @@
-{% extends "panel_framework/modal/message.html" %}
-
-{% block title %}{{ label }}{% endblock title %}
-
-{% block body %}
-    <p>{{ summary }}</p>
-    {% if run.error_message %}<c-panel-callout tone="error">{{ run.error_message }}</c-panel-callout>{% endif %}
-{% endblock body %}

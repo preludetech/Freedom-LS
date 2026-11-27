@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.panels import PanelStack, TabSet
+from panel_framework.views import InstanceView, StatusBadge
+
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.panels.common.badges import retired_badge
 from freedom_ls.educator_interface.panels.course.content_preview import (
@@ -15,8 +18,6 @@ from freedom_ls.educator_interface.panels.course.data_table_panels import (
     CourseLearnerRegistrationsPanel,
 )
 from freedom_ls.educator_interface.panels.course.panels import CourseDetailsPanel
-from freedom_ls.panel_framework.panels import PanelStack, TabSet
-from freedom_ls.panel_framework.views import InstanceView, StatusBadge
 
 __all__ = ["CourseInstanceView", "CourseTabSet"]
 

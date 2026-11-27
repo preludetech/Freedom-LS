@@ -8,6 +8,7 @@ from unittest import mock
 
 import lxml.html
 import pytest
+from panel_framework.context import PanelContext
 
 from django.contrib.sites.models import Site
 from django.db import connection
@@ -57,7 +58,6 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.context import PanelContext
 
 OVERVIEW = "__tabs/overview/__panels/cohorts"
 

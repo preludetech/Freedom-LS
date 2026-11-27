@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.filters import ChoiceFilter
+
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
@@ -17,7 +19,6 @@ from freedom_ls.learner_management.queries import (
     VIEW_ORGANISATION_STAFF_ROLES,
     staff_assignments,
 )
-from freedom_ls.panel_framework.filters import ChoiceFilter
 from freedom_ls.role_based_permissions.loader import get_role_config
 
 __all__ = [

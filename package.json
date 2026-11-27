@@ -8,8 +8,7 @@
   "scripts": {
     "_write_active_theme": "uv run manage.py write_active_theme_css && uv run manage.py write_panel_framework_css",
     "tailwind_watch": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css --watch",
-    "panel_framework_css": "npx @tailwindcss/cli -i ./freedom_ls/panel_framework/tests/css/reference_input.css -o ./freedom_ls/panel_framework/static/panel_framework/css/reference.css",
-    "tailwind_build": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css && npm run panel_framework_css",
+    "tailwind_build": "npm run _write_active_theme && npx @tailwindcss/cli -i ./tailwind.input.css -o ./static/vendor/tailwind.output.css",
     "difit": "npx difit @ main"
   },
   "devDependencies": {

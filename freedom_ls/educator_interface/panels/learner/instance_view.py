@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.panels import PanelStack, TabSet
+from panel_framework.views import InstanceView, StatusBadge
+
 from freedom_ls.educator_interface.events import LEARNER_CHANGED
 from freedom_ls.educator_interface.panels.common.badges import learner_status_badge
 from freedom_ls.educator_interface.panels.learner.actions import (
@@ -29,9 +33,6 @@ from freedom_ls.educator_interface.panels.learner.panels import (
 )
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import LearnerStatus, learner_status
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.panels import PanelStack, TabSet
-from freedom_ls.panel_framework.views import InstanceView, StatusBadge
 
 __all__ = [
     "LearnerCoursesStack",

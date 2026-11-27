@@ -5,6 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import cast
 
+from panel_framework.actions import FormPanelAction, changed_response
+from panel_framework.context import PanelContext
+
 from django import forms
 from django.db.models import Model, QuerySet
 from django.http import HttpResponse
@@ -49,8 +52,6 @@ from freedom_ls.learner_management.queries import (
     learners_permitted_for,
 )
 from freedom_ls.learner_management.utils import register_cohort_for_course
-from freedom_ls.panel_framework.actions import FormPanelAction, changed_response
-from freedom_ls.panel_framework.context import PanelContext
 
 __all__ = [
     "CourseRegisterAction",

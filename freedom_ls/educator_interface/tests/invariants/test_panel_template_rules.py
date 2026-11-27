@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import panel_framework
 import pytest
+from panel_framework.testing import template_rules
 
 import freedom_ls.educator_interface as educator_interface
-import freedom_ls.panel_framework as panel_framework
-from freedom_ls.panel_framework.tests.invariants import template_rules
 
 EDUCATOR_ROOT = Path(educator_interface.__file__).resolve().parent
 EDUCATOR_TEMPLATES_DIR = EDUCATOR_ROOT / "templates" / "educator_interface"

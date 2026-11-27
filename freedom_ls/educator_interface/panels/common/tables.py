@@ -6,8 +6,9 @@ from dataclasses import replace
 from operator import attrgetter
 from typing import Literal
 
+from panel_framework.tables import BadgeColumn, Column, RelatedListColumn
+
 from freedom_ls.educator_interface.panels.common.badges import active_status_badge
-from freedom_ls.panel_framework.tables import BadgeColumn, Column, RelatedListColumn
 
 __all__ = [
     "_active_status_column",

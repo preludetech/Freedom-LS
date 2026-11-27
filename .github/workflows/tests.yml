@@ -222,7 +222,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [panel_framework, icons]
+        app: [icons]
 
     services:
       postgres:

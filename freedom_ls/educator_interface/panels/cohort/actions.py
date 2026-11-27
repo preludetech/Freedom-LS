@@ -4,6 +4,20 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import (
+    ConfirmAction,
+    DeleteAction,
+    EditAction,
+    FormPanelAction,
+    PanelAction,
+    count_noun,
+    count_phrase,
+    current_page_within,
+    join_prose,
+    navigation_response,
+)
+from panel_framework.context import PanelContext
+
 from django import forms
 from django.db import transaction
 from django.db.models import Model, QuerySet
@@ -57,19 +71,6 @@ from freedom_ls.learner_management.utils import (
     record_cohort_entry,
     register_cohort_for_course,
 )
-from freedom_ls.panel_framework.actions import (
-    ConfirmAction,
-    DeleteAction,
-    EditAction,
-    FormPanelAction,
-    PanelAction,
-    count_noun,
-    count_phrase,
-    current_page_within,
-    join_prose,
-    navigation_response,
-)
-from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.role_based_permissions.utils import delete_role_rows_for
 
 __all__ = [

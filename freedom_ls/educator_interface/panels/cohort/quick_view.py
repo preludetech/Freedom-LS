@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.quick_view import QuickView
+
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
 )
@@ -17,7 +19,6 @@ from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.queries import (
     cohort_learner_count,
 )
-from freedom_ls.panel_framework.quick_view import QuickView
 
 __all__ = ["CohortQuickView"]
 

@@ -15,11 +15,11 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.panel_framework.tests.playwright.assertions import (
+from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.tests.playwright_helpers import (
+    QA_VIEWPORTS,
     assert_canvas_holds_only_boxes,
 )
-from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
 
 from .helpers import interface_url
 

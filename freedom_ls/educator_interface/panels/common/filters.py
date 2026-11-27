@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.filters import RelatedChoiceFilter
+
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
@@ -12,7 +14,6 @@ from freedom_ls.educator_interface.panels.common.request import (
 )
 from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_management.queries import courses_visible_to
-from freedom_ls.panel_framework.filters import RelatedChoiceFilter
 
 __all__ = [
     "VisibleCourseFilter",

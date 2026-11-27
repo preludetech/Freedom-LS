@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import cast
 
+from panel_framework.actions import PanelAction
+from panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
+from panel_framework.views import ListViewConfig
+
 from django.db.models import Model
 from django.http import HttpRequest
 
@@ -27,9 +31,6 @@ from freedom_ls.educator_interface.panels.learner.instance_view import (
 from freedom_ls.educator_interface.panels.learner.quick_view import LearnerQuickView
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import learners_visible_to
-from freedom_ls.panel_framework.actions import PanelAction
-from freedom_ls.panel_framework.bulk_actions import BulkAction, bulk_actions_for_table
-from freedom_ls.panel_framework.views import ListViewConfig
 
 __all__ = [
     "LearnerConfig",

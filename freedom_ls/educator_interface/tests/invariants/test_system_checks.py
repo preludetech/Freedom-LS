@@ -40,8 +40,7 @@ def test_the_panel_framework_raises_no_icon_check_message_under_each_theme(
     messages = [
         message
         for message in run_checks()
-        if message.id
-        in {"freedom_ls_panel_framework.E010", "freedom_ls_panel_framework.W003"}
+        if message.id in {"panel_framework.E010", "panel_framework.W003"}
     ]
 
     assert messages == []
