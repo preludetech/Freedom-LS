@@ -80,6 +80,7 @@ from freedom_ls.form_engine.models import (
     FormContent,
     FormPage,
     FormQuestion,
+    FormQuestionVersion,
     QuestionOption,
 )
 from freedom_ls.form_engine.signals import form_questions_dropped
@@ -2258,7 +2259,7 @@ content: This is some instructional text
     # Save to database
 
     page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
-    question, _options = save_form_question(
+    question, _options, _saved = save_form_question(
         parsed[1], page, mock_site_context, temp_file.parent, order=0
     )
     text = save_form_content(
@@ -2331,7 +2332,7 @@ options:
 
     # Save to database
     page = save_form_page(parsed[0], form, mock_site_context, temp_file.parent, order=0)
-    question, _options = save_form_question(
+    question, _options, _saved = save_form_question(
         parsed[1], page, mock_site_context, temp_file.parent, order=0
     )
 
@@ -7201,3 +7202,132 @@ def test_removing_time_limit_minutes_clears_it_on_the_next_load(
 
     assert reloaded.pk == timed.pk
     assert reloaded.time_limit_minutes is None
+
+
+# Question versions.
+
+_VERSIONED_QUESTION_UUID = "50000000-0000-0000-0000-000000000001"
+
+
+def _write_versioned_form(repo_dir: Path, question_text: str = "Pick one?") -> None:
+    form_dir = repo_dir / "form"
+    form_dir.mkdir(parents=True, exist_ok=True)
+    (form_dir / "form.md").write_text(
+        "---\ncontent_type: FORM\nstrategy: QUIZ\ntitle: Versioned\nquiz_show_incorrect: true\nquiz_pass_percentage: 70\n"
+        "uuid: 50000000-0000-0000-0000-000000000002\n---\n"
+    )
+    (form_dir / "1. page.yaml").write_text(
+        f"""---
+content_type: FORM_PAGE
+title: Page 1
+uuid: 50000000-0000-0000-0000-000000000003
+---
+question: {question_text}
+type: multiple_choice
+required: true
+slug: pick_one
+options:
+  - text: Option 1
+    value: opt1
+    uuid: 50000000-0000-0000-0000-000000000004
+  - text: Option 2
+    value: opt2
+    uuid: 50000000-0000-0000-0000-000000000005
+uuid: {_VERSIONED_QUESTION_UUID}
+"""
+    )
+
+
+@pytest.fixture
+def versioned_form_repo(tmp_path: Path) -> Path:
+    repo_dir = tmp_path / "versioned_repo"
+    init_repo(repo_dir)
+    _write_versioned_form(repo_dir)
+    return repo_dir
+
+
+@pytest.mark.django_db
+def test_command_run_stores_the_source_commit_on_version_one(
+    site, mock_site_context, versioned_form_repo
+):
+    sha = commit_all(versioned_form_repo)
+
+    _save_from_repo(versioned_form_repo, site)
+
+    version = FormQuestionVersion.unfiltered.get(question_id=_VERSIONED_QUESTION_UUID)
+    assert (version.number, version.source_commit) == (1, sha)
+
+
+@pytest.mark.django_db
+def test_changed_question_gets_version_two_with_the_new_commit(
+    site, mock_site_context, versioned_form_repo
+):
+    commit_all(versioned_form_repo)
+    _save_from_repo(versioned_form_repo, site)
+    _write_versioned_form(versioned_form_repo, "Pick another?")
+    new_sha = commit_all(versioned_form_repo)
+
+    _save_from_repo(versioned_form_repo, site)
+
+    version = FormQuestionVersion.unfiltered.get(
+        question_id=_VERSIONED_QUESTION_UUID, number=2
+    )
+    assert (version.question_text, version.source_commit) == ("Pick another?", new_sha)
+
+
+@pytest.mark.django_db
+def test_second_run_on_unchanged_content_reports_no_revisions(
+    site, mock_site_context, versioned_form_repo, capsys
+):
+    commit_all(versioned_form_repo)
+    _save_from_repo(versioned_form_repo, site)
+    capsys.readouterr()
+
+    _save_from_repo(versioned_form_repo, site)
+
+    assert "Question versions: 0 new, 0 revised, 1 unchanged" in capsys.readouterr().out
+
+
+@pytest.mark.django_db
+def test_direct_save_stores_an_empty_source_commit(
+    site, mock_site_context, versioned_form_repo
+):
+    save_content_to_db(versioned_form_repo, site.name)
+
+    version = FormQuestionVersion.unfiltered.get(question_id=_VERSIONED_QUESTION_UUID)
+    assert version.source_commit == ""
+
+
+@pytest.mark.django_db
+def test_run_that_raises_after_writing_questions_leaves_no_version(
+    site, mock_site_context, versioned_form_repo, monkeypatch
+):
+    def fail(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("fails after the questions")
+
+    monkeypatch.setattr(ContentSave.objects, "create", fail)
+
+    with pytest.raises(RuntimeError, match="fails after the questions"):
+        save_content_to_db(versioned_form_repo, site.name, source_commits=[])
+
+    assert not FormQuestionVersion.unfiltered.exists()
+
+
+@pytest.mark.django_db
+def test_summary_and_revised_lines_print_as_specified(
+    site, mock_site_context, versioned_form_repo, capsys
+):
+    commit_all(versioned_form_repo)
+    _save_from_repo(versioned_form_repo, site)
+    _write_versioned_form(versioned_form_repo, "Pick another?")
+    commit_all(versioned_form_repo)
+    capsys.readouterr()
+
+    _save_from_repo(versioned_form_repo, site)
+
+    lines = capsys.readouterr().out.splitlines()
+    assert "Question versions: 0 new, 1 revised, 0 unchanged" in lines
+    assert any(
+        line.startswith("  ") and line.endswith("(pick_one): v1 → v2 (question)")
+        for line in lines
+    )

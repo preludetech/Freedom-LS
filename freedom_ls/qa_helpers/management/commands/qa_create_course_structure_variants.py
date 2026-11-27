@@ -41,8 +41,10 @@ from freedom_ls.form_engine.models import (
     Form,
     FormPage,
     FormProgress,
+    FormQuestion,
     FormStrategy,
     QuestionType,
+    delete_question_versions,
 )
 from freedom_ls.learner_management.factories import CohortCourseRegistrationFactory
 from freedom_ls.learner_management.models import (
@@ -105,6 +107,9 @@ def _purge(site: Site) -> None:
             )
         for form in Form._base_manager.filter(site=site, slug__startswith=prefix):
             progress = FormProgress._base_manager.filter(form=form).delete()
+            delete_question_versions(
+                FormQuestion._base_manager.filter(form_page__form=form)
+            )
             click.echo(
                 f"  Form {form.pk} '{form}': progress {progress}, {form.delete()}"
             )

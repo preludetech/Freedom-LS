@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 from botocore.exceptions import ClientError
+from pydantic import BaseModel, ConfigDict
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.storage import Storage
 from django.core.validators import MinValueValidator
-from django.db import models, transaction
+from django.db import connection, models, transaction
 from django.utils import timezone
 from django.utils.safestring import SafeString
 from django.utils.translation import gettext
@@ -455,6 +457,172 @@ class QuestionOption(SiteAwareModel, TimestampedModel):
 
     def __str__(self):
         return self.text
+
+
+class QuestionVersionOption(BaseModel):
+    """One option as a version holds it."""
+
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    text: str
+    value: str
+    order: int
+    correct: bool | None
+
+
+def version_options(options: Iterable[QuestionOption]) -> list[dict[str, object]]:
+    """The options as a version stores them: ordered by order then id, validated."""
+    rows = sorted(options, key=lambda o: (o.order, str(o.id)))
+    return [
+        QuestionVersionOption(
+            id=str(o.id),
+            text=o.text,
+            value=str(o.value),
+            order=o.order,
+            correct=o.correct,
+        ).model_dump()
+        for o in rows
+    ]
+
+
+_IMMUTABLE_MESSAGE = "FormQuestionVersion is immutable: a saved version cannot change"
+
+
+class FormQuestionVersionQuerySet(models.QuerySet["FormQuestionVersion"]):
+    """Every call that would change or remove a stored version raises."""
+
+    def update(self, **kwargs: object) -> int:
+        raise ValueError(_IMMUTABLE_MESSAGE)
+
+    def bulk_update(self, *args: object, **kwargs: object) -> int:
+        raise ValueError(_IMMUTABLE_MESSAGE)
+
+    def delete(self) -> tuple[int, dict[str, int]]:
+        raise ValueError(_IMMUTABLE_MESSAGE)
+
+
+class FormQuestionVersion(SiteAwareModel):
+    """An immutable snapshot of a question's wording, settings and options."""
+
+    question = models.ForeignKey(
+        FormQuestion, on_delete=models.PROTECT, related_name="versions"
+    )
+    number = models.PositiveIntegerField()
+    question_text = models.TextField()
+    explanation = models.TextField(blank=True, default="")
+    type = models.CharField(max_length=20, choices=QuestionType.choices)
+    required = models.BooleanField(default=True)
+    min = models.CharField(max_length=20, blank=True, default="")
+    max = models.CharField(max_length=20, blank=True, default="")
+    decimal_places = models.PositiveSmallIntegerField(default=0)
+    options = models.JSONField(default=list)
+    saved_at = models.DateTimeField(auto_now_add=True)
+    source_commit = models.CharField(max_length=64, blank=True)
+    from_migration = models.BooleanField(default=False)
+
+    objects = SiteAwareManager.from_queryset(FormQuestionVersionQuerySet)()
+    # Serves related lookups such as answer.question_version, which must not
+    # depend on the site of the request that makes them.
+    unfiltered = models.Manager.from_queryset(FormQuestionVersionQuerySet)()
+
+    class Meta:
+        base_manager_name = "unfiltered"
+        ordering = ["question", "number"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["question", "number"], name="one_number_per_question_version"
+            )
+        ]
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        # The UUID pk is set before the first save, so `_state.adding` is what
+        # tells a first save from a later one.
+        if self._state.adding is False:
+            raise ValueError(_IMMUTABLE_MESSAGE)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args: object, **kwargs: object) -> tuple[int, dict[str, int]]:
+        raise ValueError(_IMMUTABLE_MESSAGE)
+
+    def option_rows(self) -> list[QuestionVersionOption]:
+        """The stored options, validated on read."""
+        return [QuestionVersionOption.model_validate(row) for row in self.options]
+
+    def differs_from(
+        self, question: FormQuestion, options: Sequence[QuestionOption]
+    ) -> list[str]:
+        """The names of the versioned parts that differ from the question as it
+        stands, in a fixed order. Empty when the question matches this version."""
+        compared = [
+            ("question", self.question_text, question.question),
+            ("type", self.type, question.type),
+            ("required", self.required, question.required),
+            ("min", self.min, question.min),
+            ("max", self.max, question.max),
+            ("decimal_places", self.decimal_places, question.decimal_places),
+            ("explanation", self.explanation, question.explanation),
+            ("options", self.options, version_options(options)),
+        ]
+        return [name for name, held, current in compared if held != current]
+
+    def __str__(self) -> str:
+        return f"{self.question_id} v{self.number}"
+
+
+@dataclass(frozen=True)
+class SavedQuestionVersion:
+    version: FormQuestionVersion | None  # None when nothing differed
+    previous_number: int | None
+    changed: list[str]
+
+
+def save_question_version(
+    question: FormQuestion, options: Sequence[QuestionOption], source_commit: str
+) -> SavedQuestionVersion:
+    """Save a new version of the question when it differs from its latest one."""
+    with transaction.atomic():
+        # Locks the live row so two saves of one question cannot take the same number.
+        FormQuestion._base_manager.select_for_update().get(pk=question.pk)
+        latest = (
+            FormQuestionVersion.unfiltered.filter(question_id=question.pk)
+            .order_by("-number")
+            .first()
+        )
+        changed = latest.differs_from(question, options) if latest else []
+        if latest is not None and not changed:
+            return SavedQuestionVersion(None, latest.number, [])
+        version = FormQuestionVersion.objects.create(
+            site_id=question.site_id,
+            question=question,
+            number=latest.number + 1 if latest else 1,
+            question_text=question.question,
+            type=question.type,
+            required=question.required,
+            min=question.min,
+            max=question.max,
+            decimal_places=question.decimal_places,
+            explanation=question.explanation,
+            options=version_options(options),
+            source_commit=source_commit,
+        )
+        return SavedQuestionVersion(version, latest.number if latest else None, changed)
+
+
+def delete_question_versions(questions: Iterable[FormQuestion]) -> None:
+    """Remove every version of these questions. For development commands only; callers
+    delete the answers pinned to the versions first, or the PROTECT foreign key refuses."""
+    ids = [str(question.pk) for question in questions]
+    if not ids:
+        return
+    table = connection.ops.quote_name(FormQuestionVersion._meta.db_table)
+    with transaction.atomic(), connection.cursor() as cursor:
+        # The queryset guard refuses an ORM delete.
+        # The table name is quoted from the model's own db_table and the ids are a
+        # bound parameter, so nothing user-supplied reaches the SQL string.
+        cursor.execute(
+            f"DELETE FROM {table} WHERE question_id = ANY(%s::uuid[])",  # noqa: S608  # nosec B608
+            [ids],
+        )
 
 
 User = get_user_model()
@@ -1169,6 +1337,13 @@ class QuestionAnswer(SiteAwareModel, TimestampedModel):
         QuestionOption, blank=True
     )  # For checkbox/multiple choice questions
     text_answer = models.TextField(blank=True, default="")  # For text questions
+    question_version = models.ForeignKey(
+        FormQuestionVersion,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="answers",
+    )
 
     class Meta:
         constraints = [

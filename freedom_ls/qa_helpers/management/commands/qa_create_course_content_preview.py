@@ -79,6 +79,7 @@ from freedom_ls.form_engine.models import (
     FormStrategy,
     QuestionOption,
     QuestionType,
+    delete_question_versions,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -176,6 +177,9 @@ def _purge(site: Site) -> None:
         for form in Form._base_manager.filter(site=site, slug__startswith=prefix):
             progress = FormProgress._base_manager.filter(form=form).delete()
             FormPage._base_manager.filter(form=form).update(condition_option=None)
+            delete_question_versions(
+                FormQuestion._base_manager.filter(form_page__form=form)
+            )
             click.echo(
                 f"  Form {form.pk} '{form}': progress {progress}, {form.delete()}"
             )
