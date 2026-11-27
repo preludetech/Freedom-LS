@@ -67,7 +67,7 @@
                                     {% elif row.answer.text_answer %}
                                         <span class="whitespace-pre-line">{{ row.answer.text_answer|answer_display:row.question.type }}</span>
                                     {% elif row.answer %}
-                                        {% for option in row.answer.selected_options.all %}{{ option.text }}{% if not forloop.last %} · {% endif %}{% endfor %}
+                                        {% for option in row.selected_options %}{{ option.text }}{% if not forloop.last %} · {% endif %}{% endfor %}
                                     {% else %}
                                         <span class="text-muted">Not answered</span>
                                     {% endif %}

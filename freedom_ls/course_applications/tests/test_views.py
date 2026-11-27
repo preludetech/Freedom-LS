@@ -92,6 +92,11 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.queries import page_questions
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
+from freedom_ls.form_engine.tests.helpers import (
+    VersionedQuiz,
+    revise_to_version_two,
+    versioned_quiz,
+)
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
@@ -6392,3 +6397,63 @@ def test_a_withdrawn_draft_refuses_file_changes(
         409,
         "id-scan.png",
     )
+
+
+def _applied_to_versioned_quiz(
+    client: Client, strategy: str = FormStrategy.QUIZ
+) -> tuple[CourseApplication, VersionedQuiz]:
+    quiz = versioned_quiz()
+    Form.objects.filter(pk=quiz.form.pk).update(strategy=strategy)
+    course: Course = CourseFactory(access_config={"access_type": "application_gated"})
+    course.application_form = quiz.form
+    course.save(update_fields=["application_form"])
+    return _applied(client, course), quiz
+
+
+def _answer_on_version_one(app: CourseApplication, quiz: VersionedQuiz) -> None:
+    answer = QuestionAnswerFactory(
+        form_progress=app.form_progress,
+        question=quiz.question,
+        question_version=quiz.question.versions.get(number=1),
+    )
+    answer.selected_options.add(quiz.right)
+
+
+@pytest.mark.django_db
+def test_check_your_answers_shows_an_answered_row_on_the_answered_version(
+    client, mock_site_context
+):
+    app, quiz = _applied_to_versioned_quiz(client)
+    _answer_on_version_one(app, quiz)
+    revise_to_version_two(quiz)
+
+    body = client.get(_check_url(app)).content.decode()
+
+    assert "Original wording" in body
+    assert "Revised wording" not in body
+
+
+@pytest.mark.django_db
+def test_check_your_answers_shows_selected_options_of_the_answered_version(
+    client, mock_site_context
+):
+    app, quiz = _applied_to_versioned_quiz(client)
+    _answer_on_version_one(app, quiz)
+    revise_to_version_two(quiz)
+
+    body = client.get(_check_url(app)).content.decode()
+
+    assert "Original right" in body
+    assert "Revised right" not in body
+
+
+@pytest.mark.django_db
+def test_check_your_answers_shows_an_unanswered_row_on_the_live_question(
+    client, mock_site_context
+):
+    app, quiz = _applied_to_versioned_quiz(client, FormStrategy.UNSCORED)
+    revise_to_version_two(quiz)
+
+    body = client.get(_check_url(app)).content.decode()
+
+    assert "Revised wording" in body
