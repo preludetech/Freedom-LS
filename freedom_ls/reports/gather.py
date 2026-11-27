@@ -687,7 +687,8 @@ def _evaluate_at_risk_flags(detail: LearnerDetailLike) -> list[AtRiskFlag]:
             label=rule.label,
             reason=reason,
             severity=rule.severity,
-            reason_adds_information=rule.reason_adds_information,
+            # A rule written before rules carried this keeps its reason.
+            reason_adds_information=getattr(rule, "reason_adds_information", True),
         )
         for rule in AT_RISK_RULES
         for reason in [rule.evaluate(detail)]

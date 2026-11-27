@@ -12,7 +12,9 @@ from typing import NamedTuple, cast
 
 import pytest
 import time_machine
+from pytest_django.fixtures import DjangoAssertNumQueries
 
+from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import override_settings
@@ -1489,12 +1491,14 @@ def test_label_for_puts_the_retired_mark_after_the_owners(
 # prefetch_collection_items: filling the collection_items() memo for many collections at once.
 
 
-def _course_with_part(part_title: str) -> tuple[Course, CoursePart, list]:
+def _course_with_part(
+    part_title: str,
+) -> tuple[Course, CoursePart, list[Topic | Form]]:
     course: Course = CourseFactory()
-    first = TopicFactory()
+    first: Topic = TopicFactory()
     part: CoursePart = CoursePartFactory(title=part_title)
-    nested = FormFactory()
-    last = TopicFactory()
+    nested: Form = FormFactory()
+    last: Topic = TopicFactory()
     ContentCollectionItemFactory(collection_object=course, child_object=first, order=0)
     ContentCollectionItemFactory(collection_object=course, child_object=part, order=1)
     ContentCollectionItemFactory(collection_object=part, child_object=nested, order=0)
@@ -1504,8 +1508,8 @@ def _course_with_part(part_title: str) -> tuple[Course, CoursePart, list]:
 
 @pytest.mark.django_db
 def test_a_prefetched_course_lists_its_viewable_items_without_a_query(
-    mock_site_context, django_assert_num_queries
-):
+    mock_site_context: Site, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
     course_a, _, _ = _course_with_part("Part A")
     course_b, _, _ = _course_with_part("Part B")
     prefetch_collection_items([course_a, course_b])
@@ -1516,8 +1520,8 @@ def test_a_prefetched_course_lists_its_viewable_items_without_a_query(
 
 @pytest.mark.django_db
 def test_a_part_nested_in_a_prefetched_course_lists_its_items_without_a_query(
-    mock_site_context, django_assert_num_queries
-):
+    mock_site_context: Site, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
     course_a, _, _ = _course_with_part("Part A")
     course_b, _, _ = _course_with_part("Part B")
     prefetch_collection_items([course_a, course_b])
@@ -1532,7 +1536,9 @@ def test_a_part_nested_in_a_prefetched_course_lists_its_items_without_a_query(
 
 
 @pytest.mark.django_db
-def test_a_prefetched_course_lists_its_viewable_items_in_order(mock_site_context):
+def test_a_prefetched_course_lists_its_viewable_items_in_order(
+    mock_site_context: Site,
+) -> None:
     course_a, _, expected = _course_with_part("Part A")
     course_b, _, _ = _course_with_part("Part B")
     prefetch_collection_items([course_a, course_b])
@@ -1542,8 +1548,8 @@ def test_a_prefetched_course_lists_its_viewable_items_in_order(mock_site_context
 
 @pytest.mark.django_db
 def test_a_prefetched_course_with_no_items_has_an_empty_list(
-    mock_site_context, django_assert_num_queries
-):
+    mock_site_context: Site, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
     course: Course = CourseFactory()
     prefetch_collection_items([course])
 

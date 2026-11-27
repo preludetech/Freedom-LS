@@ -1951,3 +1951,38 @@ def test_a_bulk_confirmation_form_holds_a_request_error_holder_with_the_run_mess
         "This did not finish. Some changes may not have been made. "
         "Reload the list to see which, then run it again."
     )
+
+
+def test_a_bulk_picker_form_holds_its_own_request_error_holder(
+    mock_site_context: Site,
+) -> None:
+    """A failed picker refresh ran nothing, so it must not show the run's
+    message: the picker form carries a holder and a message of its own."""
+    make_stub(name="row-0")
+    request = RequestFactory().post(
+        "/stubs/__actions/stub_picker",
+        {"mode": "all_matching"},
+        HTTP_HX_REQUEST="true",
+    )
+    request.user = make_staff_user()
+    panel = _stub_panel(request)
+
+    response = _handle_action(
+        request, _ResolvedAction(_PickerBulkAction(), panel.ctx), panel
+    )
+
+    assert isinstance(response, HttpResponse)
+    document = lxml.html.fromstring(response.content.decode())
+    (picker_holder,) = document.cssselect("form[hx-vals] [data-request-error]")
+    assert picker_holder.get("hidden") is not None
+    assert picker_holder.get("role") == "alert"
+    assert picker_holder.get("data-request-error-message") == (
+        "Could not show what changes. Try again."
+    )
+    run_holders = [
+        holder
+        for holder in document.cssselect("[data-request-error]")
+        if holder is not picker_holder
+    ]
+    assert len(run_holders) == 1
+    assert not list(run_holders[0].iterancestors("form"))

@@ -3,7 +3,8 @@ The form an action asks to be filled in before it can run, such as a target
 picker. Choosing a value re-posts the dialog with refresh=1, so the
 confirmation below it shows what the chosen target would change. The form
 is novalidate so that clearing the choice re-posts too. Without
-JavaScript the button does the same. Context: form, action_url, selection.
+JavaScript the button does the same. A failed re-post ran nothing, so the
+form holds its own request-error message. Context: form, action_url, selection.
 {% endcomment %}
 {% querystring request.GET as qs %}
 <form method="post"
@@ -22,6 +23,7 @@ JavaScript the button does the same. Context: form, action_url, selection.
         {{ field }}
         {% include "panel_framework/partials/field_error.html" with field=field extra_class="text-sm" only %}
     {% endfor %}
+    {% include "panel_framework/partials/request_error.html" with message="Could not show what changes. Try again." only %}
     <noscript>
         <button type="submit" name="refresh" value="1" class="panel-btn panel-btn-secondary">Show what changes</button>
     </noscript>

@@ -57,6 +57,7 @@ from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.reports.at_risk import LearnerDetailLike
 from freedom_ls.reports.gather import (
     FOOTER_COHORT_MAX_CHARS,
     FOOTER_LINE_MAX_CHARS,
@@ -2399,6 +2400,26 @@ class TestEvaluateAtRiskFlags:
 
         assert flag.rule_id == "no_activity"
         assert flag.reason_adds_information is False
+
+    def test_a_rule_that_does_not_say_keeps_its_reason(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A project's own rule, written before rules said whether their
+        reason adds information, still evaluates."""
+
+        class OlderRule:
+            id = "older"
+            label = "Older rule"
+            severity = "warning"
+
+            def evaluate(self, learner: LearnerDetailLike) -> str | None:
+                return "A reason."
+
+        monkeypatch.setattr("freedom_ls.reports.gather.AT_RISK_RULES", [OlderRule()])
+
+        (flag,) = _evaluate_at_risk_flags(_a_detail())
+
+        assert flag.reason_adds_information is True
 
 
 class TestBuildAttentionList:

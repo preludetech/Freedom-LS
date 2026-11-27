@@ -115,6 +115,21 @@ def test_bulk_add_then_remove_cohort_for_every_matching_learner(
     table.locator("tbody input[name='keys']").first.check()
     main.get_by_role("button", name=f"Select all {matching}").click()
     main.get_by_role("button", name="Add to cohort", exact=True).click()
+    # A picker refresh that fails ran nothing: the dialog says the preview
+    # failed, not that a run may be half done.
+    page.route(
+        "**/__actions/**",
+        lambda route: route.fulfill(status=500, body="server error"),
+    )
+    modal.get_by_label("Cohort").select_option(label="Evening group")
+    expect(modal.get_by_role("alert")).to_have_text(
+        "Could not show what changes. Try again."
+    )
+    page.unroute("**/__actions/**")
+    # Clearing the choice refreshes the dialog, which drops the message.
+    with page.expect_response("**/__actions/**"):
+        modal.get_by_label("Cohort").select_option(value="")
+    expect(modal.get_by_role("alert")).to_have_count(0)
     modal.get_by_label("Cohort").select_option(label="Evening group")
     expect(
         modal.get_by_text(f"Add {matching} learners to Evening group.")

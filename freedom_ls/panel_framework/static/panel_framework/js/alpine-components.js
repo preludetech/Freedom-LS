@@ -11,13 +11,18 @@
 const UPLOADING_LABEL = "Uploading…";
 
 // A form's request-error holder. A bulk confirm's holder sits in the dialog
-// body, outside the footer's button row, so it is found through the dialog
-// when the form has none.
+// body, outside the footer's button row, so a footer form with none finds it
+// through the dialog. Another form's holder is never borrowed: a bulk
+// picker's failed refresh must not show the confirm's message.
 function requestErrorHolder(form) {
+    const own = form.querySelector("[data-request-error]");
+    if (own || !form.closest("[data-modal-footer]")) return own;
     const dialog = form.closest("dialog");
+    if (!dialog) return null;
     return (
-        form.querySelector("[data-request-error]") ||
-        (dialog && dialog.querySelector("[data-request-error]"))
+        Array.from(dialog.querySelectorAll("[data-request-error]")).find(
+            (holder) => !holder.closest("form"),
+        ) || null
     );
 }
 
