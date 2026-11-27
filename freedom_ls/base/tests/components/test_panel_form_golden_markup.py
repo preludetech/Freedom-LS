@@ -1,4 +1,4 @@
-"""FLS's `panel-*` template overrides render the modal and inline record forms as before.
+"""FLS's `panel-*` template overrides render the modal and inline record forms with exactly the golden markup below.
 
 Each golden holds the markup of a form with no file field, so the comparison
 fails when an override adds or drops an attribute.
@@ -240,7 +240,7 @@ def _render_inline_form_without_file_field() -> str:
         return _render_inline_form(_TextFieldsForm())
 
 
-def test_modal_form_a_form_without_a_file_field_renders_as_it_always_did() -> None:
+def test_modal_form_a_form_without_a_file_field_renders_the_golden_markup() -> None:
     html = _render_modal_form_without_file_field()
 
     assert normalised_form_markup(html) == normalised_form_markup(
