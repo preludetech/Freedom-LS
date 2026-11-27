@@ -1348,8 +1348,10 @@ class FormProgress(SiteAwareModel):
             # empty selection, or the learner is marked down for a question
             # the review list never names.
             answer = answers.get(question.id)
+            # Worded and marked as the version the learner answered, not the
+            # live row a later revision may have changed.
             selected_options = (
-                list(answer.selected_options.all()) if answer is not None else []
+                answered_options(answer, question) if answer is not None else []
             )
             selected_option_ids = {o.id for o in selected_options}
 

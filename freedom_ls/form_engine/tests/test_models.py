@@ -2007,6 +2007,21 @@ def test_get_incorrect_quiz_answers_names_the_correct_options_of_the_pinned_vers
     assert [o.text for o in item["correct_options"]] == ["Original right"]
 
 
+@pytest.mark.django_db
+def test_get_incorrect_quiz_answers_marks_the_learner_choice_by_the_pinned_version(
+    mock_site_context: object,
+) -> None:
+    """The option the learner chose carried the revised version's correct flag, so
+    a choice version 1 marked wrong was shown as correct."""
+    progress = _answered_on_version_one("wrong")
+
+    (item,) = progress.get_incorrect_quiz_answers()
+
+    assert [(o.text, o.correct) for o in item["learner_selected"]] == [
+        ("Original wrong", False)
+    ]
+
+
 def _answer_on_version_one(
     quiz: VersionedQuiz, option: QuestionOption
 ) -> QuestionAnswer:
