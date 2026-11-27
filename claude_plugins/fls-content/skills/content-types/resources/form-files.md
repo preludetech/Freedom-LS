@@ -21,6 +21,7 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `shuffle_pages` | `bool` | No (default `false`) | QUIZ only. Each sitting serves the pages in a random order. See "Shuffling a quiz" below |
 | `shuffle_questions` | `bool` | No (default `false`) | QUIZ only. Each sitting serves each page's questions in a random order. `group` keeps questions together |
 | `shuffle_options` | `bool` | No (default `false`) | QUIZ only. Each sitting serves each question's options in a random order. `locked` pins an option |
+| `time_limit_minutes` | `int` (> 0) | No (default none) | QUIZ only. Minutes a learner has to finish a sitting, counted from when it starts. When time runs out the sitting is submitted with the answers saved so far. Remove the line to remove the limit. See "Timing a quiz" below |
 | `requires_declaration` | `bool` | No (default `false`) | QUIZ only. The learner signs a declaration before every attempt. A form a course names as its `application_form` must not set it |
 | `declaration_text` | `str` | No | QUIZ only, and only with `requires_declaration: true`. The declaration the learner signs. Leave it out to use the site's default text |
 | `sections` | `list[path]` | No | Paths to the topic markdown files or `part.yaml` files the questions test, relative to `form.md`'s directory. Questions inherit this list unless they set their own `sections:` |
@@ -32,7 +33,7 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 | `due_time` | `str` | No | Quoted 24-hour `"HH:MM"`. Needs `due_date` or `due_days_after_registration`. Without it the form is due at the end of that day. |
 | `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result — **omit on new files** |
 
-A shuffle knob set to `true` on a `CATEGORY_VALUE_SUM` or `UNSCORED` form fails validation with `<knob> should only be set when strategy is QUIZ`. The knobs go in `form.md` only, never in a page header.
+A shuffle knob set to `true` on a `CATEGORY_VALUE_SUM` or `UNSCORED` form fails validation with `<knob> should only be set when strategy is QUIZ`. `time_limit_minutes` follows the same rule: any value on a non-QUIZ form fails with the same error. The knobs go in `form.md` only, never in a page header.
 
 `requires_declaration` and `declaration_text` follow the same QUIZ-only rule, with the same error. `declaration_text` without `requires_declaration: true` fails with `declaration_text should only be set when requires_declaration is true`. A form that a course's `access_config` names as its `application_form` cannot set `requires_declaration: true`: the validator reports `application_form <path> names a form (<file>) with requires_declaration: true` on the course. Name a form without it, or remove it from that form.
 
@@ -370,6 +371,27 @@ question: What is your employer's name?
 type: short_text
 required: true
 ```
+
+---
+
+## Timing a quiz
+
+`time_limit_minutes` in the `form.md` front matter gives a `QUIZ` form a time limit. It is a whole number of minutes greater than 0. Leave it out for no limit. The clock counts from when the learner starts the sitting and keeps running if they leave. When time runs out the quiz is submitted with the answers the learner has saved.
+
+```yaml
+---
+content_type: FORM
+strategy: QUIZ
+title: Timed quiz
+quiz_pass_percentage: 50
+quiz_show_incorrect: true
+time_limit_minutes: 10
+---
+```
+
+- `0`, a negative number or a non-whole number fails validation. The knob is QUIZ only.
+- Deleting `time_limit_minutes` from `form.md` and re-running `content_save` clears the limit on the next load.
+- Say the limit in the intro body, because the learner needs to know it before starting. See `demo_content/functionality_demo_quiz_time_limit` for a working example.
 
 ---
 
