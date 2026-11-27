@@ -29,4 +29,5 @@ A batch worktree under `.claude/worktrees/` gets `db_<sanitized_branch>` and `te
 - Set `UV_NO_SYNC=1` in your shell, and in the per-machine `.claude/settings.local.json` `env` block for agents. A plain `uv run`, the pre-commit hook's included, otherwise uninstalls the editable copy and restores the locked one.
 - A new package dependency arrives only through `uv sync`. Run `rebuild_after_rebase.sh` afterwards to re-link.
 - A framework change FLS needs goes one way: edit and test in the paired package worktree, tag it, then bump the pin and run `uv lock` in the same FLS change, and run the FLS suite.
+- `prepare_landing.sh`, the pre-test rebuild, runs `rebuild_after_rebase.sh` and then fails a landing while the linked package worktree is not at the commit `uv.lock` records or has uncommitted changes; it prints both commits and the next step.
 - For a one-off run against a package directory, use `uv run --with-editable "<dir>" <cmd>`.
