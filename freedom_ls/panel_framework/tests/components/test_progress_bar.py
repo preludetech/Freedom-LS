@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from ..cotton_helpers import render_cotton
@@ -88,3 +90,25 @@ def test_small_size_draws_a_thinner_bar_than_the_default() -> None:
     assert "h-2 " in default
     assert "h-1.5 " in small
     assert "h-2 " not in small
+
+
+def test_track_colour_differs_from_the_hovered_row_background() -> None:
+    """The empty track vanished on a hovered table row.
+
+    A hovered row is painted `--color-surface-2`, and the track used the same
+    token, so a 0% bar showed no bar at all.
+    """
+    html = render_cotton('<c-panel-progress-bar percentage="0" />')
+
+    css = re.sub(r"/\*.*?\*/", "", html, flags=re.DOTALL)
+    track_rules = [
+        rule
+        for rule in css.split("}")
+        if ".panel-progress-bar" in rule
+        and "progress-value" not in rule
+        and "moz-progress-bar" not in rule
+        and "background-color: var(" in rule
+    ]
+
+    assert track_rules
+    assert all("--color-surface-2" not in rule for rule in track_rules)

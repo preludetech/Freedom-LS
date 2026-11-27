@@ -32,11 +32,13 @@ the track and fill visible once tinted backgrounds are suppressed.
 @layer components {
     /* Firefox reads the track colour from the element's own background,
        not from a pseudo-element, unlike Chrome/Safari below. */
+    /* The track is `--color-border`, not `--color-surface-2`: a hovered
+       table row is painted surface-2, which would hide the empty track. */
     .panel-progress-bar {
-        background-color: var(--color-surface-2);
+        background-color: var(--color-border);
     }
     .panel-progress-bar::-webkit-progress-bar {
-        background-color: var(--color-surface-2);
+        background-color: var(--color-border);
     }
     /* Chromium drops an entire rule when any selector in a comma-separated
        list uses a pseudo-element it doesn't recognise, so `::-webkit-` and
