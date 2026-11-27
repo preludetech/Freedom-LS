@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import cast
 
 import pytest
@@ -762,7 +763,10 @@ def test_an_off_page_retired_question_is_flagged(mock_site_context: object) -> N
     ],
 )
 def test_without_quiz_answers_drops_quiz_rows_and_keeps_the_other_strategies(
-    mock_site_context, path, model, row_of
+    mock_site_context: object,
+    path: str,
+    model: type[QuestionAnswer] | type[QuestionAnswerFile],
+    row_of: Callable[[QuestionAnswer], QuestionAnswer | QuestionAnswerFile],
 ) -> None:
     kept = []
     for strategy in (FormStrategy.UNSCORED, FormStrategy.CATEGORY_VALUE_SUM):

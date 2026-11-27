@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -1444,6 +1445,30 @@ class TestCohortReportQuestionDetail:
                 "forms": [{"id": str(quiz.form_id), "title": "Orbit Quiz"}],
             },
         )
+
+    def test_a_quiz_placed_in_two_courses_is_named_once_in_the_entry(
+        self, logged_in_client: Callable[[AbstractBaseUser], Client]
+    ) -> None:
+        cohort = CohortFactory()
+        quiz = _seed_quiz_with_a_wrong_answer(cohort)
+        key = _cache_key(cohort.site_id, cohort.pk, "report")
+        cached = cache.get(key)
+        (section,) = cached.courses
+        cache.set(
+            key,
+            dataclasses.replace(
+                cached,
+                courses=[section, dataclasses.replace(section, title="Navigation")],
+            ),
+        )
+        client = logged_in_client(_question_holder(cohort.organisation))
+
+        _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
+
+        (entry,) = _question_views()
+        assert entry.details["forms"] == [
+            {"id": str(quiz.form_id), "title": "Orbit Quiz"}
+        ]
 
     def test_a_second_load_by_a_holder_writes_a_second_entry(
         self, logged_in_client: Callable[[AbstractBaseUser], Client]

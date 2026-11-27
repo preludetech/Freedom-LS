@@ -2,8 +2,10 @@
 {% load panel_tags educator_tags %}
 
 {% comment %}
-The Report tab body: the PDF's sections in the PDF's order, from the same
-gathered data. Per-learner detail and wrong answers are left to the PDF.
+The Report tab body: the PDF's glance, attention and summary sections, from
+the same gathered data, then a quiz-confusions section the PDF does not have.
+The PDF carries no question detail. The confusions show only when
+question_detail is true, and showing them writes a question-view audit entry.
 Required context when loaded: data (CohortReportData), confusions (the quizzes
 with incorrect answers), avatars (each listed learner's avatar by learner id),
 refresh_url, question_detail (whether the quiz confusions may show),

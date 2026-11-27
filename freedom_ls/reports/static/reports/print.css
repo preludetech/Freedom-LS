@@ -407,6 +407,19 @@ th.numeric {
   margin-right: 2pt;
 }
 
+/* Chips: a light tint beside an item's title. Used for the Retired mark on a
+   quiz, a completed item or a learner's last-completed item. */
+.chip {
+  display: inline-block;
+  font-size: 7.4pt;
+  padding: 0.5pt 4pt;
+  margin: 0.5pt 2pt 0.5pt 0;
+}
+.chip-neutral {
+  background: var(--report-fill);
+  color: var(--color-muted);
+}
+
 /* Progress bars: nested spans, fixed-width outer and percentage-width inner.
    No flexbox — WeasyPrint's flexbox support is not well tested.
    `line-height: 0` on the track stops the outer box's inherited line box

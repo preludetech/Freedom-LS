@@ -231,7 +231,7 @@ def test_course_progress_actions_describe_their_details(
     assert get_audit_action(code).describe(entry) == expected
 
 
-def test_question_viewed_is_registered_under_other():
+def test_question_viewed_is_registered_under_other() -> None:
     action = get_audit_action("question.viewed")
 
     assert (action.label, action.group) == ("Question detail viewed", "Other")
@@ -264,8 +264,8 @@ def test_question_viewed_is_registered_under_other():
     ],
 )
 def test_question_viewed_describes_its_surface_and_form_titles(
-    mock_site_context, details, expected
-):
+    mock_site_context: object, details: dict[str, object], expected: str
+) -> None:
     entry = AuditLogEntryFactory.build(action="question.viewed", details=details)
 
     assert get_audit_action("question.viewed").describe(entry) == expected

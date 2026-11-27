@@ -1968,6 +1968,19 @@ class TestChipStaysOnOneLine:
         assert "whitespace-nowrap" in rule.group(1)
 
 
+@requires_tailwind_bundle
+class TestRetiredMarkIsStyledInThePdf:
+    def test_the_retired_chip_classes_have_rules_in_the_inlined_css(self) -> None:
+        """The PDF inlines only its own stylesheet, so a chip class with no rule
+        there prints as bare text."""
+        html = build_report_html(_with_a_retired_quiz_and_question())
+        head, body = html.split("<body>", 1)
+
+        assert 'class="chip chip-neutral"' in body
+        assert re.search(r"\.chip\s*\{", head)
+        assert re.search(r"\.chip-neutral\s*\{", head)
+
+
 @pytest.mark.weasyprint
 @requires_tailwind_bundle
 class TestRetiredContentInThePdf:

@@ -28,8 +28,10 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
+    FormProgress,
     FormStrategy,
     QuestionAnswer,
+    QuestionAnswerFile,
 )
 from freedom_ls.form_engine.queries import FINAL_GROUP_TITLE
 from freedom_ls.tests.retire import retired
@@ -614,7 +616,9 @@ def test_the_change_page_shows_the_declaration_read_only(staff_client: Client) -
 QUIZ_NOTE = "Answers to quizzes are not shown in the admin."
 
 
-def _quiz_answer(question_text: str = "Which planet is largest?"):
+def _quiz_answer(
+    question_text: str = "Which planet is largest?",
+) -> tuple[FormProgress, QuestionAnswer]:
     """A quiz sitting holding one answered question with a chosen option."""
     form = FormFactory(strategy=FormStrategy.QUIZ)
     page = FormPageFactory(form=form)
@@ -622,34 +626,41 @@ def _quiz_answer(question_text: str = "Which planet is largest?"):
         form_page=page, question=question_text, type="multiple_choice", order=0
     )
     option = QuestionOptionFactory(question=question, text="Jupiter the giant")
-    progress = FormProgressFactory(form=form)
-    answer = QuestionAnswerFactory(form_progress=progress, question=question)
+    progress: FormProgress = FormProgressFactory(form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=progress, question=question
+    )
     answer.selected_options.add(option)
     return progress, answer
 
 
-def _survey_answer(question_text: str = "How was the venue?"):
+def _survey_answer(
+    question_text: str = "How was the venue?",
+) -> tuple[FormProgress, QuestionAnswer]:
     form = FormFactory(strategy=FormStrategy.UNSCORED)
     page = FormPageFactory(form=form)
     question = FormQuestionFactory(
         form_page=page, question=question_text, type="short_text", order=0
     )
-    progress = FormProgressFactory(form=form)
-    answer = QuestionAnswerFactory(
+    progress: FormProgress = FormProgressFactory(form=form)
+    answer: QuestionAnswer = QuestionAnswerFactory(
         form_progress=progress, question=question, text_answer="Lovely hall"
     )
     return progress, answer
 
 
-def _file_row(model_name: str, answer):
+def _file_row(
+    model_name: str, answer: QuestionAnswer
+) -> QuestionAnswer | QuestionAnswerFile:
     if model_name == "questionanswerfile":
-        return QuestionAnswerFileFactory(answer=answer)
+        answer_file: QuestionAnswerFile = QuestionAnswerFileFactory(answer=answer)
+        return answer_file
     return answer
 
 
 @pytest.mark.django_db
 def test_a_quiz_sitting_change_page_shows_a_note_and_no_question_or_option_text(
-    staff_client,
+    staff_client: Client,
 ) -> None:
     progress, _ = _quiz_answer()
 
@@ -662,7 +673,7 @@ def test_a_quiz_sitting_change_page_shows_a_note_and_no_question_or_option_text(
 
 @pytest.mark.django_db
 def test_a_survey_sitting_change_page_still_shows_each_question_and_answer(
-    staff_client,
+    staff_client: Client,
 ) -> None:
     progress, _ = _survey_answer()
 
@@ -676,7 +687,7 @@ def test_a_survey_sitting_change_page_still_shows_each_question_and_answer(
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ["questionanswer", "questionanswerfile"])
 def test_the_answer_changelists_list_survey_rows_and_not_quiz_rows(
-    staff_client, model_name: str
+    staff_client: Client, model_name: str
 ) -> None:
     _file_row(model_name, _quiz_answer()[1])
     survey_row = _file_row(model_name, _survey_answer()[1])
@@ -688,7 +699,9 @@ def test_the_answer_changelists_list_survey_rows_and_not_quiz_rows(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ["questionanswer", "questionanswerfile"])
-def test_a_quiz_answers_change_url_does_not_open(staff_client, model_name: str) -> None:
+def test_a_quiz_answers_change_url_does_not_open(
+    staff_client: Client, model_name: str
+) -> None:
     quiz_row = _file_row(model_name, _quiz_answer()[1])
 
     response = staff_client.get(_answer_url(model_name, "change", quiz_row.pk))
@@ -697,7 +710,9 @@ def test_a_quiz_answers_change_url_does_not_open(staff_client, model_name: str) 
 
 
 @pytest.mark.django_db
-def test_searching_for_a_quiz_questions_text_finds_nothing(staff_client) -> None:
+def test_searching_for_a_quiz_questions_text_finds_nothing(
+    staff_client: Client,
+) -> None:
     _quiz_answer("Which planet is largest?")
 
     response = staff_client.get(
@@ -710,7 +725,7 @@ def test_searching_for_a_quiz_questions_text_finds_nothing(staff_client) -> None
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ["questionanswer", "questionanswerfile"])
 def test_the_answer_changelists_load_with_the_form_filter_and_a_search(
-    staff_client, model_name: str
+    staff_client: Client, model_name: str
 ) -> None:
     progress, answer = _survey_answer()
     _file_row(model_name, answer)

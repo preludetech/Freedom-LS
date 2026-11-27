@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
+from freedom_ls.audit_log.types import JSONValue
 from freedom_ls.educator_interface.avatars import learner_avatars
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -225,6 +226,19 @@ def _quiz_confusions(data: CohortReportData) -> list[QuizConfusionCard]:
     ]
 
 
+def _viewed_forms(confusions: list[QuizConfusionCard]) -> list[JSONValue]:
+    """Each quiz the cards show, once, in first-shown order.
+
+    A quiz placed in two of the cohort's courses gets a card per course but is
+    one form viewed.
+    """
+    forms: dict[str, JSONValue] = {}
+    for card in confusions:
+        form_id = str(card.quiz.form_id)
+        forms.setdefault(form_id, {"id": form_id, "title": card.quiz.title})
+    return list(forms.values())
+
+
 class CohortReportBodyPanel(LazyBodyPanel):
     load_label = "Load the figures"
     model = Cohort
@@ -258,10 +272,7 @@ class CohortReportBodyPanel(LazyBodyPanel):
                 organisation=cohort.organisation,
                 details={
                     "surface": "cohort_report",
-                    "forms": [
-                        {"id": str(card.quiz.form_id), "title": card.quiz.title}
-                        for card in confusions
-                    ],
+                    "forms": _viewed_forms(confusions),
                 },
             )
         return {
