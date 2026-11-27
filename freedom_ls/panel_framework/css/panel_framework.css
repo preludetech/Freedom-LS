@@ -186,6 +186,23 @@
         }
     }
 
+    /* A standalone text link (a name alone in a row) keeps its look below md
+     * and gets the same invisible 44px-tall hit area as a button. It stops at
+     * the link's own width, so it never reaches the icon beside it. */
+    @media (width < 48rem) {
+        .panel-text-link {
+            position: relative;
+        }
+        .panel-text-link::after {
+            content: "";
+            position: absolute;
+            inset-inline: 0;
+            top: 50%;
+            height: 2.75rem;
+            translate: 0 -50%;
+        }
+    }
+
     /* A dialog footer's buttons are small below md like every other button,
      * with the same invisible 44px hit area. The footer's 16px padding holds
      * the 6px the hit area reaches past the button, so the dialog does not

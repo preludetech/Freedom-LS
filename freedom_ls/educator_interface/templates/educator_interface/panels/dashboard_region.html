@@ -65,7 +65,7 @@ cohort left out of the figures is a notice in the Cohort progress card.
                                 {% resolve_url_path_template entry 'educator_interface:interface' 'cohorts/{cohort.pk}' as cohort_url %}
                                 <li class="text-sm">
                                     <span class="inline-flex items-center gap-1">
-                                        <a href="{{ cohort_url }}" class="relative z-10 font-bold text-on-surface no-underline hover:text-primary">{{ entry.cohort.name }}</a>
+                                        <a href="{{ cohort_url }}" class="panel-text-link relative z-10 font-bold text-on-surface no-underline hover:text-primary">{{ entry.cohort.name }}</a>
                                         {% include "panel_framework/partials/quick_view_button.html" with href=cohort_url url=cohort_url|add:"/__quick-view" label=entry.cohort.name extra_class="relative z-10" %}
                                     </span>
                                     <dl class="mt-0.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-2 gap-y-0 text-sm">

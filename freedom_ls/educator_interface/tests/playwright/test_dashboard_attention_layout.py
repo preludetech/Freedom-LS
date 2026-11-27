@@ -114,3 +114,59 @@ def test_a_dashboard_with_no_cohorts_holds_only_boxes(
 
     expect(page.get_by_text("You have no cohorts yet.")).to_be_visible()
     assert_canvas_holds_only_boxes(page)
+
+
+_HIT_AREA = """(link) => {
+    const box = link.getBoundingClientRect();
+    const after = getComputedStyle(link, "::after");
+    const height = after.content === "none" ? 0 : parseFloat(after.height) || 0;
+    const x = box.left + box.width / 2;
+    const centre = box.top + box.height / 2;
+    // What a finger lands on 20px above and below the link's centre.
+    const hit = (y) => document.elementFromPoint(x, y)?.closest("a") === link;
+    return {
+        height: Math.max(box.height, height),
+        topHit: hit(centre - 20),
+        bottomHit: hit(centre + 20),
+        left: box.left,
+        right: box.right,
+    };
+}"""
+
+
+def test_attention_cohort_name_has_a_44px_hit_area_clear_of_its_quick_view_icon(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    """On a phone a cohort name in a Needs attention row was only as tall as
+    its text, with no hit area, while the course names beside it are inline
+    text and stay exempt."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Dashboard Org")
+    cohort = CohortFactory(organisation=organisation, name="Flagged Cohort")
+    course = CourseFactory()
+    course.items.create(child=TopicFactory(), order=0)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner__user=UserFactory(first_name="Thandi", last_name="Mokoena"),
+    )
+    assign_object_role(educator_user, organisation, "organisation_admin")
+    page.set_viewport_size(QA_VIEWPORTS[0])
+    page.goto(interface_url(live_server, organisation.slug, "dashboard"))
+
+    attention = page.get_by_role("region", name="Needs attention")
+    name_link = attention.get_by_role("link", name="Flagged Cohort", exact=True)
+    expect(name_link).to_be_visible()
+    area = name_link.evaluate(_HIT_AREA)
+    assert area["height"] >= 44, area
+    assert area["topHit"], "the cohort name's hit area does not reach 20px above it"
+    assert area["bottomHit"], "the cohort name's hit area does not reach 20px below it"
+
+    quick_view = attention.get_by_label("Quick view: Flagged Cohort")
+    icon = quick_view.bounding_box()
+    assert icon is not None
+    assert area["right"] <= icon["x"], (
+        "the name's hit area overlaps its quick view icon"
+    )
