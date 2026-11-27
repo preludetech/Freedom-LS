@@ -858,3 +858,27 @@ class TestFlagReasonsOnTheCoursesTab:
         text = _courses_panel(client, cohort.organisation.slug, failed)
 
         assert FAILED_QUIZ_REASON in text
+
+
+@pytest.mark.django_db
+def test_a_phone_card_status_row_lets_its_badges_wrap_inside_the_value_cell(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    """A long flag badge poked out of the phone card because the badges kept to one line.
+
+    The card's Status value cell is narrower than the longest flag label, so
+    the badges in that cell must be capped to it and allowed to wrap.
+    """
+    cohort, _idle, failed = cohort_with_idle_and_failed_learners()
+    client = logged_in_client(_org_admin(cohort.organisation))
+
+    document = lxml.html.fromstring(
+        _courses_panel_html(client, cohort.organisation.slug, failed)
+    )
+
+    (status_value,) = document.xpath(
+        "//dl//dt[normalize-space()='Status']/following-sibling::dd[1]"
+    )
+    classes = (status_value.xpath("./div[1]/@class") or [""])[0].split()
+    assert "[&_.panel-chip]:max-w-full" in classes
+    assert "[&_.panel-chip]:whitespace-normal" in classes
