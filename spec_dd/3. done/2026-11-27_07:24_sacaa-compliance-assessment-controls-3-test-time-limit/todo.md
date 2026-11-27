@@ -28,4 +28,4 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 5. Cleanup
 
-- [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree, land it on main and remove the worktree
+- [x] (cmd) Run `/sdd:finish_worktree` to close out the worktree, land it on main and remove the worktree
