@@ -41,6 +41,10 @@ Anything the dashboard names, the educator can reach in one click, and a named l
 opens its quick view.
 
 - The Learners and Cohorts tiles link to their lists.
+- "Figures as of <time>" is the description line under the title of the Needs attention card and
+  of the Cohort progress card. A cohort left out of the figures (over the report's learner limit)
+  gets a warning callout at the top of the Cohort progress card's body, its name a link to the
+  cohort. Neither sits between the tiles and the cards.
 - A cohort name links to the cohort page and has a quick view button beside it, in an attention
   row and in the Cohort progress card. A learner name does the same.
 - A course name in an attention row links to the course page when the viewer can see that course,

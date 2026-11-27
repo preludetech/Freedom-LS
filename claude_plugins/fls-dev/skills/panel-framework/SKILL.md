@@ -267,6 +267,12 @@ panel with framework actions that call the other app's forms and flows.
 
 ### Panels
 
+- Everything on the canvas sits inside a box: a `<c-panel-card>`, a boxed `<c-panel-stat-tile>` or
+  a table panel. The canvas holds boxes and nothing else. A callout, a date line ("Figures as
+  of…"), a paragraph, a button, an empty state or a stepper is never a sibling of the cards. It
+  goes inside the card it is about: a notice at the top of that card's body, the date its data is
+  from as the card's `description`, a button in the card's `actions` slot. Page navigation (a
+  stepper, tabs) goes in the header band. A box carries `data-panel-box`, which the component sets.
 - Each panel does one job. A tab that does several jobs is a `PanelStack` of panels, one per job
   (a cohort's Settings tab: Name, Staff, Status), never one card with sub-headings.
 - A panel's title is the only heading for its job; nothing inside the panel repeats or nests a
@@ -383,9 +389,15 @@ panel with framework actions that call the other app's forms and flows.
   guard.
 - A sentence that stands in for panel content the viewer may not see ("Question detail is
   hidden: …") is a plain `<p>` in the panel body, not a callout.
-- A notice on a panel-framework page is `<c-panel-callout tone title>` (`info`, `warning`,
-  `error`, `success`): in a panel, a dialog, a sheet, a quick view and a panel form's error
-  summary, in a framework template and in an FLS template alike. Panel-framework templates use
+- An error, a warning, a failed request or any other notice on a panel-framework page is
+  `<c-panel-callout tone title>` (`info`, `warning`, `error`, `success`): in a panel, a dialog, a
+  sheet, a quick view and a panel form's error summary, in a framework template and in an FLS
+  template alike. No template or script draws one as coloured text, and none writes
+  `role="alert"`: the callout carries it. A message a script fills in is a callout too: a failed
+  request shows in `partials/request_error.html`, the one `[data-request-error]` holder, and the
+  script sets its text and never builds markup. The one exception is a field's own error, a line
+  under its field drawn by `partials/field_error.html`. A callout sits inside a card, a dialog
+  body, a sheet or the quick view, never on the canvas. Panel-framework templates use
   panel widgets. `<c-callout>` is for the rest of the site and `<c-admonition>` for markdown
   content only; neither goes in a panel-framework template. Never a hand-built `bg-error/10` box.
   A host renders `<c-panel-callout>` as its own callout. The close control is
@@ -518,14 +530,14 @@ the form. The framework does the rest:
   the person had filled in and that has no error of its own gets `CHOOSE_AGAIN_MESSAGE`.
 - While a file is going up, the submit button's loading text reads "Uploading…".
 - The discard prompt counts a chosen file as a change.
-- A request that fails with nothing to swap in (a 413 or 5xx, a network error, a timeout) shows a
-  `role="alert"` message in the form's `[data-request-error]` element, and Save works again. A
+- A request that fails with nothing to swap in (a 413 or 5xx, a network error, a timeout) shows an
+  error callout, the form's `partials/request_error.html`, and Save works again. A
   413 says the file may be too large; anything else says the changes could not be saved. A 403
   or 404 from a user's own submit reloads the page instead, except inside
   `[data-htmx-owns-errors]`; any other 403 or 404 gets the message. Every form a dialog submits
-  renders the element, a template that renders its own form and the bulk confirm form included.
-- A form whose failure the generic message misdescribes sets its own on the element, as
-  `data-request-error-message`. The bulk confirm form does: a failed run may have changed some
+  includes the partial, a template that renders its own form and the bulk confirm form included.
+- A form whose failure the generic message misdescribes passes its own to the partial as
+  `message`. The bulk confirm form does: a failed run may have changed some
   records, so "could not be saved" is wrong there.
 
 The host owns:
@@ -601,8 +613,12 @@ QA looks: `test_no_control_link_is_hand_styled`, `test_every_anchor_with_visible
 (one footer per step, none in a template that extends one),
 `test_no_dialog_template_hand_writes_what_a_component_owns` (no Cancel button, `text-sm`,
 `px-6 py-4` or `bg-error/10`), `test_no_framework_template_calls_the_host_callout` (no `<c-callout>` in any framework
-template), `test_no_fls_panel_template_calls_the_site_callout` (none in an accounts or educator
-panel, modal, quick view or panel-partial template either), `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
+template), `test_no_fls_panel_template_calls_the_site_callout` (none in any accounts or educator
+interface template either), `test_only_the_callout_and_the_field_error_draw_an_alert` (no
+`role="alert"`, `text-error`, `bg-error/` or `bg-warning/` in a framework, educator or accounts
+template outside the callout, the field-error partial and the components listed in the test),
+`test_every_request_error_holder_is_the_shared_partial`,
+`test_the_request_error_script_builds_no_markup`, `test_every_dialog_loading_text_ends_in_the_ellipsis_character`,
 `test_every_dialog_disables_only_its_own_submit_buttons`,
 `test_no_dialog_form_with_a_find_selector_holds_an_element_that_issues_its_own_request`,
 `test_no_educator_module_sets_the_modal_trigger_template_by_hand`,
@@ -611,7 +627,10 @@ panel, modal, quick view or panel-partial template either), `test_every_dialog_l
 `test_every_expand_chevron_turns_when_its_control_opens` and
 `test_every_entry_trigger_names_its_entry` (every `<c-modal-trigger>` in
 `editable_list_entry_triggers.html` passes an `aria_label` naming its entry). In the browser,
-`educator_interface/tests/playwright/test_touch_targets.py` checks that a small button keeps its
+`assert_canvas_holds_only_boxes` (`panel_framework/tests/playwright/assertions.py`) fails on any
+visible text or control on `.panel-canvas` with no `[data-panel-box]` ancestor; the section smoke
+test, the dashboard, import and account-page flows call it. Call it from the browser test of any
+new page. `educator_interface/tests/playwright/test_touch_targets.py` checks that a small button keeps its
 desktop height on a phone and that its hit area is 44px, a dialog footer's buttons included, with
 no overlap between them.
 Run that file after any change to a panel template.
@@ -698,8 +717,10 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   expanded row that names the parent row's person again shows the name with no second avatar.
 - A bulk confirm that runs in the request shows its Cancel and close control disabled and the
   "This is running and can't be stopped" line until it ends; Esc does nothing meanwhile.
-- A dialog whose request fails (a 5xx, a network error, a timeout) shows a red alert line inside
-  the dialog and unlocks; a failure is never silent.
+- An error or a warning is a toned callout box with its icon, in a dialog, a panel, a sheet and
+  the quick view, never a bare red or muted line; a field's own error, one line under its field,
+  is the exception. A dialog whose request fails (a 5xx, a network error, a timeout) shows an
+  error callout in its body and unlocks; a failure is never silent.
 - A disclosure, filter chip or menu button shows the icon chevron, never the browser's triangle,
   and the chevron turns up while open; a group opened inside a popover draws no second box.
 - A confirmation shows as a modal over the page it came from, JavaScript on or off; body text in a
@@ -747,6 +768,9 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   under the footer rule, never on the field row or under the fields.
 - At phone and tablet widths the navigation toggle sits at the left of the page heading, on the
   heading's line; it never has a row of its own above the heading.
+- Nothing sits on the grey canvas except bordered boxes: no loose text, notice, date line, button,
+  stepper or empty state between or beside the cards. A notice is inside the card it is about, and
+  the date a card's figures are from is the muted line under the card's title.
 - Every page of a panel-built area shows the header band, the grey canvas and bordered cards; no
   page shows its content bare on white in the content column.
 - A list of records the person acts on has each row's actions on that row's line, with no radio
