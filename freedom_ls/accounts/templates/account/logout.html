@@ -2,8 +2,12 @@
 {% load allauth i18n %}
 {% comment %}
 allauth's sign out page, with its question inside the form's card: on a
-panel-built page nothing sits on the canvas outside a box.
+panel-built page nothing sits on the canvas outside a box. The card sits in a
+full-width canvas wrapper that carries the gutter, as the personal details
+page's panels do, so the header band and the content share one structure; the
+column therefore drops the layout's per-child gutter.
 {% endcomment %}
+{% block main_class %}panel-canvas flex flex-col{% endblock main_class %}
 {% block head_title %}
     {% trans "Sign Out" %}
 {% endblock head_title %}
@@ -11,6 +15,7 @@ panel-built page nothing sits on the canvas outside a box.
     {% element h1 %}
         {% trans "Sign Out" %}
     {% endelement %}
+    <div class="panel-canvas flex-1 px-4 py-6 sm:px-6 lg:px-8">
     {% url 'account_logout' as action_url %}
     {% element form method="post" action=action_url no_visible_fields=True %}
         {% slot body %}
@@ -24,4 +29,5 @@ panel-built page nothing sits on the canvas outside a box.
             {% endelement %}
         {% endslot %}
     {% endelement %}
+    </div>
 {% endblock content %}

@@ -151,3 +151,29 @@ def test_a_management_page_form_is_a_card_with_its_buttons_in_the_footer(
         ancestor.tag == "footer" for ancestor in submit.iterancestors()
     )
     assert "btn-sm" in submit.get("class").split()
+
+
+def test_the_sign_out_page_puts_its_card_inside_a_full_width_canvas_region(
+    signed_in: tuple[Client, User],
+) -> None:
+    """The sign out card used to be a direct child of the content column, so
+    the header band and the content began at different x positions. It now
+    sits inside a canvas wrapper that carries the gutter, as the personal
+    details page does, and the question and the button share one card."""
+    client, _user = signed_in
+
+    response = client.get(reverse("account_logout"))
+
+    assert response.status_code == 200
+    page = lxml.html.fromstring(response.content.decode())
+    main = page.get_element_by_id("interface-main")
+    children = [child for child in main if child.tag == "div"]
+    band, *rest = children
+    assert band.get("data-page-header") is not None
+    (form,) = main.cssselect("form[action$='/logout/']")
+    assert form.getparent() is not main
+    (canvas,) = [child for child in rest if form in child.iterdescendants()]
+    assert "panel-canvas" in canvas.get("class").split()
+    (card,) = form.cssselect(".panel-surface")
+    assert "Are you sure you want to sign out?" in card.text_content()
+    assert card.cssselect('button[type="submit"]')
