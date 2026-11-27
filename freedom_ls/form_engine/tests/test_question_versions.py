@@ -136,9 +136,6 @@ def test_delete_question_versions_empties_the_given_questions_only(saved):
     assert list(remaining) == [other_version.pk]
 
 
-# The database trigger
-
-
 # transaction=True: the trigger's error aborts the transaction it is raised in.
 @pytest.mark.django_db(transaction=True)
 def test_raw_update_of_a_version_is_refused_by_the_database(saved):
@@ -161,8 +158,7 @@ def test_raw_delete_of_a_version_is_refused_by_the_database(saved):
         cursor.execute("DELETE FROM freedom_ls_form_engine_formquestionversion")
 
 
-# transaction=True: the trigger's error aborts the transaction it is raised in.
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 def test_delete_question_versions_empties_the_table(saved):
     delete_question_versions([saved.question])
 
