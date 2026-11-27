@@ -13,6 +13,7 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 
 - 🔴 High · `sacaa-compliance-assessment-controls-2-attempt-limits` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-assessment-controls-3-test-time-limit` (SACAA compliance)
+- 🔴 High · `sacaa-compliance-assessment-controls-7-course-restart` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-3-question-versions` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
 - 🟡 Low · `educator-interface-page-polish` (Educator interface)
@@ -20,7 +21,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 ### Ready to start
 
 - 🔴 High · `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` (SACAA compliance)
-- 🔴 High · `sacaa-compliance-assessment-controls-7-course-restart` (SACAA compliance)
 - 🔴 High · `learner-public-profile-2-profile-and-page` (Learner public profiles)
 - 🔴 High · `multi-step-course-applications-2-reviewers-and-inbox` (Multi-step course applications)
 - 🔴 High · `multi-step-course-applications-4-reopen-form` (Multi-step course applications)
@@ -88,11 +88,11 @@ Learner record retention, question versions and access, and assessment controls,
 - `sacaa-compliance-content-versions-and-access-3-question-versions` — **in progress** — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
 - `sacaa-compliance-assessment-controls-2-attempt-limits` — **in progress** — Quizzes cap attempts and set escalating waits between failed attempts, enforced at the start gate. Collides with `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-5-test-disturbance`.
 - `sacaa-compliance-assessment-controls-3-test-time-limit` — **in progress** — Quizzes get a time limit with a countdown; expired attempts are submitted and marked, with a recorded reason. Collides with `sacaa-compliance-assessment-controls-5-test-disturbance`.
+- `sacaa-compliance-assessment-controls-7-course-restart` — **in progress** — Staff restart a learner's course with a reason; the earlier run is kept read-only.
 
 ### Ready to start
 
 - `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — **ready** — Topics, forms and course parts require interaction every N minutes, warn, then exit to the dashboard or log out.
-- `sacaa-compliance-assessment-controls-7-course-restart` — **ready** — Staff restart a learner's course with a reason; the earlier run is kept read-only.
 
 ### Waiting on a collision
 
