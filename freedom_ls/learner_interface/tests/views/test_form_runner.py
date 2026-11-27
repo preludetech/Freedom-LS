@@ -5261,11 +5261,6 @@ def test_a_sitting_started_after_a_revision_shows_version_two_wording(
     assert b"Original wording" not in body
 
 
-# ---------------------------------------------------------------------------
-# The results page of a sitting answered on a since-revised question
-# ---------------------------------------------------------------------------
-
-
 def _results_url(course: Course) -> str:
     return reverse(
         "learner_interface:course_form_complete",

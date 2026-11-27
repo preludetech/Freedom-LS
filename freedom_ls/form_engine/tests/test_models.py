@@ -1967,9 +1967,6 @@ def test_marking_options_of_a_pinned_question_hold_no_option_added_later(
     assert [o.id for o in options] == [o.id for o in backed.options.all()]
 
 
-# A sitting answered on version 1 is marked on version 1 after a revision.
-
-
 def _answered_on_version_one(chosen: str) -> FormProgress:
     """A completed sitting on a paper pinned to version 1, whose learner chose the
     "right" or "wrong" option, with the question revised to version 2 afterwards."""
