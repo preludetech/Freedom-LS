@@ -8,6 +8,7 @@ then echoes `UV_NO_SYNC`, which shows whether the export reached the caller.
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -67,14 +68,24 @@ def make_package_dir(path: Path) -> Path:
     return path
 
 
-@pytest.mark.parametrize("create_directory", [False, True])
+def create_empty_directory(path: Path) -> None:
+    path.mkdir()
+
+
+def leave_path_missing(path: Path) -> None:
+    return None
+
+
+@pytest.mark.parametrize("prepare_path", [leave_path_missing, create_empty_directory])
 def test_missing_worktree_or_pyproject_is_skipped_with_a_message(
-    stub_tools: StubTools, package_repo: Path, tmp_path: Path, create_directory: bool
+    stub_tools: StubTools,
+    package_repo: Path,
+    tmp_path: Path,
+    prepare_path: Callable[[Path], None],
 ) -> None:
     # Arrange
     package_dir = package_repo / BRANCH
-    if create_directory:
-        package_dir.mkdir()
+    prepare_path(package_dir)
     child_env = stub_tools.env(
         PANEL_FRAMEWORK_REPO=package_repo, STUB_GIT_OUTPUT=BRANCH
     )
