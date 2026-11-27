@@ -18,7 +18,6 @@ from django.db import connection, models
 from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.loader import MigrationLoader
 from django.db.migrations.recorder import MigrationRecorder
-from django.db.models.deletion import ProtectedError
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.audit_log.models import AuditLogEntry
@@ -86,7 +85,8 @@ def legacy_state(at_0003: None, mock_site_context: object) -> Iterator[ContentTy
     if LEGACY_TABLE in _table_names():
         with connection.schema_editor() as editor:
             editor.delete_model(LegacyBulkActionRun)
-    # The audit log refuses `delete()`, so a protecting row goes through the base queryset.
+    # An audit entry protects its content type, and the audit log refuses `delete()`,
+    # so one the migration did not move goes through the base queryset.
     models.QuerySet.delete(
         AuditLogEntry._base_manager.filter(
             target_content_type__app_label=LEGACY_LABEL
@@ -151,14 +151,20 @@ def test_row_pointing_at_the_legacy_content_type_is_removed(
 
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("label", list(legacy_rows.PROTECTING))
-def test_row_protecting_the_legacy_content_type_makes_the_migration_raise(
-    label: str, legacy_state: ContentType, mock_site_context: object
+def test_audit_entry_on_the_legacy_content_type_moves_to_the_current_one(
+    legacy_state: ContentType, mock_site_context: object
 ) -> None:
-    legacy_rows.PROTECTING[label](legacy_state)
+    """`AuditLogEntry.target_content_type` is `PROTECT`: the entry stays and takes
+    the content type of the model's current label."""
+    row = legacy_rows.audit_log_entry(legacy_state)
 
-    with pytest.raises(ProtectedError):
-        _migrate(AFTER)
+    _migrate(AFTER)
+
+    content_type = AuditLogEntry.unscoped.get(pk=row.pk).target_content_type
+    assert (content_type.app_label, content_type.model) == (
+        "panel_framework",
+        "bulkactionrun",
+    )
 
 
 @pytest.mark.django_db(transaction=True)

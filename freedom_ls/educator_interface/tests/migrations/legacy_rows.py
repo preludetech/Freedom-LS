@@ -1,6 +1,6 @@
 """One row per installed model that points at `ContentType`, built to point at a given
 content type. The migration tests use these to prove which rows a content type delete
-removes and which it refuses to remove."""
+removes and which it leaves in place."""
 
 from __future__ import annotations
 
@@ -165,9 +165,4 @@ CASCADING: dict[str, Callable[[ContentType], Built]] = {
     "referral_tracking.Conversion": conversion,
     "role_based_permissions.ObjectRoleAssignment": object_role_assignment,
     "comms.Notification": notification,
-}
-
-# Models whose `on_delete` refuses to remove the content type while a row points at it.
-PROTECTING: dict[str, Callable[[ContentType], Built]] = {
-    "audit_log.AuditLogEntry": audit_log_entry,
 }

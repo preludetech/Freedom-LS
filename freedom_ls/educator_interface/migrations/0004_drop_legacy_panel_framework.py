@@ -1,5 +1,6 @@
 """Dropped the table, migration records and content types of the old
-`freedom_ls_panel_framework` app label."""
+`freedom_ls_panel_framework` app label. Audit log entries that pointed at one
+of those content types point at the `panel_framework` one instead."""
 
 from django.apps.registry import Apps
 from django.db import migrations, models
@@ -9,6 +10,7 @@ from django.db.migrations.state import StateApps
 
 LEGACY_LABEL = "freedom_ls_panel_framework"
 LEGACY_TABLE = "freedom_ls_panel_framework_bulkactionrun"
+CURRENT_LABEL = "panel_framework"
 
 
 def drop_legacy_panel_framework(
@@ -18,7 +20,9 @@ def drop_legacy_panel_framework(
     `freedom_ls_panel_framework` label.
 
     The panel framework's models live in an installed package under the
-    `panel_framework` label and table, so nothing references these."""
+    `panel_framework` label and table, so nothing references these. An audit
+    log entry protects its content type from deletion, so each one moves to
+    the same model's content type under the `panel_framework` label first."""
     connection = schema_editor.connection
     if LEGACY_TABLE in connection.introspection.table_names():
 
@@ -32,7 +36,18 @@ def drop_legacy_panel_framework(
         schema_editor.delete_model(LegacyBulkActionRun)
     MigrationRecorder(connection).migration_qs.filter(app=LEGACY_LABEL).delete()
     ContentType = apps.get_model("contenttypes", "ContentType")
-    ContentType.objects.filter(app_label=LEGACY_LABEL).delete()
+    AuditLogEntry = apps.get_model("freedom_ls_audit_log", "AuditLogEntry")
+    legacy_types = ContentType.objects.filter(app_label=LEGACY_LABEL)
+    for legacy_type in legacy_types:
+        entries = AuditLogEntry._base_manager.filter(target_content_type=legacy_type)
+        if not entries.exists():
+            continue
+        current_type, _ = ContentType.objects.get_or_create(
+            app_label=CURRENT_LABEL, model=legacy_type.model
+        )
+        # The base update: the audit log's own queryset refuses `update()`.
+        models.QuerySet.update(entries, target_content_type=current_type)
+    legacy_types.delete()
 
 
 class Migration(migrations.Migration):
