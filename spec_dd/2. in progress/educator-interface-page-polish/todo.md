@@ -24,6 +24,8 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [x] (user) Review how the code differs from the plan: `build_course_catalogue` replaces each registration's `course` with one shared instance per course; `quickView` and `sidePanel` gained `running: false` because the CSP Alpine build fails on an undeclared `running`; the bulk-dialog lock tracks the request's xhr because htmx's `afterRequest` reports the swap target, not the form.
 - [x] (user) Decide what to do about QA bug: a failed (5xx) bulk confirm request shows no error, the dialog unlocks silently. Decide the message and whether 5xx responses get a global htmx error or a per-dialog one (TDD: failing test first, then fix)
 - [x] (cmd) QA test 6 step 4 (over-limit callout's cohort link) was not run: no cohort exceeds REPORTS_MAX_LEARNERS (500). Run it with the setting lowered for the dev server, or seed a cohort of 501+ learners
+- [ ] (user) Decide what to do about QA bug: the 'Failed most recent quiz attempt' flag badge overflows the learner Courses tab phone card at 375px (it is white-space:nowrap in a span.chip and ends past the card edge); the one fix attempt targeted .panel-chip and was reverted (TDD: failing test first, then fix)
+- [ ] (user) Decide whether dashboard text links (cohort names, course names, the over-limit callout's cohort link) need 44px hit areas on a phone as QA test 6.7 asks, given they are 20-39px tall and a cohort name sits 4px from its quick view icon; then either give them hit areas with the spacing that keeps targets apart, or relax test 6.7 to the buttons-only rule (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 

@@ -1,0 +1,428 @@
+- generic [ref=f27e1]:
+  - banner [ref=f27e2]:
+    - link [ref=f27e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f27e4]
+      - heading "FirstClass" [level=1] [ref=f27e5]
+    - navigation [ref=f27e6]:
+      - generic [ref=f27e7]:
+        - generic [ref=f27e8]:
+          - button "Messages, none unread" [ref=f27e9]
+          - status:
+            - generic [ref=f27e13]: Messages, none unread
+        - generic [ref=f27e14]:
+          - button "Notifications, none new" [ref=f27e15]
+          - status:
+            - generic [ref=f27e19]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f27e21] [cursor=pointer]:
+          - generic [ref=f27e22]:
+            - generic [ref=f27e23]: Open user menu for demodev@email.com
+            - generic [aria-hidden] [ref=f27e24]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f27e25]:
+    - generic [ref=f27e27]:
+      - dialog "Navigation" [ref=f27e28]:
+        - generic [ref=f27e30]:
+          - generic [ref=f27e31]:
+            - paragraph [ref=f27e32]: Organisation
+            - button "Switch organisation" [ref=f27e34] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f27e35]: D
+              - generic "DemoDev" [ref=f27e36]
+          - navigation "Sections" [ref=f27e39]:
+            - heading "Teaching" [level=2] [ref=f27e40]
+            - list [ref=f27e41]:
+              - listitem [ref=f27e42]:
+                - link "Dashboard" [ref=f27e43] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+              - listitem [ref=f27e48]:
+                - link "Cohorts" [ref=f27e49] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f27e54]:
+                - link "Learners" [ref=f27e55] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f27e60]:
+                - link "Courses" [ref=f27e61] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+            - heading "Administration" [level=2] [ref=f27e66]
+            - list [ref=f27e67]:
+              - listitem [ref=f27e68]:
+                - link "Staff" [ref=f27e69] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/staff
+              - listitem [ref=f27e74]:
+                - link "Audit log" [ref=f27e75] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/audit-log
+          - generic [ref=f27e80]:
+            - generic [ref=f27e82]:
+              - generic [aria-hidden] [ref=f27e83]: DE
+              - generic [ref=f27e84]: demodev@email.com
+            - link "Account settings" [ref=f27e86] [cursor=pointer]:
+              - /url: /accounts/profile/
+      - generic [ref=f27e92]:
+        - generic [ref=f27e94]:
+          - heading "Learners" [level=1] [ref=f27e98]
+          - generic [ref=f27e99]:
+            - button "Add learner" [ref=f27e100] [cursor=pointer]
+            - link "Import learners" [ref=f27e101] [cursor=pointer]:
+              - /url: /educator/organisations/demodev/learners/import/
+        - generic [ref=f27e106]:
+          - generic [ref=f27e107]:
+            - generic [ref=f27e109]:
+              - generic [ref=f27e110]: Search
+              - searchbox "Search" [ref=f27e112]
+            - generic [ref=f27e113]:
+              - group [ref=f27e114]:
+                - 'generic "Status: Active, Pending" [ref=f27e115]'
+              - group [ref=f27e119]:
+                - generic "Add filter" [ref=f27e120]
+                - generic [ref=f27e124]:
+                  - group [ref=f27e125]:
+                    - generic "Cohort" [ref=f27e126] [cursor=pointer]
+                  - group [ref=f27e129]:
+                    - generic "Course" [active] [ref=f27e130] [cursor=pointer]
+                    - generic [ref=f27e471]:
+                      - link "Content Widgets - Demo Reference" [ref=f27e472] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=8bc127c1-edf1-4997-b7fc-35fdf8604f30
+                      - link "Functionality Demo - Application gated course" [ref=f27e474] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=271eeb30-94db-4261-b409-19888b0ead7d
+                      - link "Functionality Demo - Course Parts" [ref=f27e476] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=531adc02-f240-4c7b-87f7-956a804c1e22
+                      - link "Functionality Demo - Per-placement Due Dates" [ref=f27e478] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=4d63a96b-feff-4a38-8aac-44742a5da6bd
+                      - 'link "Functionality Demo - Price: currency without cents" [ref=f27e480] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners?learners-course=32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+                      - 'link "Functionality Demo - Price: expired sale" [ref=f27e482] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners?learners-course=5bf97798-9176-427a-97b7-6acec9ad650f
+                      - 'link "Functionality Demo - Price: fixed" [ref=f27e484] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners?learners-course=f5ce0728-70d2-4eaf-b4c4-bba906895941
+                      - 'link "Functionality Demo - Price: from" [ref=f27e486] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners?learners-course=ff6ecf0f-9885-4646-bb1c-c3727964cca4
+                      - 'link "Functionality Demo - Price: on request" [ref=f27e488] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners?learners-course=4b6c9adb-1821-4db6-9496-108f47c77dfe
+                      - 'link "Functionality Demo - Price: range" [ref=f27e490] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners?learners-course=be08d6a5-6777-4e2a-898f-eadc270746ab
+                      - 'link "Functionality Demo - Price: sale with an end date" [ref=f27e492] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners?learners-course=b84611bc-091d-410d-b70a-df3382969eec
+                      - link "Functionality Demo - question pools" [ref=f27e494] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=43941e28-39ff-4745-a30f-dce3caa700de
+                      - link "Functionality Demo - quiz declaration" [ref=f27e496] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=a0869250-7bec-459f-be3b-7c9c4bae36d6
+                      - link "Functionality Demo - Reference Material" [ref=f27e498] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=1144be70-d209-4fde-98f8-3fb2459fdccb
+                      - link "Functionality Demo - show end with Quiz" [ref=f27e500] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=812a4ab3-0833-4923-be2f-c4412fecd99b
+                      - link "Functionality Demo - show end with Topic" [ref=f27e502] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=3ff21a03-9d76-4700-bac9-46401a4429d2
+                      - link "Functionality Demo - shuffled quiz" [ref=f27e504] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=7021dd5c-7e0b-4c90-a107-87f3632b9118
+                      - link "QA Polish Complete Course" [ref=f27e506] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=89ffd201-687a-44cc-9248-d326962259dd
+                      - link "QA Polish Course With A Deliberately Long Title To Check The Ellipsis" [ref=f27e508] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=1fd1c320-cd5e-4f9a-bdc0-634b31d5dc18
+                      - link "QA Polish Flagged Course" [ref=f27e510] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=97889f19-5b47-48a1-b949-996d70c11c44
+                      - link "QA Polish Not Started Course" [ref=f27e512] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=e4191e13-6e4a-4206-8357-39eb2c1880e4
+                      - link "QA Polish Shared Course (Harbour College)" [ref=f27e514] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=ee94523c-99c0-4060-a735-b7e76dc44287
+                      - link "Standard Markdown - Demo Finance" [ref=f27e516] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners?learners-course=7e724756-a349-4ef1-924b-ec9c26dcba45
+              - link "Export CSV" [ref=f27e133] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/learners?learners-export=csv
+          - status [ref=f27e137]
+          - region "Learners" [ref=f27e140]:
+            - table [ref=f27e141]:
+              - caption [ref=f27e142]: Learners
+              - rowgroup [ref=f27e143]:
+                - row [ref=f27e144]:
+                  - columnheader [ref=f27e145]:
+                    - checkbox "Select all on this page" [ref=f27e146] [cursor=pointer]
+                  - columnheader [ref=f27e147]:
+                    - link "Learner" [ref=f27e148] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/learners?learners-sort=-user__first_name
+                  - columnheader "Status" [ref=f27e152]
+                  - columnheader "Cohorts" [ref=f27e153]
+                  - columnheader "Courses" [ref=f27e154]
+                  - columnheader [ref=f27e155]:
+                    - link "Last active" [ref=f27e156] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/learners?learners-sort=user__last_active
+              - rowgroup [ref=f27e160]:
+                - row [ref=f27e161]:
+                  - cell [ref=f27e162]:
+                    - checkbox "Select Alexandra Achterberg" [ref=f27e163] [cursor=pointer]
+                  - cell [ref=f27e164]:
+                    - generic [ref=f27e165]:
+                      - link "Alexandra Achterberg alexandra.achterberg-longaddress@qa-polish.test" [ref=f27e167] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/127e2a48-8cf4-408a-b89a-03c79edc0170
+                        - generic [ref=f27e168]:
+                          - generic [aria-hidden] [ref=f27e169]: AA
+                          - generic [ref=f27e170]:
+                            - generic [ref=f27e171]: Alexandra Achterberg
+                            - generic [ref=f27e172]: alexandra.achterberg-longaddress@qa-polish.test
+                      - 'link "Quick view: Alexandra Achterberg" [ref=f27e173] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/127e2a48-8cf4-408a-b89a-03c79edc0170
+                  - cell "Active" [ref=f27e178]
+                  - cell [ref=f27e180]:
+                    - link "QA Polish Cohort" [ref=f27e181] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/315a6548-3252-4679-87dc-8d1385be0936
+                  - cell "QA Polish Flagged Course 40 40% QA Polish Not Started Course 0 0% QA Polish Shared Course Shared by Harbour College 40 40% +2 more courses for Alexandra Achterberg" [ref=f27e182]:
+                    - list [ref=f27e183]:
+                      - listitem [ref=f27e184]:
+                        - generic "QA Polish Flagged Course" [ref=f27e186]
+                        - generic [ref=f27e187]:
+                          - progressbar "QA Polish Flagged Course progress" [ref=f27e188]: 40%
+                          - generic [ref=f27e189]: 40%
+                      - listitem [ref=f27e190]:
+                        - generic "QA Polish Not Started Course" [ref=f27e192]
+                        - generic [ref=f27e193]:
+                          - progressbar "QA Polish Not Started Course progress" [ref=f27e194]: 0%
+                          - generic [ref=f27e195]: 0%
+                      - listitem [ref=f27e196]:
+                        - generic "QA Polish Shared Course" [ref=f27e198]
+                        - paragraph [ref=f27e199]: Shared by Harbour College
+                        - generic [ref=f27e200]:
+                          - progressbar "QA Polish Shared Course progress" [ref=f27e201]: 40%
+                          - generic [ref=f27e202]: 40%
+                    - link "+2 more courses for Alexandra Achterberg" [ref=f27e203] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/learners/127e2a48-8cf4-408a-b89a-03c79edc0170/__tabs/courses
+                      - text: +2 more
+                  - cell [ref=f27e204]:
+                    - time [ref=f27e205]: 26 Nov 2026
+                - row [ref=f27e206]:
+                  - cell [ref=f27e207]:
+                    - checkbox "Select Bongani Botha" [ref=f27e208] [cursor=pointer]
+                  - cell [ref=f27e209]:
+                    - generic [ref=f27e210]:
+                      - link "Bongani Botha qa.polish.bongani@qa-polish.test" [ref=f27e212] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/14896b5f-b216-40ac-94bb-005a85a9b17f
+                        - generic [ref=f27e213]:
+                          - generic [aria-hidden] [ref=f27e214]: BB
+                          - generic [ref=f27e215]:
+                            - generic [ref=f27e216]: Bongani Botha
+                            - generic [ref=f27e217]: qa.polish.bongani@qa-polish.test
+                      - 'link "Quick view: Bongani Botha" [ref=f27e218] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/14896b5f-b216-40ac-94bb-005a85a9b17f
+                  - cell "Active" [ref=f27e223]
+                  - cell [ref=f27e225]:
+                    - img "None" [ref=f27e226]: —
+                  - cell "QA Polish Shared Course Shared by Harbour College 20 20% QA Polish Course With A Deliberately Long Title To Check The Ellipsis 40 40% QA Polish Complete Course 100 100%" [ref=f27e227]:
+                    - list [ref=f27e228]:
+                      - listitem [ref=f27e229]:
+                        - generic "QA Polish Shared Course" [ref=f27e231]
+                        - paragraph [ref=f27e232]: Shared by Harbour College
+                        - generic [ref=f27e233]:
+                          - progressbar "QA Polish Shared Course progress" [ref=f27e234]: 20%
+                          - generic [ref=f27e235]: 20%
+                      - listitem [ref=f27e236]:
+                        - generic "QA Polish Course With A Deliberately Long Title To Check The Ellipsis" [ref=f27e238]
+                        - generic [ref=f27e239]:
+                          - progressbar "QA Polish Course With A Deliberately Long Title To Check The Ellipsis progress" [ref=f27e240]: 40%
+                          - generic [ref=f27e241]: 40%
+                      - listitem [ref=f27e242]:
+                        - generic "QA Polish Complete Course" [ref=f27e244]
+                        - generic [ref=f27e245]:
+                          - progressbar "QA Polish Complete Course progress" [ref=f27e246]: 100%
+                          - generic [ref=f27e247]: 100%
+                  - cell [ref=f27e248]:
+                    - time [ref=f27e249]: 25 Nov 2026
+                - row [ref=f27e250]:
+                  - cell [ref=f27e251]:
+                    - checkbox "Select Chloe Cele" [ref=f27e252] [cursor=pointer]
+                  - cell [ref=f27e253]:
+                    - generic [ref=f27e254]:
+                      - link "Chloe Cele qa.polish.chloe@qa-polish.test" [ref=f27e256] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/28f0cc2b-f882-409d-834d-12efcf9c0e0b
+                        - generic [ref=f27e257]:
+                          - generic [aria-hidden] [ref=f27e258]: CC
+                          - generic [ref=f27e259]:
+                            - generic [ref=f27e260]: Chloe Cele
+                            - generic [ref=f27e261]: qa.polish.chloe@qa-polish.test
+                      - 'link "Quick view: Chloe Cele" [ref=f27e262] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/28f0cc2b-f882-409d-834d-12efcf9c0e0b
+                  - cell "Active" [ref=f27e267]
+                  - cell [ref=f27e269]:
+                    - img "None" [ref=f27e270]: —
+                  - cell [ref=f27e271]:
+                    - img "None" [ref=f27e272]: —
+                  - cell "Never" [ref=f27e273]
+                - row [ref=f27e274]:
+                  - cell [ref=f27e275]:
+                    - checkbox "Select Dawit Desta" [ref=f27e276] [cursor=pointer]
+                  - cell [ref=f27e277]:
+                    - generic [ref=f27e278]:
+                      - link "Dawit Desta qa.polish.dawit@qa-polish.test" [ref=f27e280] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/e867ca02-b864-4ded-88e2-61a48ac8c7f1
+                        - generic [ref=f27e281]:
+                          - generic [aria-hidden] [ref=f27e282]: DD
+                          - generic [ref=f27e283]:
+                            - generic [ref=f27e284]: Dawit Desta
+                            - generic [ref=f27e285]: qa.polish.dawit@qa-polish.test
+                      - 'link "Quick view: Dawit Desta" [ref=f27e286] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/e867ca02-b864-4ded-88e2-61a48ac8c7f1
+                  - cell "Active" [ref=f27e291]
+                  - cell [ref=f27e293]:
+                    - link "QA Polish Cohort" [ref=f27e294] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/315a6548-3252-4679-87dc-8d1385be0936
+                  - cell "QA Polish Flagged Course 40 40%" [ref=f27e295]:
+                    - list [ref=f27e296]:
+                      - listitem [ref=f27e297]:
+                        - generic "QA Polish Flagged Course" [ref=f27e299]
+                        - generic [ref=f27e300]:
+                          - progressbar "QA Polish Flagged Course progress" [ref=f27e301]: 40%
+                          - generic [ref=f27e302]: 40%
+                  - cell [ref=f27e303]:
+                    - time [ref=f27e304]: 25 Nov 2026
+                - row [ref=f27e305]:
+                  - cell [ref=f27e306]:
+                    - checkbox "Select demodev_s1" [ref=f27e307] [cursor=pointer]
+                  - cell [ref=f27e308]:
+                    - generic [ref=f27e309]:
+                      - link "demodev_s1 demodev_s1@email.com" [ref=f27e311] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/7bddf01b-8c36-470e-8ee2-395233db76f2
+                        - generic [ref=f27e312]:
+                          - generic [aria-hidden] [ref=f27e313]: D
+                          - generic [ref=f27e314]:
+                            - generic [ref=f27e315]: demodev_s1
+                            - generic [ref=f27e316]: demodev_s1@email.com
+                      - 'link "Quick view: demodev_s1" [ref=f27e317] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/7bddf01b-8c36-470e-8ee2-395233db76f2
+                  - cell "Active" [ref=f27e322]
+                  - cell [ref=f27e324]:
+                    - link "Cohort 2025.03.04" [ref=f27e325] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/abbd6bba-6000-4618-a2b3-bb767b0e24ac
+                  - cell [ref=f27e326]:
+                    - img "None" [ref=f27e327]: —
+                  - cell "Never" [ref=f27e328]
+                - row [ref=f27e329]:
+                  - cell [ref=f27e330]:
+                    - checkbox "Select demodev_s13" [ref=f27e331] [cursor=pointer]
+                  - cell [ref=f27e332]:
+                    - generic [ref=f27e333]:
+                      - link "demodev_s13 demodev_s13@email.com" [ref=f27e335] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/60c86aa5-393a-422f-b4d9-375fe31a4f53
+                        - generic [ref=f27e336]:
+                          - generic [aria-hidden] [ref=f27e337]: D
+                          - generic [ref=f27e338]:
+                            - generic [ref=f27e339]: demodev_s13
+                            - generic [ref=f27e340]: demodev_s13@email.com
+                      - 'link "Quick view: demodev_s13" [ref=f27e341] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/60c86aa5-393a-422f-b4d9-375fe31a4f53
+                  - cell "Active" [ref=f27e346]
+                  - cell [ref=f27e348]:
+                    - link "Cohort 2025.03.04" [ref=f27e349] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/abbd6bba-6000-4618-a2b3-bb767b0e24ac
+                  - cell [ref=f27e350]:
+                    - img "None" [ref=f27e351]: —
+                  - cell "Never" [ref=f27e352]
+                - row [ref=f27e353]:
+                  - cell [ref=f27e354]:
+                    - checkbox "Select demodev_s14" [ref=f27e355] [cursor=pointer]
+                  - cell [ref=f27e356]:
+                    - generic [ref=f27e357]:
+                      - link "demodev_s14 demodev_s14@email.com" [ref=f27e359] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/cb5ac030-7f32-4486-a049-1ed8b5afaff8
+                        - generic [ref=f27e360]:
+                          - generic [aria-hidden] [ref=f27e361]: D
+                          - generic [ref=f27e362]:
+                            - generic [ref=f27e363]: demodev_s14
+                            - generic [ref=f27e364]: demodev_s14@email.com
+                      - 'link "Quick view: demodev_s14" [ref=f27e365] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/cb5ac030-7f32-4486-a049-1ed8b5afaff8
+                  - cell "Active" [ref=f27e370]
+                  - cell [ref=f27e372]:
+                    - link "Cohort 2025.03.04" [ref=f27e373] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/abbd6bba-6000-4618-a2b3-bb767b0e24ac
+                  - cell [ref=f27e374]:
+                    - img "None" [ref=f27e375]: —
+                  - cell "Never" [ref=f27e376]
+                - row [ref=f27e377]:
+                  - cell [ref=f27e378]:
+                    - checkbox "Select demodev_s15" [ref=f27e379] [cursor=pointer]
+                  - cell [ref=f27e380]:
+                    - generic [ref=f27e381]:
+                      - link "demodev_s15 demodev_s15@email.com" [ref=f27e383] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/8c61516e-c2fc-4d8c-9d52-8991b7015175
+                        - generic [ref=f27e384]:
+                          - generic [aria-hidden] [ref=f27e385]: D
+                          - generic [ref=f27e386]:
+                            - generic [ref=f27e387]: demodev_s15
+                            - generic [ref=f27e388]: demodev_s15@email.com
+                      - 'link "Quick view: demodev_s15" [ref=f27e389] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/8c61516e-c2fc-4d8c-9d52-8991b7015175
+                  - cell "Active" [ref=f27e394]
+                  - cell [ref=f27e396]:
+                    - link "Cohort 2025.03.04" [ref=f27e397] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/abbd6bba-6000-4618-a2b3-bb767b0e24ac
+                  - cell [ref=f27e398]:
+                    - img "None" [ref=f27e399]: —
+                  - cell "Never" [ref=f27e400]
+                - row [ref=f27e401]:
+                  - cell [ref=f27e402]:
+                    - checkbox "Select demodev_s16" [ref=f27e403] [cursor=pointer]
+                  - cell [ref=f27e404]:
+                    - generic [ref=f27e405]:
+                      - link "demodev_s16 demodev_s16@email.com" [ref=f27e407] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/734501fa-d912-4a8a-9232-617dba96f0fe
+                        - generic [ref=f27e408]:
+                          - generic [aria-hidden] [ref=f27e409]: D
+                          - generic [ref=f27e410]:
+                            - generic [ref=f27e411]: demodev_s16
+                            - generic [ref=f27e412]: demodev_s16@email.com
+                      - 'link "Quick view: demodev_s16" [ref=f27e413] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/734501fa-d912-4a8a-9232-617dba96f0fe
+                  - cell "Active" [ref=f27e418]
+                  - cell [ref=f27e420]:
+                    - link "Cohort 2025.03.04" [ref=f27e421] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/abbd6bba-6000-4618-a2b3-bb767b0e24ac
+                  - cell [ref=f27e422]:
+                    - img "None" [ref=f27e423]: —
+                  - cell "Never" [ref=f27e424]
+                - row [ref=f27e425]:
+                  - cell [ref=f27e426]:
+                    - checkbox "Select demodev_s17" [ref=f27e427] [cursor=pointer]
+                  - cell [ref=f27e428]:
+                    - generic [ref=f27e429]:
+                      - link "demodev_s17 demodev_s17@email.com" [ref=f27e431] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/learners/a87100ba-79e1-4856-b3f2-4deb5825de9a
+                        - generic [ref=f27e432]:
+                          - generic [aria-hidden] [ref=f27e433]: D
+                          - generic [ref=f27e434]:
+                            - generic [ref=f27e435]: demodev_s17
+                            - generic [ref=f27e436]: demodev_s17@email.com
+                      - 'link "Quick view: demodev_s17" [ref=f27e437] [cursor=pointer]':
+                        - /url: /educator/organisations/demodev/learners/a87100ba-79e1-4856-b3f2-4deb5825de9a
+                  - cell "Active" [ref=f27e442]
+                  - cell [ref=f27e444]:
+                    - link "Cohort 2025.03.04" [ref=f27e445] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/abbd6bba-6000-4618-a2b3-bb767b0e24ac
+                  - cell [ref=f27e446]:
+                    - img "None" [ref=f27e447]: —
+                  - cell "Never" [ref=f27e448]
+          - generic [ref=f27e449]:
+            - paragraph [ref=f27e450]: Showing 1–10 of 263 learners
+            - generic [ref=f27e451]:
+              - generic [ref=f27e452]: Page 1 of 27
+              - generic [ref=f27e453]:
+                - generic [ref=f27e454] [cursor=pointer]: "1"
+                - link "2" [ref=f27e455] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners?learners-page=2
+                - link "3" [ref=f27e456] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners?learners-page=3
+                - generic: ...
+                - link "26" [ref=f27e457] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners?learners-page=26
+                - link "27" [ref=f27e458] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners?learners-page=27
+                - link "Next" [ref=f27e459] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners?learners-page=2
+  - contentinfo [ref=f27e462]:
+    - generic [ref=f27e463]:
+      - paragraph [ref=f27e464]: © 2026 FirstClass
+      - navigation "Legal" [ref=f27e465]:
+        - link "Terms and Conditions" [ref=f27e466] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f27e467] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f27e468] [cursor=pointer]: educator-interface-page-polish
+  - generic "Show toolbar" [ref=f27e470]: DJDT

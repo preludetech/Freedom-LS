@@ -1,145 +1,112 @@
-# QA report: educator-interface-page-polish
+# Frontend QA report: educator-interface-page-polish
 
 ## Methodology
 
-Frontend QA ran in a browser against seeded demo data at desktop (1920 and 1280), tablet (768) and mobile (375) viewports. Screenshots were collected into `screenshots/` beside this report, and every image linked below exists there. Tests that need no visual evidence (behaviour checks, downloads, network-held requests) have no screenshot.
-
-Two QA plan expectations did not match the code's intended behaviour, as the test records explain:
-
-- **Test 1.1 (learner A's order).** The plan expected c1, c2, c5. The actual order is c1 Flagged 40%, c4 Not Started 0%, c2 Shared 40%. Course c4 has no record on a course with items, so the existing "No recorded activity" rule flags it and it ranks with the flagged courses. This follows the spec's ranking, so the plan was wrong, not the code. Test 1.1 is recorded as pass.
-- **Test 4.2 (blank first name).** The plan expected a field error. The form accepts a blank first name, which is existing behaviour this spec did not change, so no error appears. The Email row stays after the save. Test 4.2 is recorded as pass.
+Screenshots were collected into `spec_dd/2. in progress/educator-interface-page-polish/screenshots/`. Every image referenced below exists beside this report. Tests ran in a browser against the dev server at desktop (1280 and 1920), tablet (768) and mobile (375) viewports. The dev server ran with a git-ignored settings override (REPORTS_MAX_LEARNERS=10, BULK_BACKGROUND_THRESHOLD=5), deleted after the run.
 
 ## Diff scoping
 
-Class: `FULL`. Changed files that triggered it: templates, CSS, JS and Python under `freedom_ls/educator_interface`, `freedom_ls/panel_framework`, `freedom_ls/reports` and `freedom_ls/content_engine`, plus `tailwind.components.css`. Nothing was skipped: desktop, tablet and mobile passes all ran.
+Class: **FULL**. The changed files include panel framework templates, CSS and JS, educator interface templates and panels, the reports app and the account templates. Nothing was skipped: desktop, tablet and mobile passes all ran.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages loaded: `/` and `/educator/organisations/demodev/learners`. No failure URL or reason.
+Outcome: **pass**. Pages loaded: `/` and `/educator/organisations/demodev/dashboard`. The run was not aborted.
 
 ## Design check
 
-No design states tested.
+There are no design records, so no design states tested.
 
-## Test results summary
+## Bug B1: Progress bar track disappears on a hovered table row
 
-| Test | Viewport | Result | Notes |
-|---|---|---|---|
-| 1.1 | desktop | pass | Order differs from the plan (see Methodology) |
-| 1.2-1.8 | desktop | pass | Aria labels, 3-row cap, em dash, de-duplication, c4 empty bar, progress matches Courses tab |
-| 1.9 | mobile, tablet | pass | Cards, capped cell, 44px hit area on "+2 more" |
-| 1.10, 1.11 | desktop | pass | Sort and page 2; CSV export lists all 5 courses |
-| 2.1-2.3 | desktop | pass | Table, course cell and reason badges |
-| 2.4 | desktop | **fail** | B1 |
-| 2.5 | desktop | **fail** | B2 |
-| 2.6-2.8, 2.10 | desktop | pass | |
-| 2.9 | mobile, tablet | pass | Cards, no sideways scroll |
-| 3.1-3.3 | desktop, mobile | pass | Messages rule and icon placement |
-| 4.1 | desktop | **fail** | B3 |
-| 4.2 | desktop | pass | Plan expectation mismatched (see Methodology) |
-| 4.3, 4.5, 4.6 | desktop | pass | |
-| 4.4 | mobile | **fail** | B3 |
-| 5.1, 5.2 | desktop | pass | |
-| 6.1-6.3, 6.5, 6.6 | desktop | pass | |
-| 6.4 | desktop | skip | No cohort over `REPORTS_MAX_LEARNERS` (500); covered by unit tests only |
-| 6.7 | mobile | pass | |
-| 7.1-7.5, 7.7-7.9 | desktop | pass | |
-| 7.6 | desktop | **fail** | B4 |
-| 8.1-8.3, 8.5 | mobile | pass | |
-| 8.4 | desktop | pass | |
+Manifestations: test 1.12-hover (desktop).
 
-## B1: Courses tab Progress column squeezes the bar to ~22px
+![](screenshots/page-2026-11-27T03-34-43-801Z.png)
 
-Manifestations:
-- test 2.4, desktop
+- Expected: the empty part of every progress bar stays visible whatever the row state, so a 0% course still shows an empty bar.
+- Actual: the panel-progress-bar track (rgb(243,244,246)) matches the data-table row hover background (rgb(243,244,246)). On a hovered row in the learners list Courses cell the track vanishes and a 0% bar shows nothing.
 
-![](screenshots/page-2026-11-26T07-20-21-852Z.png)
+## Bug B2: Flag badge overflows the Courses tab phone card
 
-Expected: in the learner Courses tab table, the Progress cell shows a readable bar beside its percentage, like the learners list cell.
+Manifestations: test 2.9 (mobile).
 
-Actual: at 1920px the Progress column is the narrowest column. The `<progress>` renders about 22px wide while the Status column takes most of the width.
+![](screenshots/page-2026-11-27T03-48-54-638Z.png)
 
-## B2: Quiz headings in a course section look the same as the course heading
+- Expected: at 375px every badge in a Courses tab card stays inside its value cell and the card, wrapping if needed.
+- Actual: "Failed most recent quiz attempt" is white-space:nowrap and 195px wide in a 158px value cell. Its right edge (363px) passes the card's right border (359px).
 
-Manifestations:
-- test 2.5, desktop
+## Bug B3: Dashboard text links have no 44px hit area on a phone
 
-![](screenshots/page-2026-11-26T07-20-05-605Z.png)
-![](screenshots/page-2026-11-26T07-20-21-852Z.png)
+Manifestations: test 6.7 (mobile).
 
-Expected: each section below the table is headed by the course title, and the quiz attempt tables inside it read as part of that course.
+![](screenshots/page-2026-11-27T03-50-43-402Z.png)
 
-Actual: the quiz heading (h4, e.g. "Voltage Quiz 01") renders at the same 18px / semibold as the course section heading (h3), so each quiz reads as a sibling section.
+- Expected (QA plan test 6.7): at 375px the dashboard's tiles, icons and links are tappable with 44px hit areas.
+- Actual: Needs attention cohort-name links are 20px tall, course-name links 39px, and the over-limit callout's cohort link 22px, with no expanded hit area. The cohort name sits 4px from its 44px quick view icon.
 
-## B3: Settings Name panel Email row is half-width and flush against the form
+## Bug B4: Sign out page content is not inside the shell's content region
 
-Manifestations:
-- test 4.1, desktop
-- test 4.4, mobile
+Manifestations: test 9.7 (desktop), test 9.7 (mobile), test 9.7 (tablet).
 
-![](screenshots/page-2026-11-26T07-21-22-113Z.png)
-![](screenshots/page-2026-11-26T07-28-03-883Z.png)
+![](screenshots/page-2026-11-27T03-43-11-344Z.png)
 
-Expected: the Email row sits above the name fields with the panel's usual spacing and uses the panel width, so a long address wraps only when it must.
-
-Actual: the single-row `<c-panel-definition-list>` keeps its `grid-cols-2` / `md:grid-cols-3` grid, so the address gets one column (half the panel at 375px, breaking over 3 lines). The list's bottom touches the "First name:" label (0px gap).
-
-## B4: A failed (5xx) bulk confirm request shows no error
-
-Manifestations:
-- test 7.6, desktop
-
-No screenshot (the state has no visible error to capture).
-
-Expected: when the in-request bulk run's POST fails with a server error, the dialog unlocks and tells the educator the run failed.
-
-Actual: the dialog unlocks (Cancel and close enabled, Esc closes) but its body is unchanged and no error appears anywhere, so the failure is silent.
+- Expected: the sign out page places its header band and card the way its sibling account page (Personal details) does, which the layout probe passes.
+- Actual: the probe reports "misaligned: header ink starts at x=256, content at x=288" (offsets of 16px at 375 and 24px at 768). The title and card both start at x=288 on screen, but the card is a direct child of `#interface-main` instead of sitting in the full-width content region the profile page uses.
 
 ## Layout probe
 
-| Test id | Viewport | URL | Screenshot | Result |
+| Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1.1 | desktop | `/educator/organisations/demodev/learners` | ![](screenshots/page-2026-11-26T07-19-38-872Z.png) | clean |
-| 2.1 | desktop | `/educator/organisations/demodev/learners/<A>/__tabs/courses` | ![](screenshots/page-2026-11-26T07-20-21-852Z.png) | clean |
-| 2.5 | desktop-1280 | `/educator/organisations/demodev/learners/<A>/__tabs/courses` | ![](screenshots/page-2026-11-26T07-20-05-605Z.png) | clean |
-| 3.1 | desktop | `/educator/organisations/demodev/learners` (quick view open) | ![](screenshots/page-2026-11-26T07-21-09-562Z.png) | clean |
-| 4.1 | desktop | `/educator/organisations/demodev/learners/<A>/__tabs/settings` | ![](screenshots/page-2026-11-26T07-21-22-113Z.png) | clean |
-| 6.1 | desktop | `/educator/organisations/demodev/dashboard` | ![](screenshots/page-2026-11-26T07-22-36-502Z.png) | clean |
-| 1.9 | mobile | `/educator/organisations/demodev/learners` | ![](screenshots/page-2026-11-26T07-27-42-283Z.png) | clean |
-| 2.9 | mobile | `/educator/organisations/demodev/learners/<A>/__tabs/courses` | ![](screenshots/page-2026-11-26T07-27-54-421Z.png) | clean |
-| 4.4 | mobile | `/educator/organisations/demodev/learners/<A>/__tabs/settings` | ![](screenshots/page-2026-11-26T07-28-03-883Z.png) | clean |
-| 8.1 | mobile | `/educator/organisations/demodev/learners` (Add learner dialog) | ![](screenshots/page-2026-11-26T07-28-25-915Z.png) | clean |
-| 8.2 | mobile | `/educator/organisations/demodev/learners` (bulk dialog) | ![](screenshots/page-2026-11-26T07-28-46-416Z.png) | clean |
-| 3.3 | mobile | `/educator/organisations/demodev/learners` (quick view) | ![](screenshots/page-2026-11-26T07-28-59-350Z.png) | clean |
-| 6.7 | mobile | `/educator/organisations/demodev/dashboard` | ![](screenshots/page-2026-11-26T07-29-11-826Z.png) | clean |
-| 2.9 | tablet | `/educator/organisations/demodev/learners/<A>/__tabs/courses` | ![](screenshots/page-2026-11-26T07-29-41-526Z.png) | clean |
-| 1.9 | tablet | `/educator/organisations/demodev/learners` | ![](screenshots/page-2026-11-26T07-29-49-246Z.png) | clean |
-
-The probe flags were empty everywhere, yet the 4.1 and 4.4 screenshots show the B3 spacing and width problem. The probe does not catch these.
+| 6.0 | desktop | /educator/organisations/demodev/dashboard | [shot](screenshots/page-2026-11-27T03-27-41-616Z.png) | clean |
+| 1.1 | desktop | /educator/organisations/demodev/learners | [shot](screenshots/page-2026-11-27T03-31-42-257Z.png) | clean |
+| 2.1 | desktop | /educator/organisations/demodev/learners/<A>/__tabs/courses | [shot](screenshots/page-2026-11-27T03-31-15-385Z.png) | clean |
+| 2.10 | desktop | /educator/organisations/demodev/learners/<C>/__tabs/courses | [shot](screenshots/page-2026-11-27T03-34-09-729Z.png) | clean |
+| 3.1 | desktop | /educator/organisations/demodev/learners (quick view open) | [shot](screenshots/page-2026-11-27T03-34-43-801Z.png) | clean |
+| 4.1 | desktop | /educator/organisations/demodev/learners/<A>/__tabs/settings | [shot](screenshots/page-2026-11-27T03-35-19-091Z.png) | clean |
+| 5.1b | desktop | /educator/organisations/demodev/cohorts/<QA Polish>/__tabs/report | [shot](screenshots/page-2026-11-27T03-38-06-264Z.png) | clean |
+| 9.9 | desktop | /educator/organisations/demodev/cohorts/<QA Polish>/__tabs/settings | [shot](screenshots/page-2026-11-27T03-42-09-984Z.png) | clean |
+| 9.10 | desktop | /educator/organisations/demodev/cohorts | [shot](screenshots/page-2026-11-27T03-42-24-655Z.png) | clean |
+| 9.2 | desktop | /educator/organisations/northwind-logistics/dashboard | [shot](screenshots/page-2026-11-27T03-46-12-102Z.png) | clean |
+| 9.4 | desktop | /educator/organisations/northwind-logistics/staff | [shot](screenshots/page-2026-11-27T03-46-48-631Z.png) | clean |
+| 9.6 | desktop | /educator/organisations/demodev/learners/import/<id>/ | [shot](screenshots/page-2026-11-27T03-47-30-381Z.png) | clean |
+| 9.6 | desktop | /educator/organisations/demodev/learners/import/<id>/result/ | [shot](screenshots/page-2026-11-27T03-47-51-616Z.png) | clean |
+| 9.7 | desktop | /accounts/logout/ | [shot](screenshots/page-2026-11-27T03-43-11-344Z.png) | misaligned: header ink starts at x=256, content at x=288 (32px) |
+| 1.9 | mobile | /educator/organisations/demodev/learners | [shot](screenshots/page-2026-11-27T03-48-38-715Z.png) | clean |
+| 2.9 | mobile | /educator/organisations/demodev/learners/<A>/__tabs/courses | [shot](screenshots/page-2026-11-27T03-48-54-638Z.png) | clean |
+| 3.3 | mobile | /educator/organisations/demodev/learners (quick view) | [shot](screenshots/page-2026-11-27T03-49-18-054Z.png) | clean |
+| 6.7 | mobile | /educator/organisations/demodev/dashboard | [shot](screenshots/page-2026-11-27T03-50-43-402Z.png) | clean |
+| 9.7 | mobile | /accounts/logout/ | none | misaligned: header ink starts at x=0, content at x=16 (16px) |
+| 2.9 | tablet | /educator/organisations/demodev/learners/<A>/__tabs/courses | [shot](screenshots/page-2026-11-27T03-51-52-709Z.png) | clean |
+| 1.9 | tablet | /educator/organisations/demodev/learners | [shot](screenshots/page-2026-11-27T03-51-59-079Z.png) | clean |
+| 9.7 | tablet | /accounts/logout/ | none | misaligned: header ink starts at x=0, content at x=24 (24px) |
 
 ## Data changes
 
 | What changed | Made by | Files written |
 |---|---|---|
-| Seeded demo data (`create_demo_data`, `content_save DemoDev`), the QA scenario (learners A-F, 5 QA Polish courses, QA Polish Cohort, cohort-scoped viewer `qa.polish.viewer@qa-polish.test`) and 210 bulk learners. The over-limit cohort was not seeded (`REPORTS_MAX_LEARNERS=500`). | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_educator_page_polish_scenario.py` |
-| 3 demodev learners (rows 6-8 of the list, `demodev_s1x`) deactivated | the app's bulk Deactivate, during test 7.5 | none |
+| Dev server run with git-ignored `config/settings_local.py` setting REPORTS_MAX_LEARNERS=10 so a cohort crosses the report learner limit; file deleted after the run | settings override | none |
+| Added BULK_BACKGROUND_THRESHOLD=5 to the same git-ignored `config/settings_local.py` so a bulk action runs in the background (test 7.8); file deleted after the run | settings override | none |
+| qa.polish.bulk001-003 deactivated in test 7.5 and reactivated afterwards; net no change | app UI (bulk Deactivate then Reactivate) | none |
+| Vusi Viewer staff member deactivated and reactivated while probing test 9.4; net no change | app UI (Deactivate/Reactivate staff member) | none |
+| demodev@email.com added as Organisation admin of Northwind Logistics, so it is that organisation's only staff member (test 9.4) | app UI (Add staff member) | none |
+| Imported learner qa.polish.import1@qa-polish.test from a 3-row CSV with 2 error rows (test 9.6); the CSV lives in `.sdd-work/qa_import_errors.csv` and is deleted with the scratch files | app UI (Import learners) | none |
 
 ## Bug status
 
 | Bug | Title | Status |
 |---|---|---|
-| B1 | Courses tab Progress column squeezes the bar to ~22px | **FIXED** (commit: 438f158d7). Bars now 84–100px at 1920px |
-| B2 | Quiz headings in a course section look the same as the course heading | **FIXED** (commit: 67076a7c8). Quiz h4 now 16px under the 18px course h3 |
-| B3 | Settings Name panel Email row is half-width and flush against the form | **FIXED** (commit: 1d1832564). Inline row across the panel, 12px above the form ([after](screenshots/page-2026-11-26T07-50-05-436Z.png)) |
-| B4 | A failed (5xx) bulk confirm request shows no error | **FIXED** (commit: f8b16e141, 57ea69b5d, a5d03a8ec) — A failed (5xx) bulk confirm request shows no error — after the fix: the error shows as an error callout in the dialog body, not a bare red line: ![](screenshots/fixed/bulk-request-error-callout-1920.png) ![](screenshots/fixed/bulk-request-error-callout-375.png) |
+| B1 | Progress bar track disappears on a hovered table row | **FIXED** (commit: eee8623ee): the track now uses the border token, visible on a hovered row (rgb(209,213,219) on rgb(243,244,246)) ![](screenshots/page-2026-11-27T03-58-59-373Z.png) |
+| B2 | Flag badge overflows the Courses tab phone card | **UNRESOLVED**: the fix (7a2be04f4) targeted `.panel-chip`, but the badge renders as `span.chip`, so at 375px it still ended at 363px past the 359px card edge; reverted in 1fbfe8e2f. Needs a fix that targets the chip the badges partial renders (reason: one fix attempt per bug, re-verification failed) ![](screenshots/page-2026-11-27T04-07-18-480Z.png) |
+| B3 | Dashboard text links have no 44px hit area on a phone | **UNRESOLVED**: meeting a 44px target for stacked dashboard text links needs a spacing decision; the spec and the panel-framework rule give hit areas to buttons only |
+| B4 | Sign out page content is not inside the shell's content region | **FIXED** (commit: 375922549): the card sits in a canvas wrapper as on Personal details; the probe passes at 1920, 375 and 768 with the look unchanged ![](screenshots/page-2026-11-27T04-11-05-932Z.png) |
 
 ## General notes
 
-- Test 6.4 (over-limit cohort message) was run after QA, with REPORTS_MAX_LEARNERS lowered to 10 for the dev server: the dashboard callout reads "Cohort 2025.03.04 has 47 learners, over the report's learner limit of 10, so it is not included.", the cohort name is a link that opens the cohort page, and at 375px the callout wraps with no sideways scroll. PASS. ![](screenshots/fixed/dashboard-boxed-375.png) ![](screenshots/fixed/dashboard-boxed-1920.png)
-- After review, two rules were applied across the panel-framework pages. (1) Every error or warning is a `<c-panel-callout>`: the failed bulk confirm, a failed form dialog ([screenshot](screenshots/fixed/form-dialog-request-error-callout-1920.png)), a failed inline form, the form error summary and the quick view's load error ([screenshot](screenshots/fixed/quick-view-load-error-callout-1920.png)). (2) Nothing sits on the canvas outside a box: on the dashboard the over-limit notice is inside the Cohort progress card and "Figures as of" is the description of both cards; the staff list's sole-admin notice is inside the list card; the import pages' step indicator is in the header band and their error rows, "Clear filter" and result buttons are inside cards; the sign out question is inside its card. Invariant tests and the browser check `assert_canvas_holds_only_boxes` enforce both. Test 9 of the QA plan covers them; its steps 4 to 7 (staff list as sole admin, Report tab, import pages, account pages) were checked by the browser tests, not by hand.
-- Test 6.3: no course outside the viewer's visible set exists in the data, so the plain-text (unlinked) branch was not exercised.
-- Test 7.8: the background-run confirmation was not confirmed, to keep the QA learners active.
-- Test 2.1: at 1280px the Courses tab panel container is about 910px, under the table's 58rem card breakpoint, so it shows cards rather than the table. This is the framework's `cards_when_narrow` rule. The table was checked at 1920.
-- Three demodev learners remain deactivated from test 7.5, so the list shows 263 active/pending learners.
+- Dev server settings: the server ran with a git-ignored settings override (REPORTS_MAX_LEARNERS=10, BULK_BACKGROUND_THRESHOLD=5).
+- Test 1.1: the plan expected the not-started course hidden, but it carries the "No recorded activity" at-risk flag, so per the spec's ordering it ranks with flagged courses. Spec wins. The "+2 more" text sits about 8px right of the course titles' left edge (its own padding).
+- Test 4.2 ran by an alternate route. First name is optional (blank saves, pre-existing model behaviour), so clearing it shows no error. The error path used a 260-character name instead: 422 with "Ensure this value has at most 200 characters". Side observation, pre-existing and extreme data: a 200-character unbroken first name overflows the Account card's sentence. The name was restored to Alexandra.
+- Test 6.3: the plain-text branch was not exercised, because the data has no course outside the viewer's visible set.
+- Front-end check after the rebase: the upstream change was one admin stylesheet outside the shared paths. This QA run covered every branch page at three viewports.
+- Screenshots `page-2026-11-27T03-36-30-000Z.png` and `page-2026-11-27T03-36-40-000Z.png` come from a second browser context (cohort viewer, test 4.6) with the debug toolbar open. They are not used as evidence images.
+- Tests 2.9 and 1.9 passed at tablet (768) and 1.9 at mobile; the failures are limited to the badge overflow (B2) at 375px.
 
-status: ok · reason: 4 bugs — 4 fixed, 0 unresolved; report rendered, screenshots verified
+status: ok · reason: 4 bugs — 2 fixed, 2 unresolved; report rendered
