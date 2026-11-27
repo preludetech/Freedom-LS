@@ -47,6 +47,7 @@ from freedom_ls.educator_interface.tests.helpers import (
     _org_admin,
     _pdf_url,
     _ready_report,
+    assert_plain_sentence,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -1502,7 +1503,7 @@ class TestCohortReportQuestionDetail:
         region = _body_region(client, _body_url(cohort.organisation.slug, cohort.pk))
 
         text = " ".join(region.text_content().split())
-        assert QUESTION_DETAIL_HIDDEN_NOTE in text
+        assert_plain_sentence(region, QUESTION_DETAIL_HIDDEN_NOTE)
         _assert_no_question_text(text)
         assert "Ada Able" in text
         assert f"{_LEARNER_PERCENTAGE}%" in text

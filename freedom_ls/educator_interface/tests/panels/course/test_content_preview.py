@@ -2517,17 +2517,18 @@ def test_a_non_holders_outline_disables_each_quiz_preview_and_keeps_others(
     )
 
     panel = document.cssselect("section[data-panel='content']")[0]
-    disabled = panel.cssselect("table button[disabled][aria-describedby]")
+    disabled = panel.cssselect("table button[disabled]")
     assert {button.get("aria-label") for button in disabled} == {
-        "Preview Safety quiz",
-        "Preview Safety quiz: Page 1",
-        "Preview Safety quiz: Page 2",
+        "Needs permission to preview Safety quiz",
+        "Needs permission to preview Safety quiz: Page 1",
+        "Needs permission to preview Safety quiz: Page 2",
     }
-    assert all(
-        document.get_element_by_id(button.get("aria-describedby")).text_content()
-        == "Previewing a quiz needs the question bank viewer role."
-        for button in disabled
-    )
+    for button in disabled:
+        assert button.text_content().strip() == "Needs permission"
+        # The cell holds the button alone: a sentence beside it wraps.
+        assert button.getparent().text_content().strip() == "Needs permission"
+        assert not any(name.startswith("hx-") for name in button.attrib)
+    assert "question bank viewer role" not in panel.text_content()
     assert {
         button.get("aria-label") for button in panel.cssselect("table button[hx-get]")
     } == {
@@ -2535,6 +2536,40 @@ def test_a_non_holders_outline_disables_each_quiz_preview_and_keeps_others(
         "Preview Intro",
         "Preview Plain survey",
     }
+
+
+@pytest.mark.django_db
+def test_an_outline_card_labels_its_type_and_footers_its_button(
+    mock_site_context: object,
+) -> None:
+    organisation = cast(Organisation, OrganisationFactory())
+    course = _available_course(organisation)
+    _place(course, TopicFactory(title="Intro"), 0)
+    _place(course, _quiz_form("Safety quiz", pages=1), 1)
+    client = _question_viewer_client(organisation, holds_role=False)
+
+    document = _get_document(
+        client,
+        _interface_url(organisation.slug, f"courses/{course.pk}/__tabs/content"),
+    )
+
+    panel = document.cssselect("section[data-panel='content']")[0]
+    cards = panel.cssselect("li.panel-data-table-card")
+    for title, kind, button in (
+        ("Intro", "Topic", "Preview"),
+        ("Safety quiz", "Form", "Needs permission"),
+    ):
+        (card,) = [
+            card
+            for card in cards
+            if title in card.cssselect("[data-card-title]")[0].text_content()
+        ]
+        (row,) = card.cssselect("dl > div")
+        assert row.cssselect("dt")[0].text_content().strip() == "Type"
+        assert row.cssselect("dd")[0].text_content().strip() == kind
+        (footer,) = card.cssselect("[data-item-footer]")
+        assert "mt-3" in footer.get("class", "").split()
+        assert footer.cssselect("button")[0].text_content().strip() == button
 
 
 @pytest.mark.django_db

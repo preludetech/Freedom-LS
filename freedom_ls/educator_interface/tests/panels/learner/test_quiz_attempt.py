@@ -20,6 +20,9 @@ from freedom_ls.accounts.models import User
 from freedom_ls.audit_log.models import AuditLogEntry
 from freedom_ls.audit_log.writer import subject_key
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.educator_interface.panels.common.question_detail import (
+    QUESTION_DETAIL_HIDDEN_NOTE,
+)
 from freedom_ls.educator_interface.panels.common.request import (
     OrganisationScopedRequest,
 )
@@ -34,6 +37,7 @@ from freedom_ls.educator_interface.tests.helpers import (
     _header_of,
     _interface_url,
     _learner_page,
+    assert_plain_sentence,
     organisation_admin_viewer,
 )
 from freedom_ls.form_engine.factories import (
@@ -1043,11 +1047,12 @@ def test_a_non_holder_sees_the_hidden_note_and_nothing_is_logged(
     organisation = OrganisationFactory()
     sitting, _ = _gated_sitting(organisation)
 
-    text = _paper_text(
+    region = _paper_region(
         _admin_client(organisation, logged_in_client), organisation, sitting
     )
+    text = _text(region)
 
-    assert "Question detail is hidden" in text
+    assert_plain_sentence(region, QUESTION_DETAIL_HIDDEN_NOTE)
     assert "Secret question" not in text
     assert "Hidden option" not in text
     assert _question_views() == []

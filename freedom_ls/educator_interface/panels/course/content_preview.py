@@ -394,9 +394,9 @@ class CourseOutlineTable(DataTable):
             Column(
                 header="Actions",
                 template_name="educator_interface/partials/course_outline_actions.html",
-                header_class="w-96 min-w-96 max-w-96",
+                header_class="w-40 min-w-40 max-w-40",
                 header_hidden=True,
-                cell_class="w-96 min-w-96 max-w-96",
+                cell_class="w-40 min-w-40 max-w-40",
             ),
         ]
 

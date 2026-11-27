@@ -73,6 +73,17 @@ def organisation_admin_viewer(organisation: Organisation) -> User:
     return viewer
 
 
+def assert_plain_sentence(region: lxml.html.HtmlElement, sentence: str) -> None:
+    """`sentence` stands as a plain paragraph, not inside a callout box."""
+    paragraphs = [
+        element
+        for element in region.iter("p")
+        if " ".join(element.text_content().split()) == sentence
+    ]
+    assert len(paragraphs) == 1, sentence
+    assert not paragraphs[0].xpath("ancestor::*[contains(@class, 'callout')]")
+
+
 def get_interface_page(
     organisation: Organisation, path_string: str, viewer: User
 ) -> str:

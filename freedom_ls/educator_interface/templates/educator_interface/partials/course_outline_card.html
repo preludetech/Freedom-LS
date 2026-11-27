@@ -1,10 +1,16 @@
 {% comment %}
-An outline row as a card: its number, kind icon, kind label and title, with
-the Preview trigger beneath when the row has one.
+An outline row as a card: its number, kind icon and title, then its type
+labelled "Type", as every card value carries its column header, then the
+Preview trigger in the item footer, 12px under the type. The footer cancels
+the trigger's md:-my-1, which only tightens a desktop table row.
 {% endcomment %}
-<div class="flex items-center gap-2">
+<div data-card-title class="flex items-center gap-2">
     {% if object.number %}<span class="shrink-0 text-sm text-muted tabular-nums">{{ object.number }}</span>{% endif %}
     {% include "educator_interface/partials/course_outline_title.html" %}
 </div>
-<div class="mt-1 text-sm text-muted">{{ object.kind_label }}</div>
-{% include "educator_interface/partials/course_outline_actions.html" %}
+<c-panel-definition-list layout="inline" class="mt-3">
+    <c-panel-definition-row label="Type">{% include "educator_interface/partials/course_outline_type.html" %}</c-panel-definition-row>
+</c-panel-definition-list>
+<div data-item-footer class="mt-3 [&_button]:my-0 [&:not(:has(button,a))]:hidden">
+    {% include "educator_interface/partials/course_outline_actions.html" %}
+</div>

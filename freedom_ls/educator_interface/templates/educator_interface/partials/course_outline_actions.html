@@ -1,8 +1,10 @@
 {% comment %}
 The Preview trigger of an outline row. row_action_urls comes from the
 panel's own actions; a part has no preview query and shows nothing. A quiz
-row the viewer may not preview keeps its button, disabled, with the reason
-beside it, because the viewer needs to know a role would open it.
+row the viewer may not preview keeps a disabled button whose own label says
+why, with no sentence beside it: text in a button cell wraps and makes the
+row tall. The disabled button carries no hx-* attribute, so a click on it
+does nothing.
 {% endcomment %}
 {% if object.kind == "course" %}
     <c-data-table-actions>
@@ -12,12 +14,9 @@ beside it, because the viewer needs to know a role would open it.
                          aria_label="Preview course details page" />
     </c-data-table-actions>
 {% elif object.preview_withheld %}
-    <c-data-table-actions layout="line">
+    <c-data-table-actions>
         <c-button size="small" variant="secondary" class="md:-my-1" disabled="true"
-                  aria_label="{% if object.kind == 'page' %}Preview {{ object.form_title }}: {{ object.title }}{% else %}Preview {{ object.title }}{% endif %}"
-                  aria_describedby="preview-withheld-{{ object.item_pk }}{% if object.page_pk %}-{{ object.page_pk }}{% endif %}">Preview</c-button>
-        <span id="preview-withheld-{{ object.item_pk }}{% if object.page_pk %}-{{ object.page_pk }}{% endif %}"
-              class="text-xs text-muted">Previewing a quiz needs the question bank viewer role.</span>
+                  aria_label="Needs permission to preview {% if object.kind == 'page' %}{{ object.form_title }}: {% endif %}{{ object.title }}">Needs permission</c-button>
     </c-data-table-actions>
 {% elif object.preview_query and row_action_urls.preview_content %}
     <c-data-table-actions>

@@ -416,7 +416,7 @@ def test_course_outline_shows_a_retired_badge_beside_a_retired_topic_at_every_vi
             assert_no_horizontal_overflow(page)
 
 
-def test_a_non_holder_sees_quiz_previews_disabled_with_the_reason(
+def test_a_non_holder_sees_quiz_previews_disabled_as_needs_permission(
     live_server,
     educator_logged_in_page: Page,
     educator_user: AbstractBaseUser,
@@ -426,30 +426,49 @@ def test_a_non_holder_sees_quiz_previews_disabled_with_the_reason(
     content_url = interface_url(
         live_server, organisation.slug, f"courses/{course.pk}/__tabs/content"
     )
+    preview_requests: list[str] = []
+    page.on(
+        "request",
+        lambda request: preview_requests.append(request.url)
+        if "preview_content" in request.url
+        else None,
+    )
 
     for viewport in QA_VIEWPORTS:
         with no_console_errors(page):
             page.set_viewport_size(viewport)
             page.goto(content_url)
-            quiz_preview = page.get_by_role("button", name="Preview Check yourself")
-            expect(quiz_preview.locator("visible=true")).to_be_disabled()
-            reason = (
-                page.get_by_text(
-                    "Previewing a quiz needs the question bank viewer role."
-                )
-                .locator("visible=true")
-                .first
-            )
-            expect(reason).to_be_visible()
+            withheld = page.get_by_role(
+                "button", name="Needs permission to preview Check yourself"
+            ).locator("visible=true")
+            expect(withheld).to_be_disabled()
+            expect(withheld).to_have_text("Needs permission")
+            expect(
+                page.get_by_text("question bank viewer role").locator("visible=true")
+            ).to_have_count(0)
             assert_no_horizontal_overflow(page)
+            # A disabled button does nothing: no dialog, no request.
+            preview_requests.clear()
+            withheld.click(force=True)
+            page.wait_for_timeout(300)
+            expect(page.locator("#app-modal[open]")).to_have_count(0)
+            assert preview_requests == []
             if viewport["width"] >= 1920:
-                # The reason used to wrap to five lines in a 112px Actions
-                # cell, making a withheld quiz row about three times as tall
-                # as a topic row.
-                row_height = quiz_preview.locator("visible=true").evaluate(
+                row_height = withheld.evaluate(
                     "el => el.closest('tr').getBoundingClientRect().height"
                 )
-                assert row_height < 70, row_height
+                assert row_height < 50, row_height
+            else:
+                # On a card the button sits in its footer, clear of the
+                # "Type" line above it.
+                gap = withheld.evaluate(
+                    "el => el.getBoundingClientRect().top"
+                    " - el.closest('li').querySelector('dl').getBoundingClientRect().bottom"
+                )
+                assert gap >= 12, gap
+                expect(
+                    withheld.locator("xpath=ancestor::li[1]").locator("dt")
+                ).to_have_text("Type")
             page.get_by_role("button", name="Preview Cards").locator(
                 "visible=true"
             ).click()
