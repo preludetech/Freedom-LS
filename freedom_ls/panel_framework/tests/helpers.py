@@ -8,11 +8,9 @@ no factory_boy factories, so the ``make_stub*`` helpers play that role.
 from __future__ import annotations
 
 import itertools
-import re
 from pathlib import Path
 from typing import cast
 
-import lxml.html
 import pytest
 
 from django.contrib.auth import get_user_model
@@ -120,16 +118,3 @@ def use_temp_file_storage(
     storage = FileSystemStorage(location=str(location))
     monkeypatch.setattr(StubFileModel._meta.get_field("attachment"), "storage", storage)
     return storage
-
-
-def normalised_form_markup(html: str) -> str:
-    """A form render with the request-error element and the loading-label
-    attribute removed, so a render that lacks them can be compared with
-    one that has them."""
-    root = lxml.html.fromstring(f"<div>{html}</div>")
-    for holder in root.xpath("//*[@data-request-error]"):
-        holder.drop_tree()
-    for span in root.xpath("//*[@data-loading-label]"):
-        del span.attrib["data-loading-label"]
-    serialised = lxml.html.tostring(root, encoding="unicode")
-    return re.sub(r">\s+<", "><", " ".join(serialised.split()))
