@@ -7156,7 +7156,11 @@ def test_save_run_keeps_both_options_of_a_question_live_when_they_share_a_value(
     ] == [False, False]
 
 
-def _save_quiz(make_temp_file, mock_site_context, front_matter: str) -> Form:
+def _save_quiz(
+    make_temp_file: Callable[[str, str], Path],
+    mock_site_context: Site,
+    front_matter: str,
+) -> Form:
     temp_file = make_temp_file(".md", f"---\ncontent_type: FORM\n{front_matter}---\n")
     (item,) = parse_single_file(temp_file)
     return cast(Form, save_form(item, mock_site_context, temp_file.parent))
@@ -7169,7 +7173,9 @@ _QUIZ_FRONT_MATTER = (
 
 
 @pytest.mark.django_db
-def test_form_time_limit_minutes_saves(make_temp_file, mock_site_context) -> None:
+def test_form_time_limit_minutes_saves(
+    make_temp_file: Callable[[str, str], Path], mock_site_context: Site
+) -> None:
     form = _save_quiz(
         make_temp_file,
         mock_site_context,
@@ -7181,7 +7187,7 @@ def test_form_time_limit_minutes_saves(make_temp_file, mock_site_context) -> Non
 
 @pytest.mark.django_db
 def test_removing_time_limit_minutes_clears_it_on_the_next_load(
-    make_temp_file, mock_site_context
+    make_temp_file: Callable[[str, str], Path], mock_site_context: Site
 ) -> None:
     timed = _save_quiz(
         make_temp_file,

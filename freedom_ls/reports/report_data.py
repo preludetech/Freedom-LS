@@ -58,8 +58,11 @@ class QuizAttempt:
     max_score: int | None
     percentage: int | None
     passed: bool | None
-    # The label the attempts table prints, not the stored value.
-    completion_reason: str = str(CompletionReason.LEARNER_SUBMITTED.label)
+    # The label the attempts table prints, not the stored value. Built per
+    # instance, so the label is in the language active then, not at import.
+    completion_reason: str = dataclasses.field(
+        default_factory=lambda: str(CompletionReason.LEARNER_SUBMITTED.label)
+    )
 
 
 @dataclasses.dataclass(frozen=True)
