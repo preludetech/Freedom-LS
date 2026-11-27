@@ -1,0 +1,16 @@
+version = 1
+revision = 3
+requires-python = ">=3.13"
+
+[[package]]
+name = "django"
+version = "6.0"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "django-panel-framework"
+version = "0.1.0"
+source = { git = "https://github.com/preludetech/django-panel-framework.git?rev=v0.1.0#1eec040721306262c6ae4c7c395449d2d3222b1e" }
+dependencies = [
+    { name = "django" },
+]
