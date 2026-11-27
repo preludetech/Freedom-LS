@@ -1178,7 +1178,7 @@ def test_the_paper_shows_the_wording_of_the_version_the_sitting_was_served(
     sitting = _sitting_answered_on_version_one(organisation)
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert "Original wording" in text
@@ -1193,7 +1193,7 @@ def test_the_paper_marks_the_answer_on_the_version_the_sitting_was_served(
     sitting = _sitting_answered_on_version_one(organisation)
 
     text = _paper_text(
-        _admin_client(organisation, logged_in_client), organisation, sitting
+        _holder_client(organisation, logged_in_client), organisation, sitting
     )
 
     assert "Marked correct" in text

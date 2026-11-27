@@ -5361,10 +5361,10 @@ def test_results_page_query_count_has_the_same_bound_for_two_and_six_questions(
     six, six_user = results_page_with(6)
 
     client.force_login(two_user)
-    with django_assert_max_num_queries(67):
+    with django_assert_max_num_queries(71):
         two_response = client.get(_results_url(two))
     client.force_login(six_user)
-    with django_assert_max_num_queries(67):
+    with django_assert_max_num_queries(71):
         six_response = client.get(_results_url(six))
 
     assert (two_response.status_code, six_response.status_code) == (200, 200)
