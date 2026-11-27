@@ -17,7 +17,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Put `UV_NO_SYNC=1` in your shell profile and in the `env` block of `.claude/settings.local.json`, so `uv run` and the pre-commit hook keep a linked package worktree (spec Requirements §4)
