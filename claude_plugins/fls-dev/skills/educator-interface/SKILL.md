@@ -68,9 +68,12 @@ starts collapsed.
   (`preview_sequence` in `panels/course/content_preview.py`): Course content runs from Course
   details to the last item or page, Reference stays within itself.
 - A quiz's own preview row shows a facts block (`_quiz_facts`).
-- A quiz row's Preview is disabled, with the reason beside it, for a viewer without the question
-  bank viewer role. This is the one exception to the panel framework's "a row the viewer cannot
-  act on leaves its buttons cell empty" (`partials/course_outline_actions.html`).
+- For a viewer without the question bank viewer role, a quiz row's Preview becomes a disabled
+  button labelled "Needs permission", with no text beside it. This is the one exception to the
+  panel framework's "a row the viewer cannot act on leaves its buttons cell empty"
+  (`partials/course_outline_actions.html`).
+- An outline card reads "<number> <icon> <title>", then "Type: <kind>", then its button in the
+  item footer (`partials/course_outline_card.html`).
 - Every outline table on the course page shares one column layout: the `#`, Type and Actions
   columns have fixed widths and Title takes the rest, so stacked outline panels line their
   numbers, types and Preview buttons up in one column each.
@@ -125,6 +128,8 @@ What QA checks in a screenshot of an educator page, on top of the panel framewor
   shows its own footer count, or "No reference material in this course yet." when empty.
 - Stacked outline tables line up: the `#`, Type and Preview columns start at the same x in every
   outline panel on the course page; at 768 and on a phone every outline shows as cards.
+- A withheld quiz row shows a disabled "Needs permission" button and no sentence beside it; an
+  outline card shows "Type: <kind>" with its button 12px below.
 - A course another organisation owns shows its owner: "(<organisation>)" after the title in a
   picker, filter or dialog title, a muted "Shared by <organisation>" line in a table cell; the
   viewing organisation's own courses show the title alone, and no label wraps out of its control.

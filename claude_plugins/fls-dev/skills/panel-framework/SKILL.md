@@ -214,8 +214,13 @@ which site a request belongs to. The host says so through a setting.
   scroll.
 - A row the viewer cannot act on states its fields and leaves its buttons column empty: no note
   saying why, no link to the page where it can be changed.
-  One exception: a quiz row of the course outline shows a disabled Preview with its reason beside
-  it to a viewer without the question bank viewer role.
+  Where a spec keeps a withheld action on the row, it is a disabled button whose own short label
+  says why ("Needs permission"); no text sits beside it.
+- A cell or card footer that holds buttons holds buttons only. A sentence beside a button wraps
+  in the narrow cell and makes the row tall; the reason goes in the button's label or nowhere.
+- A disabled button does nothing: it renders `disabled` with no `hx-*` or `x-on` attributes, so a
+  click opens no dialog and sends no request. The server still refuses a hand-built request for
+  the action with the denied dialog.
 - A row's own record is opened in the quick view; detail a row does not need to be scanned (who
   made an entry, and when) lives there, not in the row.
 - Two buttons in one row each name their object, so no two share a bare verb.
@@ -372,6 +377,8 @@ panel with framework actions that call the other app's forms and flows.
 - A footer's Cancel or Close calls `cancel()`: it drops the input and never asks to discard. Only
   the header close control and Esc call `requestClose()`, which goes through the dirty-form
   guard.
+- A sentence that stands in for panel content the viewer may not see ("Question detail is
+  hidden: …") is a plain `<p>` in the panel body, not a callout.
 - A notice on a panel-framework page is `<c-panel-callout tone title>` (`info`, `warning`,
   `error`, `success`): in a panel, a dialog, a sheet, a quick view and a panel form's error
   summary, in a framework template and in an FLS template alike. Panel-framework templates use
@@ -556,6 +563,11 @@ page of an app holds which action is that app's skill.
   the space between fields. A card template takes this spacing from `<c-panel-definition-list>`
   and `<c-data-table-card>`, plus `mt-3` above its fields; it sets no `gap-y-1` or `mt-1` of its
   own.
+- Every card value except the title reads `<column header>: <value>` ("Type: Form") through
+  `<c-panel-definition-row label>`; no value floats under the title without its label. A custom
+  `card_template_name` labels its values the same way the default card does.
+- A card's buttons sit in its item footer (`data-item-footer`, `mt-3`), 12px under the last field,
+  never pressed against it.
 
 ## What enforces it
 
@@ -723,6 +735,10 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
 - Content embedded in a panel shows no second header or rule, starts on the panel's left padding,
   and a bottom bar keeps the card's rounded corners.
 - A row the viewer cannot act on shows its fields and an empty buttons column, with no
-  explanatory note or link in its place.
-  The exception is a quiz row of the course outline: a viewer without the question bank viewer
-  role sees a disabled Preview with its reason beside it.
+  explanatory note or link in its place; where a spec keeps a withheld action, it is a disabled
+  button with a short label ("Needs permission") and no text beside it. Clicking it does nothing.
+- No cell or card footer that holds a button also holds a sentence; no text wraps beside a button.
+- Every card value but the title has its column header before it ("Type: Form"), and the card's
+  buttons sit 12px under the last field.
+- A sentence standing in for withheld panel content is plain body text, with no callout box or
+  icon.
