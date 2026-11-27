@@ -1,104 +1,153 @@
-# QA report: Quiz time limit
-
-- Branch: `sacaa-compliance-assessment-controls-3-test-time-limit`
-- Dev server port: 8622
-- Run date: 2026-11-26
-- Scoping class: FULL
-- Result: all 15 tests passed; no bugs found.
+# QA report: test time limit
 
 ## Methodology
 
-Tests were run in a browser against the dev server following `3. frontend_qa.md`. Screenshots were collected into `screenshots/` beside this report, and every image referenced below exists there. Tests run at desktop, mobile (375px) and tablet (768px) where the plan asked for it. Time was moved by rewinding the open sitting's `start_time`, as the plan describes.
+Frontend QA was run in a browser at desktop, tablet (768px) and mobile (375px) viewports. Screenshots were collected into `spec_dd/2. in progress/sacaa-compliance-assessment-controls-3-test-time-limit/screenshots/`. Every image referenced below was checked and exists beside this report. The smoke gate passed, so no steps were skipped because of it.
+
+Results: 47 test records passed and 1 failed (`13-wrong-answers-table`, which is bug B1). Details are in the sections below.
 
 ## Diff scoping
 
-Class FULL. The changed files that triggered it include `freedom_ls/learner_interface/templates/learner_interface/course_form_page.html`, `freedom_ls/learner_interface/static/learner_interface/js/alpine-components.js`, `freedom_ls/reports/static/reports/print.css`, and others (53 files in total). Nothing was skipped: all tests and all viewport passes ran.
+Class: **FULL**. Nothing was skipped, and all viewports and areas ran.
+
+Changed files that triggered the class (the scoping record lists these, plus about 90 backend, test, demo content, docs and spec files):
+
+- `freedom_ls/learner_interface/templates/learner_interface/course_form.html`
+- `freedom_ls/learner_interface/templates/learner_interface/course_form_page.html`
+- `freedom_ls/learner_interface/templates/learner_interface/course_form_complete.html`
+- `freedom_ls/learner_interface/static/learner_interface/js/alpine-components.js`
+- `freedom_ls/form_engine/templates/form_engine/partials/form_facts.html`
+- `freedom_ls/reports/templates/reports/partials/learner_detail.html`
+- `freedom_ls/reports/static/reports/print.css`
 
 ## Smoke gate
 
-Pass. Pages loaded: `/` and `/courses/functionality-demo-timed-quiz/2/`.
+Status: **pass**. Pages loaded: `/` and `/courses/functionality-demo-timed-quiz/2/`. No failure URL or reason.
 
-## Test results
+## Test results summary
 
-| Test | Viewport | Result | Notes |
-|---|---|---|---|
-| 1 Start page shows the limit | desktop, tablet | pass | The "10 minutes" chip with a clock icon sits beside the question and page chips. The exact notice is above Start. The untimed quiz shows no chip and no notice. At 768px there is no overflow. The dev-only branch badge covers the corner of the Previous button (dev tooling, not product). |
-| 2 Educator content preview | desktop | pass | The timed quiz shows "Time limit: 10 minutes". The untimed quiz shows "Time limit: None set". |
-| 3 Countdown | desktop, mobile | pass | It starts at 9:58 in m:ss. It ticks one second at a time with no movement or animation. It has `role=timer` and the name "Time left". It carries on across Next (9:26) and Previous (9:21). At 375px nothing overlaps and scrollWidth is 375. No console errors. |
-| 4 Warnings | desktop, mobile, tablet | pass | The 5-minute callout appears when the countdown passes 5:00. Loading with under 5 minutes left shows it at once. Crossing 1:00 swaps it to the 1-minute callout, and the assertive region holds its text. Reloading under a minute shows the 1-minute callout at once. Focus never moves. At 375px the callout wraps to two lines and the first question stays on screen. At 768px the callout is on one line. The page's toast container also has polite and assertive regions (pre-existing, separate). |
-| 5 Time runs out on the page | desktop | pass | At 0:00 the page posted itself with no beforeunload dialog and no validation message. Results show "Time ran out. Your quiz was submitted with the answers you had saved." and 1/4 (25%). In the database: `completion_reason=time_expired`, `time_limit_minutes=10`, completed time exactly start+10:00, Q1 answer stored. |
-| 6 Leave and return after time is up | desktop | pass | The exit dialog reads "Your answers are saved. The time limit keeps running while you are away." After rewinding to -300, the start URL redirected to results with "Time ran out". Both previous attempts were listed and Try Again started a new sitting at 9:58. Opening `fill_form/1` directly also landed on results (50%, page 1 counted). |
-| 7 Next just after expiry | desktop | pass | Rewound to -2s, Next pressed about 2.7s later. Results show "Time ran out" and score 2/4 (page 1 saved). |
-| 8 Next long after expiry | desktop | pass | Rewound to -120s. Results show "Time ran out" and score 0/4 (page not saved). |
-| 9 Early time-up claim ignored | desktop | pass | The scripted `time_up` post with about 10 minutes left redirected back to `fill_form/1` with the countdown running. The sitting stayed open. |
-| 10 Exit dialog copy | desktop | pass | The timed quiz shows the "time limit keeps running" copy. The untimed save-on-exit quiz keeps "Your progress is saved — you can resume later." |
-| 11 Housekeeping | desktop | pass | `fls_run_housekeeping` printed "Completed 1 sitting(s) whose quiz time limit had run out." The second run completed none. The sitting is `time_expired`, 2/4, completed at start+10:00. The start page lists it among previous attempts with no resume. |
-| 12 Attempt review | desktop, mobile | pass | The Summary shows "Completion reason: Time ran out" and "Time limit: 10 minutes". Started 14:18, Completed 14:28 (exactly ten minutes). The learner-submitted untimed attempt shows "Completion reason: Learner submitted" and no Time limit row. At 375px the rows sit in the two-column grid and nothing is clipped. |
-| 13 Cohort report | desktop | pass | In the PDF (page 20, demodev_s1) the QUIZ ATTEMPTS table has a COMPLETION REASON column after DATE. It shows "Time ran out" on attempt 1 and "Learner submitted" on attempt 2. Every column is readable and nothing is clipped. |
-| 14 Changing the limit mid-sitting | desktop | pass | With the limit set to 30 the runner showed 29:48. With the key removed there was no countdown, and the start page showed no chip or notice. After `git checkout` and `content_save` the runner showed 9:23. No console errors. The demo file is restored. |
-| 15 Untimed quiz unchanged | desktop | pass | No countdown or `data-remaining-seconds` on any page. The quiz was taken start to finish (3 pages) and submitted. Results show no "Time ran out". No console errors. The runner shows no submit confirmation dialog on main either, so behaviour is unchanged. |
-
-Screenshots:
-
-- Test 1 desktop: ![](screenshots/page-2026-11-26T14-28-49-019Z.png)
-- Test 1 tablet: ![](screenshots/page-2026-11-26T14-37-22-751Z.png)
-- Test 2: ![](screenshots/page-2026-11-26T14-29-37-387Z.png)
-- Test 3 desktop: ![](screenshots/page-2026-11-26T14-30-26-024Z.png)
-- Test 3 mobile: ![](screenshots/page-2026-11-26T14-30-43-020Z.png)
-- Test 4 desktop: ![](screenshots/page-2026-11-26T14-31-13-676Z.png)
-- Test 4 mobile: ![](screenshots/page-2026-11-26T14-31-42-084Z.png)
-- Test 4 tablet: ![](screenshots/page-2026-11-26T14-37-39-527Z.png)
-- Test 5: ![](screenshots/page-2026-11-26T14-32-35-168Z.png)
-- Tests 6 and 10: ![](screenshots/page-2026-11-26T14-32-56-311Z.png)
-- Test 8: ![](screenshots/page-2026-11-26T14-34-25-739Z.png)
-- Test 11: ![](screenshots/page-2026-11-26T14-35-05-966Z.png)
-- Test 12 desktop: ![](screenshots/page-2026-11-26T14-35-34-735Z.png)
-- Test 12 mobile: ![](screenshots/page-2026-11-26T14-37-16-277Z.png)
-- Test 15: ![](screenshots/page-2026-11-26T14-35-49-133Z.png)
+| Test | Viewport | Result | Screenshot | Notes |
+|---|---|---|---|---|
+| 1.1-1.3 | desktop | pass | ![](screenshots/page-2026-11-27T04-04-37-242Z.png) | Timed quiz start page shows a "10 minutes" chip and the notice with the expected copy. The button read "Continue Form" because a sitting was open. |
+| 1.4 | desktop | pass | ![](screenshots/page-2026-11-27T04-04-53-428Z.png) | Untimed quiz start page has no time chip and no notice. |
+| 2.1-2.2 | desktop | pass | ![](screenshots/page-2026-11-27T04-06-26-349Z.png) | Educator preview of the timed quiz lists "Time limit: 10 minutes". |
+| 2.3 | desktop | pass | ![](screenshots/page-2026-11-27T04-06-36-740Z.png) | Untimed quiz preview reads "Time limit: None set". |
+| 3.1-3.4 | desktop | pass | ![](screenshots/page-2026-11-27T04-07-42-456Z.png) | Countdown in the top bar starts at 9:58 and counts down one second at a time. It has `role=timer` and aria-label "Time left", and no layout shift. |
+| 3.5 | desktop | pass | none | The countdown carries on across Next and Previous and never restarts. |
+| 3.7 | desktop | pass | none | Browser console shows 0 errors and 0 warnings. |
+| 10.1 | desktop | pass | ![](screenshots/page-2026-11-27T04-08-41-804Z.png) | Timed exit dialog "Leave the test?" has the time-limit copy. |
+| 4.1-4.2 | desktop | pass | ![](screenshots/page-2026-11-27T04-09-14-339Z.png) | The 5-minute warning appears in a polite live region and focus is kept. No warning after a reload at 5:01. |
+| 4.3 | desktop | pass | none | Reloading with 1:54 left shows the 5-minute callout at once, outside any live region. |
+| 4.4 | desktop | pass | ![](screenshots/page-2026-11-27T04-09-54-453Z.png) | The 1-minute callout appears with an `aria-live=assertive` region holding the same text. |
+| 4.5 | desktop | pass | none | Reloading at 0:52 shows the 1-minute callout at once. |
+| 5 | desktop | pass | ![](screenshots/page-2026-11-27T04-11-12-222Z.png) | At 0:00 the page submitted itself with no dialog and no validation message. The results page shows "Time ran out" and 25% (1 / 4), so the unsaved answer was counted. |
+| 6.1-6.2 | desktop | pass | ![](screenshots/page-2026-11-27T04-08-41-804Z.png) | Exit dialog on page 2 has the time-limit copy. "Leave and save" returns to the start page. |
+| 6.3-6.5 | desktop | pass | none | After the time limit has passed, opening the start URL redirects to the results page. "Try Again" opens a new sitting at 9:58. The results page showed the Test 5 sitting because of the clock rewind; see General notes. |
+| 6.6 | desktop | pass | ![](screenshots/page-2026-11-27T04-12-50-217Z.png) | After the time limit has passed, opening the runner URL redirects to results with "Time ran out" and 50% (2 / 4). |
+| 7 | desktop | pass | none | Next pressed within the grace window saved page 1. Results show 50% (2 / 4). |
+| 8 | desktop | pass | none | Next pressed 2 minutes past expiry did not save the late page. Results show 0% (0 / 4). |
+| 9 | desktop | pass | none | A time-up post sent before expiry returns to the runner with the countdown still running and the sitting not completed. |
+| 11 | desktop | pass | ![](screenshots/page-2026-11-27T04-15-42-934Z.png) | `fls_run_housekeeping` completed 1 expired sitting, and a second run completed none. The start page then offered "Try Again". |
+| 12.1-12.3 | desktop | pass | ![](screenshots/page-2026-11-27T04-16-26-901Z.png) | Attempt review shows "Completion reason: Time ran out" and "Time limit: 10 minutes". Started and completed are exactly ten minutes apart. |
+| 12-quick-view | desktop | pass | ![](screenshots/page-2026-11-27T04-16-08-262Z.png) | Quick view has no layout fault. The debug toolbar tab overlaps a label, which is dev tooling only. |
+| 12.4 | desktop | pass | none | Submitted untimed quiz shows "Completion reason: Learner submitted" and no "Time limit" row. |
+| 13.1-13.2 | desktop | pass | ![](screenshots/page-2026-11-27T04-18-00-000Z.png) | The report PDF has a COMPLETION REASON column in the quiz attempts table. |
+| 13.3 | desktop | pass | ![](screenshots/page-2026-11-27T04-18-00-000Z.png) | Every column in the attempts table is readable and nothing is clipped. |
+| 13-wrong-answers-table | desktop | **fail** | ![](screenshots/page-2026-11-27T04-18-00-000Z.png) | See bug B1. |
+| 14 | desktop | pass | none | Changing or removing the time limit in the demo content and running `content_save` took effect. The demo file was restored with git checkout. |
+| 3.8 | desktop | pass | none | Untimed runner has no `role=timer` element. |
+| 10.2 | desktop | pass | ![](screenshots/page-2026-11-27T04-19-09-511Z.png) | Untimed exit dialog copy is unchanged. |
+| 15 | desktop | pass | ![](screenshots/page-2026-11-27T04-22-47-925Z.png) | Untimed quiz completed start to finish with no countdown or warnings, and 0 console errors. |
+| 3.6 / 4.6 | mobile | pass | ![](screenshots/page-2026-11-27T04-23-25-675Z.png) | The top bar fits on one row with no horizontal scroll. The callout wraps inside the viewport. |
+| 10.1 | mobile | pass | ![](screenshots/page-2026-11-27T04-23-32-755Z.png) | Timed exit dialog fits the 375px viewport. |
+| 1.1-1.3 | mobile | pass | ![](screenshots/page-2026-11-27T04-24-30-767Z.png) | Fact chips wrap to two rows and the notice wraps inside its box. |
+| 5 (results page) | mobile | pass | ![](screenshots/page-2026-11-27T04-24-42-724Z.png) | The "Time ran out" line wraps inside the result card. |
+| 2.1-2.2 | mobile | pass | ![](screenshots/page-2026-11-27T04-24-14-563Z.png) | Content preview opens as a bottom sheet and the time limit is readable. |
+| 12.1-12.2 | mobile | pass | ![](screenshots/page-2026-11-27T04-24-22-089Z.png) | Attempt review summary falls to two columns and stays readable. |
+| 3.6 / 4.6 | tablet | pass | ![](screenshots/page-2026-11-27T04-23-39-453Z.png) | Top bar on one row, callout on one line. |
+| 1.1-1.3 | tablet | pass | ![](screenshots/page-2026-11-27T04-23-48-913Z.png) | Chips on one row and notice above the action buttons. |
+| 12.1-12.2 | tablet | pass | ![](screenshots/page-2026-11-27T04-23-57-784Z.png) | Summary in three columns and readable. |
+| 2.1-2.2 | tablet | pass | ![](screenshots/page-2026-11-27T04-24-07-792Z.png) | Preview dialog sits inside the viewport. |
+| 5 (results page) | tablet | pass | ![](screenshots/page-2026-11-27T04-24-49-271Z.png) | "Time ran out" line on one row. |
 
 ## Design check
 
-No design states tested.
+No design states tested. There are no design-comparison tests and no `design` records in this run.
+
+## Bug B1: Cohort report PDF: incorrect-answers table overruns the right page margin
+
+Manifestations:
+
+- `13-wrong-answers-table`, desktop
+
+![](screenshots/page-2026-11-27T04-18-00-000Z.png)
+
+Expected: the per-learner INCORRECT ANSWERS table in the cohort report PDF is 180mm wide, the page width less the side margins, as the comment above `.learner-section .wrong-answers-table` in `freedom_ls/reports/static/reports/print.css` says.
+
+Actual: the table renders about 15mm wider and runs to the edge of the A4 sheet. Its header band and row rules pass the 15mm right margin that every other element on the page keeps. The page content ends at 552.8pt, but the table reaches the 595pt page edge. The column widths (9+60+12+49.5+49.5mm) already add up to 180mm, the table has no width of its own, and the cell padding is added on top. Short answers still read, but the last column sits partly in the margin. This bug is pre-existing: this branch did not change these rules.
 
 ## Layout probe
 
-| Test | Viewport | URL | Screenshot | Result |
+All 22 layout records came back clean, with no flags.
+
+| Test id | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 1 | desktop | /courses/functionality-demo-timed-quiz/2/ | ![](screenshots/page-2026-11-26T14-28-49-019Z.png) | clean |
-| 2 | desktop | /educator/organisations/demodev/courses/<timed>/__tabs/content | ![](screenshots/page-2026-11-26T14-29-37-387Z.png) | clean |
-| 3 | desktop | /courses/functionality-demo-timed-quiz/2/fill_form/1 | ![](screenshots/page-2026-11-26T14-30-26-024Z.png) | clean |
-| 3 | mobile | /courses/functionality-demo-timed-quiz/2/fill_form/1 | ![](screenshots/page-2026-11-26T14-30-43-020Z.png) | clean |
-| 4 | desktop | /courses/functionality-demo-timed-quiz/2/fill_form/1 | ![](screenshots/page-2026-11-26T14-31-13-676Z.png) | clean |
-| 4 | mobile | /courses/functionality-demo-timed-quiz/2/fill_form/1 | ![](screenshots/page-2026-11-26T14-31-42-084Z.png) | clean |
-| 5 | desktop | /courses/functionality-demo-timed-quiz/2/complete | ![](screenshots/page-2026-11-26T14-32-35-168Z.png) | clean |
-| 6 | desktop | /courses/functionality-demo-timed-quiz/2/fill_form/2 | ![](screenshots/page-2026-11-26T14-32-56-311Z.png) | clean |
-| 8 | desktop | /courses/functionality-demo-timed-quiz/2/complete | ![](screenshots/page-2026-11-26T14-34-25-739Z.png) | clean |
-| 11 | desktop | /courses/functionality-demo-timed-quiz/2/ | ![](screenshots/page-2026-11-26T14-35-05-966Z.png) | clean |
-| 15 | desktop | /courses/functionality-demo-shuffled-quiz/2/fill_form/1 | ![](screenshots/page-2026-11-26T14-35-49-133Z.png) | clean |
-| 12 | desktop | /educator/organisations/demodev/quiz-attempts/<time-expired> | ![](screenshots/page-2026-11-26T14-35-34-735Z.png) | clean |
-| 12 | mobile | /educator/organisations/demodev/quiz-attempts/<time-expired> | ![](screenshots/page-2026-11-26T14-37-16-277Z.png) | clean |
-| 1 | tablet | /courses/functionality-demo-timed-quiz/2/ | ![](screenshots/page-2026-11-26T14-37-22-751Z.png) | clean |
-| 4 | tablet | /courses/functionality-demo-timed-quiz/2/fill_form/1 | ![](screenshots/page-2026-11-26T14-37-39-527Z.png) | clean |
+| 1.1-1.3 | desktop | `/courses/functionality-demo-timed-quiz/2/` | ![](screenshots/page-2026-11-27T04-04-37-242Z.png) | clean |
+| 1.4 | desktop | `/courses/functionality-demo-shuffled-quiz/2/` | ![](screenshots/page-2026-11-27T04-04-53-428Z.png) | clean |
+| 2.1-2.2 | desktop | `/educator/organisations/demodev/courses/<timed>/__tabs/content` | ![](screenshots/page-2026-11-27T04-06-26-349Z.png) | clean |
+| 2.3 | desktop | `/educator/organisations/demodev/courses/<shuffled>/__tabs/content` | ![](screenshots/page-2026-11-27T04-06-36-740Z.png) | clean |
+| 3.1-3.4 | desktop | `/courses/functionality-demo-timed-quiz/2/fill_form/1` | ![](screenshots/page-2026-11-27T04-07-42-456Z.png) | clean |
+| 10.1 | desktop | `/courses/functionality-demo-timed-quiz/2/fill_form/1` | ![](screenshots/page-2026-11-27T04-08-41-804Z.png) | clean |
+| 4.1-4.2 | desktop | `/courses/functionality-demo-timed-quiz/2/fill_form/1` | ![](screenshots/page-2026-11-27T04-09-14-339Z.png) | clean |
+| 4.4 | desktop | `/courses/functionality-demo-timed-quiz/2/fill_form/1` | ![](screenshots/page-2026-11-27T04-09-54-453Z.png) | clean |
+| 5 | desktop | `/courses/functionality-demo-timed-quiz/2/complete` | ![](screenshots/page-2026-11-27T04-11-12-222Z.png) | clean |
+| 6.6 | desktop | `/courses/functionality-demo-timed-quiz/2/complete` | ![](screenshots/page-2026-11-27T04-12-50-217Z.png) | clean |
+| 11 | desktop | `/courses/functionality-demo-timed-quiz/2/` | ![](screenshots/page-2026-11-27T04-15-42-934Z.png) | clean |
+| 12.1-12.3 | desktop | `/educator/organisations/demodev/quiz-attempts/<id>` | ![](screenshots/page-2026-11-27T04-16-26-901Z.png) | clean |
+| 12-quick-view | desktop | `/educator/organisations/demodev/learners/<id>/__tabs/courses` | ![](screenshots/page-2026-11-27T04-16-08-262Z.png) | clean |
+| 10.2 | desktop | `/courses/functionality-demo-shuffled-quiz/2/fill_form/2` | ![](screenshots/page-2026-11-27T04-19-09-511Z.png) | clean |
+| 15 | desktop | `/courses/functionality-demo-shuffled-quiz/2/fill_form/1` | ![](screenshots/page-2026-11-27T04-22-47-925Z.png) | clean |
+| 3.6 / 4.6 | mobile | `/courses/functionality-demo-timed-quiz/2/fill_form/1` | ![](screenshots/page-2026-11-27T04-23-25-675Z.png) | clean |
+| 10.1 | mobile | `/courses/functionality-demo-timed-quiz/2/fill_form/1` | ![](screenshots/page-2026-11-27T04-23-32-755Z.png) | clean |
+| 1.1-1.3 | mobile | `/courses/functionality-demo-timed-quiz/2/` | ![](screenshots/page-2026-11-27T04-24-30-767Z.png) | clean |
+| 5 (results page) | mobile | `/courses/functionality-demo-timed-quiz/2/complete` | ![](screenshots/page-2026-11-27T04-24-42-724Z.png) | clean |
+| 2.1-2.2 | mobile | `/educator/organisations/demodev/courses/<timed>/__tabs/content` | ![](screenshots/page-2026-11-27T04-24-14-563Z.png) | clean |
+| 12.1-12.2 | mobile | `/educator/organisations/demodev/quiz-attempts/<id>` | ![](screenshots/page-2026-11-27T04-24-22-089Z.png) | clean |
+| 3.6 / 4.6 | tablet | `/courses/functionality-demo-timed-quiz/2/fill_form/1` | ![](screenshots/page-2026-11-27T04-23-39-453Z.png) | clean |
+| 1.1-1.3 | tablet | `/courses/functionality-demo-timed-quiz/2/` | ![](screenshots/page-2026-11-27T04-23-48-913Z.png) | clean |
+| 12.1-12.2 | tablet | `/educator/organisations/demodev/quiz-attempts/<id>` | ![](screenshots/page-2026-11-27T04-23-57-784Z.png) | clean |
+| 2.1-2.2 | tablet | `/educator/organisations/demodev/courses/<timed>/__tabs/content` | ![](screenshots/page-2026-11-27T04-24-07-792Z.png) | clean |
+| 5 (results page) | tablet | `/courses/functionality-demo-timed-quiz/2/complete` | ![](screenshots/page-2026-11-27T04-24-49-271Z.png) | clean |
+
+The PDF page for test 13 was not probed for layout, since PDFs are not a browser page. Its overrun is documented as bug B1.
 
 ## Data changes
 
-| What changed | Made by | Files written |
-|---|---|---|
-| Registered DemoDev "Cohort 2025.03.04" (50 members) on functionality-demo-timed-quiz. demodev_s1@email.com was given one `time_expired` (2/4) and one `learner_submitted` (4/4) completed sitting on the timed quiz. | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_timed_quiz_sittings.py` |
-
-Test runs also created sittings for `demodev@email.com` through normal use of the quizzes. Test 14 changed the demo content temporarily and restored it with `git checkout`.
+No data changes. There are no `data_change` records in this run. The run did change data through steps the plan prescribes; see General notes.
 
 ## Bug status
 
-No bug records: all tests passed.
+- **FIXED** (commit: 02d13fdaa) — Cohort report PDF: incorrect-answers table overruns the right page margin. Re-verified on a regenerated PDF: the table now ends at the right margin. ![](screenshots/page-2026-11-27T04-30-00-000Z.png)
+- Test run after the fix: 3112 passed, 0 failed (targeted, commits 57270b77d..HEAD). The fixer also ran the reports app with the WeasyPrint tests included: 592 passed.
 
 ## General notes
 
-- Test 11: the start page lists the five most recent attempts by completion time. A backdated time-expired sitting sorts by its expiry time, not by when it was closed. This is an observation only, not a failure.
-- Test 13: the per-learner attempts table exists only in the generated report document (`reports/report.html` via `learner_details.html`). The on-screen Report tab is a cohort summary without per-learner attempt tables, as on main. The check was therefore done on the PDF.
-- Test 15: the untimed runner shows no submit confirmation dialog on main either, so the plan's "usual submit confirmation" matched existing behaviour.
-- Test 4: the page's toast container has its own polite and assertive live regions. These are pre-existing and separate from the countdown regions.
-- The dev-only branch badge overlaps the corner of the Previous button on the tablet start page. It is dev tooling, not product.
-- `screenshots/page-2026-11-26T14-28-30-144Z.png` and `page-2026-11-26T14-30-22-155Z.png` exist in the folder but are not referenced by any record.
+Content of the `note` record:
 
-status: ok · reason: report rendered, 0 bugs documented
+- Clock rewinds (the plan's "Moving the clock" shell snippet), `fls_run_housekeeping` and the Test 14 `content_save` runs were test steps the plan prescribes, not data set-up.
+- No data helper was needed. The seeded cohort learner `demodev_s1` already had one `time_expired` and one `learner_submitted` sitting.
+- The run left about ten extra completed sittings on demodev@email.com's timed quiz and one on the shuffled quiz.
+- Pre-step rebase: the branch was rebased onto main (24 commits, no conflicts, lost-change check pass, 2925 targeted tests passed, pre-commit clean) and force-pushed. Main had only regrouped the roadmap.
+- The rebase helper's separate front-end smoke pass was not run on its own, because this full QA run covers the same pages at all three viewports.
+
+Observations from individual tests:
+
+- Test 5: the plan's 8s rewind is shorter than the rewind command takes to run, so it was done at about 25s. A `beforeunload` prompt fired on the manual reload, which is the normal unsaved-changes guard.
+- Tests 6.3-6.5: the results page shows the sitting with the latest completed time. The -300 rewind backdated this sitting's completion to before Test 5's, so the page showed Test 5's 25% rather than this sitting's 50%. This is a test artefact, not a product fault, because sittings cannot overlap outside a rewound clock. The 50% sitting is in the previous attempts list.
+- Test 11: the start page lists only the five attempts with the latest completion time, and the -600 rewind backdated this sitting behind five others. It was confirmed as attempt 11 (2/4, 03:55 to 04:05, "Time ran out") in the educator attempt review.
+- Test 12: the quick view that opens first carries no completion reason. The spec names only the attempt review.
+- Test 13: the on-screen Report tab is a cohort summary with no per-learner attempts table (unchanged by this branch). The "Quiz attempts" table exists only in the generated report. The screenshot is PDF page 20 rendered to an image. On that page (demodev_s1), attempt 1 shows "Time ran out" and attempt 2 shows "Learner submitted".
+- Test 14: after the demo content file was restored, the countdown was back on the 10-minute limit (9:19, with the time already spent taken off).
+- Test 12-quick-view: the collapsed debug toolbar tab sits over the end of the "Pass mark (current setting)" label. This is dev tooling only.
+
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
