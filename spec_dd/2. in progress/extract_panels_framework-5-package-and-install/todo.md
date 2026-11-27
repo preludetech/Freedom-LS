@@ -11,7 +11,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 
 ## 2. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 3. Implementation and QA
@@ -20,6 +20,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
+- [ ] (user) Put `UV_NO_SYNC=1` in your shell profile and in the `env` block of `.claude/settings.local.json`, so `uv run` and the pre-commit hook keep a linked package worktree (spec Requirements §4)
 
 ## 4. Documentation and pull request
 
@@ -29,3 +30,4 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 5. Cleanup
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree, land it on main and remove the worktree
+- [ ] (user) Rebuild and publish the `fls-base` image from `/home/sheena/workspace/lms/freedom_ls_infra/fls-base/Dockerfile` before deploying any FLS commit that carries the `django-panel-framework` pin (spec Requirements §6). The plan checks only stage 2's dependency install; a whole `docker build` is not run because stage 1 fails on FLS's own `package.json`
