@@ -234,7 +234,7 @@ class FormProgressAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
 class QuestionAnswerAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     list_display = [
         "form_progress",
-        "question",
+        "question_text",
         "answer_preview",
         "updated_at",
     ]
@@ -256,6 +256,10 @@ class QuestionAnswerAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
         ("Answer", {"fields": ("selected_options", "text_answer")}),
         ("Metadata", {"fields": ("updated_at",)}),
     )
+
+    @admin.display(description="Question", ordering="question")
+    def question_text(self, obj: QuestionAnswer) -> str:
+        return answered_questions([obj])[obj.question_id].question[:50]
 
     @admin.display(description="Answer")
     def answer_preview(self, obj):

@@ -378,6 +378,24 @@ def test_answer_preview_reads_the_option_text_of_the_answered_version(
 
 
 @pytest.mark.django_db
+def test_the_answer_admin_question_column_reads_the_wording_of_the_answered_version(
+    mock_site_context,
+) -> None:
+    """The question column used to show the live wording beside a version-pinned answer."""
+    quiz = versioned_quiz()
+    answer = QuestionAnswerFactory(
+        question=quiz.question, question_version=quiz.question.versions.get(number=1)
+    )
+    revise_to_version_two(quiz)
+    loaded = QuestionAnswer.objects.select_related("question").get(pk=answer.pk)
+
+    question_admin = QuestionAnswerAdmin(QuestionAnswer, admin.site)
+
+    assert "question_text" in question_admin.list_display
+    assert question_admin.question_text(loaded) == "Original wording"
+
+
+@pytest.mark.django_db
 def test_the_answer_file_admin_question_reads_the_wording_of_the_answered_version(
     mock_site_context,
 ) -> None:
