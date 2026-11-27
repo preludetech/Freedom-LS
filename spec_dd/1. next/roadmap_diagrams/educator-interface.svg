@@ -26,21 +26,18 @@
 <text x="40.0" y="174.5" fill="#111827">extract_panels_framework-5-</text>
 <text x="40.0" y="189.5" fill="#111827">package-and-install</text>
 <text x="40.0" y="204.5" fill="#6b7280" font-style="italic">Panel framework extraction</text>
-<rect x="24.0" y="280.0" width="250" height="35" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+<rect x="24.0" y="280.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M32.0,280.0 H30.0 A6,6 0 0 0 24.0,286.0 V309.0 A6,6 0 0 0 30.0,315.0 H32.0 Z" fill="#facc15"/>
-<text x="40.0" y="302.0" fill="#111827">educator-interface-page-polish</text>
+<text x="40.0" y="302.0" fill="#111827">audit-log-coverage-gaps</text>
 <rect x="354.0" y="280.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M362.0,280.0 H360.0 A6,6 0 0 0 354.0,286.0 V309.0 A6,6 0 0 0 360.0,315.0 H362.0 Z" fill="#facc15"/>
-<text x="370.0" y="302.0" fill="#111827">audit-log-coverage-gaps</text>
+<text x="370.0" y="302.0" fill="#111827">bulk-run-audit-summary</text>
 <rect x="684.0" y="280.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M692.0,280.0 H690.0 A6,6 0 0 0 684.0,286.0 V309.0 A6,6 0 0 0 690.0,315.0 H692.0 Z" fill="#facc15"/>
-<text x="700.0" y="302.0" fill="#111827">bulk-run-audit-summary</text>
+<text x="700.0" y="302.0" fill="#111827">admin-dashboard-signal-cards</text>
 <rect x="24.0" y="333.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M32.0,333.0 H30.0 A6,6 0 0 0 24.0,339.0 V362.0 A6,6 0 0 0 30.0,368.0 H32.0 Z" fill="#facc15"/>
-<text x="40.0" y="355.0" fill="#111827">admin-dashboard-signal-cards</text>
-<rect x="354.0" y="333.0" width="250" height="35" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M362.0,333.0 H360.0 A6,6 0 0 0 354.0,339.0 V362.0 A6,6 0 0 0 360.0,368.0 H362.0 Z" fill="#facc15"/>
-<text x="370.0" y="355.0" fill="#111827">staff-person-profile-by-email</text>
+<text x="40.0" y="355.0" fill="#111827">staff-person-profile-by-email</text>
 <rect x="24.0" y="392" width="16" height="12" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <text x="46.0" y="402" fill="#374151">in progress</text>
 <rect x="154.3" y="392" width="16" height="12" rx="3" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>

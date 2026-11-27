@@ -15,7 +15,6 @@ Priority: 🔴 High · 🟠 Medium · 🟡 Low · ⚪ Priority not set
 - 🔴 High · `sacaa-compliance-assessment-controls-7-course-restart` (SACAA compliance)
 - 🔴 High · `sacaa-compliance-content-versions-and-access-3-question-versions` (SACAA compliance)
 - 🔴 High · `extract_panels_framework-5-package-and-install` (Panel framework extraction)
-- 🟡 Low · `educator-interface-page-polish` (Educator interface)
 
 ### Ready to start
 
@@ -508,10 +507,6 @@ Priority: 🟡 Low
 
 Org admins manage learners, cohorts, registrations and staff. Parent: `educator-interface-full-polish`.
 
-### In progress
-
-- `educator-interface-page-polish` — **in progress** — Tidier learner course progress, learner email on Settings, dashboard links, locked Cancel during bulk runs, smaller phone buttons.
-
 ### Ready to start
 
 - `educator-interface-staff-invitations-and-cohort-staff` — **ready** — Staff page shows pending invitations and resends them; cohorts get a Staff tab anyone seeing the cohort can read.
@@ -524,7 +519,7 @@ Org admins manage learners, cohorts, registrations and staff. Parent: `educator-
 
 - `educator-interface-data-table-columns-and-filters` — **blocked** by `extract_panels_framework-5-package-and-install` — Data tables get a show and hide Columns control saved per user, and faster filter controls.
 - `educator-interface-contextual-help` — **blocked** by `extract_panels_framework-5-package-and-install` — A click, tap and keyboard help icon on panels, fields and buttons, with help text for educators.
-- `educator-interface-message-from-anywhere` — **blocked** by `educator-interface-staff-invitations-and-cohort-staff` — Educators start a conversation from the learner page header, the staff quick view and the cohort Staff tab. Collides with `educator-interface-page-polish`.
+- `educator-interface-message-from-anywhere` — **blocked** by `educator-interface-staff-invitations-and-cohort-staff` — Educators start a conversation from the learner page header, the staff quick view and the cohort Staff tab.
 
 ![Educator interface](roadmap_diagrams/educator-interface.svg)
 
