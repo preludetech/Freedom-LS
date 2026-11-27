@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import cast
 
 import lxml.html
@@ -119,7 +118,10 @@ def test_a_first_name_over_200_characters_answers_422_and_stores_nothing(signed_
     html = response.content.decode()
     assert response.status_code == 422
     assert (user.first_name, user.last_name) == ("Ada", "Lovelace")
-    assert len(re.findall(r'role="alert"', html)) == 1
+    alerts = lxml.html.fromstring(f"<div>{html}</div>").cssselect(
+        "[role=alert]:not([hidden])"
+    )
+    assert len(alerts) == 1
     assert 'aria-invalid="true"' in html
 
 

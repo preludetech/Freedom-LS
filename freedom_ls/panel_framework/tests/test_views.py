@@ -1114,6 +1114,19 @@ class TestIntro:
 
         assert html.index("stub-intro") < html.index("data-table-region")
 
+    def test_a_configs_intro_renders_inside_the_lists_card(
+        self, mock_site_context: Site
+    ) -> None:
+        """An intro above the card sat on the canvas, outside any box."""
+        IntroConfig.reset(answer=True, scope=make_stub())
+
+        html = call_view(
+            make_request("intro"), "intro", config=INTRO_CONFIG
+        ).content.decode()
+
+        document = lxml.html.fromstring(html)
+        assert document.cssselect("[data-panel-box] .stub-intro")
+
     def test_a_config_without_an_intro_renders_none(
         self, mock_site_context: Site
     ) -> None:

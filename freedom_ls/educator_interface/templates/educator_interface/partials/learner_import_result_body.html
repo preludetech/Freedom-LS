@@ -1,7 +1,7 @@
 {% comment %}
 The outcome of a finished or failed learner import, rendered inside the run
-status partial: the summary in one panel and the error rows in a second panel
-below it, then the follow-up actions. The heading takes focus on load so the outcome is announced
+status partial: the summary in one panel, with the follow-up actions in its
+footer, and the error rows in a second panel below it. The heading takes focus on load so the outcome is announced
 once the page re-renders.
 {% endcomment %}
 <c-panel-card>
@@ -22,14 +22,14 @@ once the page re-renders.
     {% else %}
         <span aria-hidden="true"><c-icon name="error" class="size-16 text-error" /></span>
         <h2 tabindex="-1" autofocus class="mt-3 font-display text-xl font-semibold">Stopped after {{ learner_import.processed_count }} of {{ learner_import.row_count }} rows</h2>
-        {% if learner_import.error_message %}<p class="mt-2 text-sm">{{ learner_import.error_message }}</p>{% endif %}
+        {% if learner_import.error_message %}<c-panel-callout tone="error" class="mt-3">{{ learner_import.error_message }}</c-panel-callout>{% endif %}
     {% endif %}
+    <p class="mt-4 text-sm text-muted">Uploading the whole file again is safe: rows already added show as 'already a member'.</p>
+    <c-slot name="actions">
+        <c-button variant="secondary" href="{{ upload_url }}" size="small">Import another file</c-button>
+        <c-button href="{{ learners_url }}" icon_right="next" size="small">{% if learner_import.cohort %}Back to the cohort's learners{% else %}Back to learners{% endif %}</c-button>
+    </c-slot>
 </c-panel-card>
 {% if error_rows %}
-    <div class="mt-6">{% include "educator_interface/partials/import_error_block.html" with upload_url="" %}</div>
+    <div class="mt-6"><c-panel-card>{% include "educator_interface/partials/import_error_block.html" with upload_url="" %}</c-panel-card></div>
 {% endif %}
-<p class="mt-4 text-sm text-muted">Uploading the whole file again is safe: rows already added show as 'already a member'.</p>
-<div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
-    <c-button variant="secondary" href="{{ upload_url }}" size="small" class="w-full sm:w-auto">Import another file</c-button>
-    <c-button href="{{ learners_url }}" icon_right="next" size="small" class="w-full sm:w-auto">{% if learner_import.cohort %}Back to the cohort's learners{% else %}Back to learners{% endif %}</c-button>
-</div>

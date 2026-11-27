@@ -21,12 +21,19 @@ function requestErrorHolder(form) {
     );
 }
 
+// The holder is an error callout (partials/request_error.html), hidden until
+// a request fails. Only its text is set here: the callout owns its look and
+// its alert role.
+function requestErrorText(holder) {
+    return holder.querySelector("[data-request-error-text]");
+}
+
 document.addEventListener("htmx:beforeRequest", (event) => {
     const form = event.detail.elt;
     if (!(form instanceof HTMLFormElement)) return;
     const requestError = requestErrorHolder(form);
     if (requestError) {
-        requestError.replaceChildren();
+        requestErrorText(requestError).textContent = "";
         requestError.hidden = true;
     }
     const uploading = Array.from(form.querySelectorAll("input[type=file]")).some(
@@ -69,13 +76,10 @@ function showRequestError(event) {
     if (config.panelErrorShown) return;
     // The response's out-of-band toast is its message.
     if (xhr && (xhr.responseText || "").includes(TOAST_MARKER)) return;
-    const message = document.createElement("p");
-    message.setAttribute("role", "alert");
     // A holder's own message wins: it knows what the failed request was.
-    message.textContent =
+    requestErrorText(holder).textContent =
         holder.dataset.requestErrorMessage ||
         (status === 413 ? REQUEST_ERROR_TOO_LARGE : REQUEST_ERROR_GENERIC);
-    holder.replaceChildren(message);
     holder.hidden = false;
     if (form.closest("dialog")) holder.focus();
 }

@@ -384,8 +384,10 @@ class TestReportTab:
         panel = _downloads_panel(client, cohort.organisation.slug, cohort.pk)
 
         assert not region.cssselect("[hx-trigger]")
-        (alert,) = region.cssselect("[role='alert']")
-        assert alert.text_content().strip() == "The cohort is too large to report on."
+        (badge,) = region.cssselect("[data-tone='error']")
+        assert badge.text_content().strip() == "Failed"
+        (reason,) = region.cssselect("[data-report-error]")
+        assert reason.text_content().strip() == "The cohort is too large to report on."
         assert "Try again" not in region.text_content()
         (button,) = panel.cssselect("header button[type='submit']")
         assert button.get("disabled") is None
@@ -454,7 +456,7 @@ class TestReportTab:
             "so it is not included." in text
         )
         assert not region.cssselect("form")
-        assert not region.cssselect("[role='alert']")
+        assert not region.cssselect("[data-report-error]")
         assert "Try again" not in text
 
     @override_settings(REPORTS_MAX_LEARNERS=1)
@@ -496,7 +498,7 @@ class TestReportTab:
 
         text = " ".join(region.text_content().split())
         assert text.count("over the report's learner limit") == 1
-        assert not region.cssselect("[role='alert']")
+        assert not region.cssselect("[data-report-error]")
         assert "Try again" not in text
 
     @override_settings(REPORTS_MAX_LEARNERS=1)

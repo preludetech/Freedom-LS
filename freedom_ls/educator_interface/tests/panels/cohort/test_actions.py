@@ -698,7 +698,7 @@ def test_an_empty_cohort_name_shows_the_bare_message_as_an_announced_field_error
 
     document = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
     (name,) = document.cssselect("form#cohort-name-form input[name=name]")
-    (error,) = document.cssselect("form#cohort-name-form [role=alert]")
+    (error,) = document.cssselect("form#cohort-name-form [role=alert]:not([hidden])")
     assert response.status_code == 422
     assert error.text_content().strip() == "This field is required."
     assert error.get("id")
@@ -722,7 +722,7 @@ def test_an_inline_form_field_without_an_error_is_neither_invalid_nor_described(
     (name,) = document.cssselect("form#cohort-name-form input[name=name]")
     assert name.get("aria-invalid") is None
     assert name.get("aria-describedby") is None
-    assert not document.cssselect("[role=alert]")
+    assert not document.cssselect("[role=alert]:not([hidden])")
 
 
 @pytest.mark.django_db

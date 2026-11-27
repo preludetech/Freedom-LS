@@ -1,0 +1,25 @@
+{% extends "account/base_manage.html" %}
+{% load allauth i18n %}
+{% comment %}
+allauth's "verify your email" page, with its text inside a card: on a
+panel-built page nothing sits on the canvas outside a box.
+{% endcomment %}
+{% block head_title %}
+    {% trans "Verify Your Email Address" %}
+{% endblock head_title %}
+{% block content %}
+    {% element h1 %}
+        {% trans "Verify Your Email Address" %}
+    {% endelement %}
+    {% url 'account_email' as email_url %}
+    <c-panel-card>
+        <div class="space-y-3">
+            <p>{% blocktrans %}This part of the site requires us to verify that you are who you claim to be. For this purpose, we require that you verify ownership of your email address.{% endblocktrans %}</p>
+            <p>{% blocktrans %}We have sent an email to you for verification. Please click on the link inside that email. If you do not see the verification email in your main inbox, check your spam folder. Otherwise contact us if you do not receive it within a few minutes.{% endblocktrans %}</p>
+            <p>{% trans "You can still change your email address." %}</p>
+        </div>
+        <c-slot name="actions">
+            <c-button variant="secondary" size="small" href="{{ email_url }}">{% trans "Change email address" %}</c-button>
+        </c-slot>
+    </c-panel-card>
+{% endblock content %}

@@ -322,3 +322,42 @@ def python_files_setting_the_modal_trigger_by_hand(paths: Iterable[Path]) -> lis
     return [
         path.name for path in paths if TRIGGER_TEMPLATE_BY_HAND.search(path.read_text())
     ]
+
+
+TEMPLATE_COMMENT = re.compile(
+    r"{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#.*?#}", re.DOTALL
+)
+ICON_TAG = re.compile(r"<c-(?:panel-)?icon\b[^>]*>")
+HAND_DRAWN_ALERT = re.compile(r'role="alert"|\btext-error\b|\bbg-error/|\bbg-warning/')
+REQUEST_ERROR_HOLDER = re.compile(r"data-request-error(?![\w-])")
+
+
+def _markup(path: Path) -> str:
+    """A template's text with its comments removed."""
+    return TEMPLATE_COMMENT.sub("", path.read_text())
+
+
+def hand_drawn_alerts(root: Path, allowed: frozenset[str]) -> list[str]:
+    """Templates under `root` that draw an error or warning themselves.
+
+    An alert role, error-coloured text or an error or warning tint belongs to
+    the callout and the field-error partial. An icon may take the error
+    colour, so icon tags are left out. `allowed` names, relative to `root`,
+    the components that own one of these.
+    """
+    return [
+        _relative(path, root)
+        for path in _html_files(root)
+        if _relative(path, root) not in allowed
+        and HAND_DRAWN_ALERT.search(ICON_TAG.sub("", _markup(path)))
+    ]
+
+
+def request_error_holders(root: Path, allowed: frozenset[str]) -> list[str]:
+    """Templates under `root` that write a request-error holder themselves."""
+    return [
+        _relative(path, root)
+        for path in _html_files(root)
+        if _relative(path, root) not in allowed
+        and REQUEST_ERROR_HOLDER.search(_markup(path))
+    ]

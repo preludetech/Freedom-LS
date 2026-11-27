@@ -508,6 +508,11 @@ somewhere on the page to land.
             <c-panel-callout tone="error" title="Could not save">The name is already taken.</c-panel-callout>
         </div>
 
+        <div id="callout-request-error" class="space-y-2">
+            <p class="text-sm text-muted">A failed request shows in the same callout: a form or dialog includes <code>partials/request_error.html</code>, hidden until the request fails, and the script sets its text. It is shown here as it looks after a failure.</p>
+            <c-panel-callout tone="error"><p>Your changes could not be saved. Try again.</p></c-panel-callout>
+        </div>
+
         <div id="callout-success" class="space-y-2">
             <p class="text-sm text-muted">A <code>success</code> callout is a status, announced the same way.</p>
             <c-panel-callout tone="success">Changes saved.</c-panel-callout>

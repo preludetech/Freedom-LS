@@ -1944,6 +1944,9 @@ def test_a_bulk_confirmation_form_holds_a_request_error_holder_with_the_run_mess
     assert not document.cssselect("form [data-request-error]")
     assert holder.get("hidden") is not None
     assert holder.get("tabindex") == "-1"
+    # The error callout, so a shown failure looks like every other error.
+    assert holder.get("role") == "alert"
+    assert holder.cssselect("[data-request-error-text]")
     assert holder.get("data-request-error-message") == (
         "This did not finish. Some changes may not have been made. "
         "Reload the list to see which, then run it again."

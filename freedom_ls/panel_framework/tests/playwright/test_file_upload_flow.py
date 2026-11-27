@@ -14,6 +14,7 @@ from playwright.sync_api import FilePayload, Locator, Page, Route, expect
 from django.contrib.sites.models import Site
 
 from ..helpers import make_stub
+from .assertions import assert_canvas_holds_only_boxes, assert_is_error_callout
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
@@ -91,10 +92,6 @@ _GENERIC_MESSAGE = "Your changes could not be saved. Try again."
 _FAILURES = [(413, _TOO_LARGE_MESSAGE), (500, _GENERIC_MESSAGE)]
 
 
-def _computed_colour(locator: Locator) -> str:
-    return str(locator.evaluate("el => getComputedStyle(el).color"))
-
-
 def test_file_upload_dialog_flow(
     page: Page,
     live_server: pytest_django.live_server_helper.LiveServer,
@@ -110,7 +107,7 @@ def test_file_upload_dialog_flow(
     aborted request and a scripted 403 show the generic error; that a response
     carrying a toast adds no request error; that Escape closes a clean dialog,
     asks before discarding a chosen file and closes after the file is cleared;
-    that the alert is drawn in the holder's error colour; and that a 404
+    that the alert is the error callout, a tinted box with its icon; and that a 404
     reloads the page with no error alert.
     """
     stub = make_stub()
@@ -179,7 +176,7 @@ def test_file_upload_dialog_flow(
         _held_request(page, held, 1).fulfill(status=204)
         expect(
             alert, f"alert still shown after a saved retry of a {status}"
-        ).to_have_count(0)
+        ).to_be_hidden()
         _release_requests(page, "upload")
 
     held = _hold_requests(page, "create_item")
@@ -280,10 +277,7 @@ def test_file_upload_dialog_flow(
     _held_request(page, held, 0).fulfill(status=500, body="Server error")
     alert = dialog.get_by_role("alert")
     expect(alert).to_have_text(_GENERIC_MESSAGE)
-    holder = dialog.locator("[data-request-error]")
-    assert _computed_colour(alert) == _computed_colour(holder), (
-        "dialog alert colour differs from the holder's error colour"
-    )
+    assert_is_error_callout(alert)
     _release_requests(page, "upload")
 
     _open_upload_tab(page, live_server, stub.pk)
@@ -376,8 +370,21 @@ def test_file_upload_inline_flow(
     _held_request(page, held, 0).fulfill(status=500, body="Server error")
     alert = form.get_by_role("alert")
     expect(alert).to_have_text(_GENERIC_MESSAGE)
-    holder = form.locator("[data-request-error]")
-    assert _computed_colour(alert) == _computed_colour(holder), (
-        "inline alert colour differs from the holder's error colour"
-    )
+    assert_is_error_callout(alert)
     _release_requests(page, "upload_inline")
+
+
+def test_framework_pages_hold_only_boxes(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    """A list page, a record page and a tab show nothing on the canvas
+    outside a card."""
+    stub = make_stub(name="Notes")
+
+    for path in ("stubs", f"stubs/{stub.pk}", f"stubs/{stub.pk}/__tabs/upload"):
+        page.goto(f"{live_server.url}/test-panel/framework/{path}")
+        expect(page.locator("#main-content")).to_be_visible()
+        assert_canvas_holds_only_boxes(page)

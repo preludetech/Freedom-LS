@@ -233,7 +233,19 @@ Notes that do not fit a row:
   `size`. A wrapper maps them to whatever its own button takes. The framework passes `size="small"` to
   get the small button.
 - `panel-callout` serves pages, panels and dialogs alike. `tone` is `info` (default), `success`,
-  `warning` or `error`; any other value renders as `info`.
+  `warning` or `error`; any other value renders as `info`. It is the only way a template shows an
+  error, a warning or a failed request; no template writes `role="alert"` or error-coloured text.
+  A wrapper must pass `{{ attrs }}` to its root: `partials/request_error.html` sets `hidden`,
+  `tabindex`, `data-request-error` and `data-request-error-message` there, and the framework's
+  script shows the box and sets the text of its `[data-request-error-text]` child. A form or dialog
+  of your own includes that partial (`message` replaces the generic text) and never writes a
+  holder. A field's own error is `partials/field_error.html` (`field`, optional `extra_class`).
+- Everything on the canvas sits inside a box. `panel-card` and a boxed `panel-stat-tile` set
+  `data-panel-box` on their root; a page template of your own puts every notice, paragraph,
+  button and empty state inside one. `assert_canvas_holds_only_boxes` in
+  `tests/playwright/assertions.py` checks a loaded page. A list page's `intro_template_name`
+  renders inside the list's card, above the toolbar; the card is flush, so the template pads
+  itself.
 - `panel-date` with `short` always renders the day and month ("3 Nov") and no year. `panel-date` and
   `panel-datetime` format with Django's `date` filter (`j M Y`, and `H:i` for the time) in the current
   time zone.

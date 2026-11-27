@@ -19,7 +19,7 @@ from django.contrib.sites.models import Site
 from ..helpers import make_stub
 from ..stub_models import StubModel
 from ..stub_panels import StubDataTable
-from .assertions import expect_no_nested_panel
+from .assertions import assert_is_error_callout, expect_no_nested_panel
 from .helpers import QA_VIEWPORTS, assert_no_horizontal_overflow
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
@@ -358,7 +358,7 @@ def test_data_table_flow(
         "This did not finish. Some changes may not have been made. "
         "Reload the list to see which, then run it again."
     )
-    expect(modal.get_by_role("alert")).to_be_visible()
+    assert_is_error_callout(modal.get_by_role("alert"))
     # The message sits outside the footer's button row: Cancel and the confirm
     # button share a row and the confirm button stays at the footer's right edge.
     cancel_box = modal.get_by_role("button", name="Cancel").bounding_box()

@@ -31,8 +31,8 @@ form with form=, and hx-indicator and hx-disabled-elt point at it.
         {{ field.label_tag }}
         <div class="[&_input]:w-auto [&_input]:max-w-full [&_input]:border-0 [&_input]:p-0 [&_input]:shadow-none">{{ field }}</div>
         <p id="{{ field.auto_id }}_helptext" class="text-sm text-muted">{{ field.help_text }}</p>
-        {% if field.errors %}<p id="{{ field.auto_id }}_error" role="alert" class="text-sm text-error">{{ field.errors|join:" " }}</p>{% endif %}
+        {% include "panel_framework/partials/field_error.html" with field=field extra_class="text-sm" only %}
     </div>
-    <div data-request-error tabindex="-1" hidden class="text-sm text-error [&_p]:text-error"></div>
+    {% include "panel_framework/partials/request_error.html" only %}
 </form>
 {% endwith %}

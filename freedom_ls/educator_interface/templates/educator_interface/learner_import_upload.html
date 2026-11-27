@@ -1,19 +1,22 @@
 {% extends "educator_interface/standalone_page.html" %}
 
+{% block standalone_header %}
+    <div class="mt-4">{% include "educator_interface/partials/import_stepper.html" with step=1 %}</div>
+{% endblock standalone_header %}
+
 {% block standalone_main %}
-    {% include "educator_interface/partials/import_stepper.html" with step=1 %}
     <div class="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <c-panel-card title="Upload a CSV file">
             <p class="text-sm text-muted">Add up to {{ max_rows }} learners at once, {{ max_file_size }} per file. Nothing is created until you review the preview and confirm.</p>
             {% if form.errors %}
                 <div class="mt-4">
-                    <c-callout tone="error" title="The file could not be uploaded." tabindex="-1" autofocus>
+                    <c-panel-callout tone="error" title="The file could not be uploaded." tabindex="-1" autofocus>
                         <ul>
                             {% for field_errors in form.errors.values %}
                                 {% for error in field_errors %}<li>{{ error }}</li>{% endfor %}
                             {% endfor %}
                         </ul>
-                    </c-callout>
+                    </c-panel-callout>
                 </div>
             {% endif %}
             <form method="post" enctype="multipart/form-data" class="mt-4 space-y-4">

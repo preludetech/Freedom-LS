@@ -4,5 +4,5 @@
 
 {% block body %}
     <p>{{ summary }}</p>
-    {% if run.error_message %}<p>{{ run.error_message }}</p>{% endif %}
+    {% if run.error_message %}<c-panel-callout tone="error">{{ run.error_message }}</c-panel-callout>{% endif %}
 {% endblock body %}

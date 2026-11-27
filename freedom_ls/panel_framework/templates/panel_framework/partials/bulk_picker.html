@@ -20,9 +20,7 @@ JavaScript the button does the same. Context: form, action_url, selection.
     {% for field in form %}
         <label for="{{ field.id_for_label }}" class="block text-sm font-medium">{{ field.label }}</label>
         {{ field }}
-        {% for error in field.errors %}
-            <p class="text-sm text-error">{{ error }}</p>
-        {% endfor %}
+        {% include "panel_framework/partials/field_error.html" with field=field extra_class="text-sm" only %}
     {% endfor %}
     <noscript>
         <button type="submit" name="refresh" value="1" class="panel-btn panel-btn-secondary">Show what changes</button>

@@ -41,8 +41,8 @@ the action then redirects to the page with the outcome as a flash.
             </div>
         {% endfor %}
     </div>
-    <div data-request-error tabindex="-1" hidden class="text-sm text-error [&_p]:text-error"></div>
+    {% include "panel_framework/partials/request_error.html" only %}
     {% for field in form.visible_fields %}
-        {% if field.errors %}<p id="{{ field.auto_id }}_error" role="alert" class="text-sm text-error">{{ field.errors|join:" " }}</p>{% endif %}
+        {% include "panel_framework/partials/field_error.html" with field=field extra_class="text-sm" only %}
     {% endfor %}
 </form>

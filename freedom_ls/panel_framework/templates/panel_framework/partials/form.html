@@ -8,11 +8,7 @@
                     {{ field.help_text }}
                 </p>
             {% endif %}
-            {% if field.errors %}
-                <div class="text-sm text-error mt-1">
-                    {{ field.errors }}
-                </div>
-            {% endif %}
+            {% include "panel_framework/partials/field_error.html" with field=field extra_class="mt-1 text-sm" only %}
         </div>
     {% endfor %}
 

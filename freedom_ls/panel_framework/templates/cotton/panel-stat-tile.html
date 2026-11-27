@@ -16,7 +16,8 @@ Attributes:
              fact, independent of tone.
   tone       Colour of the delta line (default muted). Independent of
              direction: a tile can report an "up" delta in a warning tone.
-  variant    "boxed" (default): bordered bg-surface card. Anything else:
+  variant    "boxed" (default): bordered bg-surface card, marked
+             data-panel-box as a card is. Anything else:
              no card, for a tile sitting inside an already-bordered
              container.
 
@@ -24,7 +25,8 @@ Attributes:
              (an `aria-label`, a `data-*` hook) landing on the link. The
              link is at least 44px tall.
   error      Truthy draws the tile's border and text in the error colour,
-             for a count of failures.
+             for a count of failures. The value takes the colour itself, so
+             a theme's own <dd> colour never overrides it.
   selected   Truthy marks the linked tile as the current choice:
              `aria-current="true"` and a ring. Needs `href`.
 
@@ -35,10 +37,10 @@ The default slot renders under the value, e.g. a progress bar embedded in
 the tile.
 {% endcomment %}
 
-{% if href %}<a href="{{ href }}" {% if selected %}aria-current="true"{% endif %} class="block h-full min-h-11 rounded-lg no-underline {% if error %}text-error{% else %}text-on-surface{% endif %} {% if variant == "boxed" %}border {% if error %}border-error{% else %}border-border{% endif %} bg-surface px-4 py-3{% endif %} {% if selected %}ring-2 ring-primary{% endif %}" {{ attrs }}>{% endif %}
-<dl class="flex flex-col items-stretch [&_dd_a]:max-md:inline-flex [&_dd_a]:max-md:min-h-11 [&_dd_a]:max-md:min-w-11 [&_dd_a]:max-md:items-center {% if variant == "boxed" and not href %}rounded-lg border {% if error %}border-error text-error{% else %}border-border{% endif %} bg-surface px-4 py-3{% endif %}" {% if not href %}{{ attrs }}{% endif %}>
+{% if href %}<a href="{{ href }}" {% if variant == "boxed" %}data-panel-box {% endif %}{% if selected %}aria-current="true"{% endif %} class="block h-full min-h-11 rounded-lg no-underline {% if error %}text-error{% else %}text-on-surface{% endif %} {% if variant == "boxed" %}border {% if error %}border-error{% else %}border-border{% endif %} bg-surface px-4 py-3{% endif %} {% if selected %}ring-2 ring-primary{% endif %}" {{ attrs }}>{% endif %}
+<dl {% if variant == "boxed" and not href %}data-panel-box {% endif %}class="flex flex-col items-stretch [&_dd_a]:max-md:inline-flex [&_dd_a]:max-md:min-h-11 [&_dd_a]:max-md:min-w-11 [&_dd_a]:max-md:items-center {% if variant == "boxed" and not href %}rounded-lg border {% if error %}border-error text-error{% else %}border-border{% endif %} bg-surface px-4 py-3{% endif %}" {% if not href %}{{ attrs }}{% endif %}>
     <dt class="order-2 text-sm text-muted">{{ label }}</dt>
-    <dd class="order-1 text-2xl font-semibold tabular-nums">{% if value_content.strip %}{{ value_content }}{% else %}{{ value }}{% endif %}</dd>
+    <dd class="order-1 text-2xl font-semibold tabular-nums{% if error %} text-error{% endif %}">{% if value_content.strip %}{{ value_content }}{% else %}{{ value }}{% endif %}</dd>
     {% if slot.strip %}<dd class="order-3 mt-2">{{ slot }}</dd>{% endif %}
     {% if sub %}<dd class="order-4 text-sm text-muted">{{ sub }}</dd>{% endif %}
     {% if delta %}

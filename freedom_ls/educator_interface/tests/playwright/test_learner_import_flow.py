@@ -24,6 +24,9 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from freedom_ls.learner_management.factories import LearnerFactory
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.tests.playwright.assertions import (
+    assert_canvas_holds_only_boxes,
+)
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
@@ -145,6 +148,7 @@ def test_import_a_file_with_errors_then_download_the_error_rows(
             page.set_viewport_size(viewport)
             visit()
             assert_no_horizontal_overflow(page)
+            assert_canvas_holds_only_boxes(page)
             if viewport["width"] == 375:
                 # Buttons used to be 34 to 42px tall to the touch on the
                 # import pages.

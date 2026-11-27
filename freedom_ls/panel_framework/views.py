@@ -152,8 +152,9 @@ class SectionConfigBase:
     #: authorise its detail views yet. Introspectable, so a test can assert
     #: every exemption is declared rather than accidental.
     check_access_exempt_reason: str | None = None
-    #: A template rendered above the list's table, for a section's own help
-    #: copy. None renders nothing there.
+    #: A template rendered inside the list's card, above the toolbar, for a
+    #: notice about the list. The card is flush, so the template pads itself.
+    #: None renders nothing there.
     intro_template_name: str | None = None
 
     #: Names of request attributes that must be resolved and non-None before

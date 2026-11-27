@@ -18,6 +18,9 @@ from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests.profile_picture_samples import jpeg_bytes
 from freedom_ls.accounts.validators import WRONG_TYPE
 from freedom_ls.conftest import reverse_url
+from freedom_ls.panel_framework.tests.playwright.assertions import (
+    assert_canvas_holds_only_boxes,
+)
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
     assert_no_horizontal_overflow,
@@ -140,6 +143,11 @@ def test_personal_details_flow(
 
     assert_no_space_below_field_row(page.locator("#account-name-form"))
     assert_no_space_below_field_row(page.locator("#account-picture-form"))
+    assert_canvas_holds_only_boxes(page)
+    page.goto(reverse_url(live_server, "account_logout"))
+    expect(page.get_by_text("Are you sure you want to sign out?")).to_be_visible()
+    assert_canvas_holds_only_boxes(page)
+    page.go_back()
     page.evaluate(f"window.{NO_RELOAD_MARKER} = true")
     page.get_by_label("First name").fill("Ada")
     page.get_by_label("Last name").fill("Lovelace")

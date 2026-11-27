@@ -679,7 +679,8 @@ def test_a_form_level_error_is_announced_once(mock_site_context: Site) -> None:
     response = action.handle_submit(_ctx(request, None, "/items"))
 
     content = response.content.decode()
-    assert content.count('role="alert"') == 1
+    document = lxml.html.fromstring(f"<div>{content}</div>")
+    assert len(document.cssselect("[role=alert]:not([hidden])")) == 1
     assert content.count("These values cannot be combined.") == 1
 
 
@@ -2247,7 +2248,7 @@ def _post_upload(
 
 
 def _field_error_texts(root: lxml.html.HtmlElement) -> list[str]:
-    return [item.text_content() for item in root.cssselect("ul.errorlist li")]
+    return [line.text_content() for line in root.cssselect("p[id$='_error']")]
 
 
 @pytest.mark.django_db

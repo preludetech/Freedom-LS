@@ -3,9 +3,12 @@ A background run's progress and outcome, shared by the full page and the
 fragment it polls, so the first render and every poll come from this one
 template. While the run is queued or running the element polls itself; once it
 finishes the same element renders without the trigger and polling stops.
+The element is the swap target and holds the cards, so a finished run's cards
+replace the progress card and never land inside it.
 
 Context: run (status, processed_count, error_message), total, percentage,
-status_url, noun; when done, result_template and what it renders. Optional:
+status_url, noun; when done, result_template (which draws its own cards) and
+what it renders. Optional: progress_title, the progress card's title;
 back_url adds a link back to the table; result_on_failure renders
 result_template when the run failed too, for a result body that explains the
 failure itself.
@@ -17,21 +20,30 @@ failure itself.
          hx-trigger="every 2s"
          hx-target="this"
          hx-swap="outerHTML">
-        {% if run.status == "queued" %}
-            <p>Waiting to start.</p>
-        {% else %}
-            <p>{{ run.processed_count }} of {{ total }} {{ noun }} processed.</p>
-        {% endif %}
-        <c-panel-progress-bar :percentage="percentage" label="Progress" />
+        <c-panel-card :title="progress_title">
+            <div class="space-y-3">
+                {% if run.status == "queued" %}
+                    <p>Waiting to start.</p>
+                {% else %}
+                    <p>{{ run.processed_count }} of {{ total }} {{ noun }} processed.</p>
+                {% endif %}
+                <c-panel-progress-bar :percentage="percentage" label="Progress" />
+            </div>
+        </c-panel-card>
     </div>
 {% else %}
     <div id="run-status" role="status">
         {% if run.status == "done" or result_on_failure %}
             {% include result_template %}
+            {% if back_url %}<c-panel-card><c-back-link href="{{ back_url }}">Back to {{ noun }}</c-back-link></c-panel-card>{% endif %}
         {% else %}
-            <p>Stopped after {{ run.processed_count }} of {{ total }} {{ noun }}.</p>
-            {% if run.error_message %}<p class="mt-2 text-sm">{{ run.error_message }}</p>{% endif %}
+            <c-panel-card>
+                <div class="space-y-3">
+                    <p>Stopped after {{ run.processed_count }} of {{ total }} {{ noun }}.</p>
+                    {% if run.error_message %}<c-panel-callout tone="error">{{ run.error_message }}</c-panel-callout>{% endif %}
+                    {% if back_url %}<c-back-link href="{{ back_url }}">Back to {{ noun }}</c-back-link>{% endif %}
+                </div>
+            </c-panel-card>
         {% endif %}
-        {% if back_url %}<c-back-link href="{{ back_url }}" class="mt-4">Back to {{ noun }}</c-back-link>{% endif %}
     </div>
 {% endif %}

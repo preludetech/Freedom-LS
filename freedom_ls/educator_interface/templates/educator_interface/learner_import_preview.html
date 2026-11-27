@@ -1,34 +1,36 @@
 {% extends "educator_interface/standalone_page.html" %}
 
+{% block standalone_header %}
+    <div class="mt-4">{% include "educator_interface/partials/import_stepper.html" with step=2 %}</div>
+{% endblock standalone_header %}
+
 {% block standalone_main %}
-    {% include "educator_interface/partials/import_stepper.html" with step=2 %}
     <c-panel-card>
         <div class="flex flex-wrap items-center justify-between gap-3">
             <c-chip>{{ learner_import.file_name }} &middot; {{ learner_import.row_count }} row{{ learner_import.row_count|pluralize }}</c-chip>
             <c-button variant="secondary" size="small" href="{{ upload_url }}" icon_left="retry">Upload a different file</c-button>
         </div>
     </c-panel-card>
-    <div>
-        <c-panel-stat-row>
+    <c-panel-stat-row>
             {% for item in label_counts %}
                 {% if item.label == "error" and item.count %}
                     <c-panel-stat-tile data-label-filter error="true" label="{{ item.name }}" href="{{ preview_url }}?label={{ item.label }}" selected="{% if item.label == label %}true{% endif %}" aria-label="{{ item.name }}: {{ item.count }}">
-                        <c-slot name="value_content"><span class="inline-flex items-center gap-1 text-error"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
+                        <c-slot name="value_content"><span class="inline-flex items-center gap-1"><span aria-hidden="true"><c-icon name="error" class="size-5" /></span>{{ item.count }}</span></c-slot>
                     </c-panel-stat-tile>
                 {% else %}
                     <c-panel-stat-tile data-label-filter label="{{ item.name }}" :value="item.count" href="{{ preview_url }}?label={{ item.label }}" selected="{% if item.label == label %}true{% endif %}" aria-label="{{ item.name }}: {{ item.count }}" />
                 {% endif %}
             {% endfor %}
-        </c-panel-stat-row>
-        {% if label %}<p class="mt-2 text-sm"><c-button variant="link" size="small" href="{{ preview_url }}">Clear filter</c-button></p>{% endif %}
-    </div>
+    </c-panel-stat-row>
     {% if error_count %}
-        {% include "educator_interface/partials/import_error_block.html" with heading_count=error_count %}
+        <c-panel-card>{% include "educator_interface/partials/import_error_block.html" with heading_count=error_count %}</c-panel-card>
     {% endif %}
-    {% if page_obj.paginator.count %}
+    {% if page_obj.paginator.count or label %}
     {% partialdef rows inline %}
     <div id="import-rows">
     <c-panel-card title="Rows" flush="true">
+        <c-slot name="header_action">{% if label %}<c-button variant="link" size="small" href="{{ preview_url }}">Clear filter</c-button>{% endif %}</c-slot>
+        {% if page_obj.paginator.count %}
         <c-panel-table caption="Rows" cards="true" capped="true" data-import-rows="true">
             <c-slot name="head">
                 <tr>
@@ -71,6 +73,9 @@
             </c-slot>
         </c-panel-table>
         {% include "panel_framework/partials/table_footer.html" with base_url=preview_url region_id="import-rows" extra_params=pagination_params push_url="true" %}
+        {% else %}
+        <c-panel-empty-state message="No rows have this label." />
+        {% endif %}
     </c-panel-card>
     </div>
     {% endpartialdef %}

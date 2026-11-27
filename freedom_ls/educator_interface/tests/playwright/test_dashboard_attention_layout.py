@@ -15,6 +15,9 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.tests.playwright.assertions import (
+    assert_canvas_holds_only_boxes,
+)
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
 
@@ -60,3 +63,54 @@ def test_attention_row_avatar_stays_level_with_the_name_on_a_multi_line_row(
         name_mid = name_box["y"] + name_box["height"] / 2
         avatar_mid = avatar_box["y"] + avatar_box["height"] / 2
         assert abs(avatar_mid - name_mid) <= 6, viewport
+
+
+def test_the_dashboard_canvas_holds_only_boxes(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+    settings,
+) -> None:
+    """The figures date and the over-limit notice used to sit on the canvas,
+    between the stat tiles and the cards."""
+    settings.REPORTS_MAX_LEARNERS = 1
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Dashboard Org")
+    big = CohortFactory(organisation=organisation, name="Big Cohort")
+    small = CohortFactory(organisation=organisation, name="Small Cohort")
+    course = CourseFactory()
+    course.items.create(child=TopicFactory(), order=0)
+    for cohort, count in ((big, 2), (small, 1)):
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        for _ in range(count):
+            CohortMembershipFactory(cohort=cohort)
+    assign_object_role(educator_user, organisation, "organisation_admin")
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(interface_url(live_server, organisation.slug, "dashboard"))
+        progress = page.get_by_role("region", name="Cohort progress")
+        notice = progress.locator("[data-excluded-cohort]")
+        expect(notice).to_contain_text("Big Cohort has 2 learners")
+        expect(progress.get_by_text("Figures as of")).to_be_visible()
+        expect(
+            page.get_by_role("region", name="Needs attention").get_by_text(
+                "Figures as of"
+            )
+        ).to_be_visible()
+        assert_canvas_holds_only_boxes(page)
+
+
+def test_a_dashboard_with_no_cohorts_holds_only_boxes(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Empty Org")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+
+    page.goto(interface_url(live_server, organisation.slug, "dashboard"))
+
+    expect(page.get_by_text("You have no cohorts yet.")).to_be_visible()
+    assert_canvas_holds_only_boxes(page)

@@ -6,12 +6,15 @@ cannot be built because its body is too large shows the reason in its place.
 A panel's region template extends this and fills loaded_body, and may fill
 skeleton_body to shape the placeholder or override region_content to wrap or
 replace the whole state switch. A region that overrides region_content
-includes partials/as_of.html itself when the panel shows the stamp.
+includes partials/as_of.html itself when the panel shows the stamp. A region
+that renders outside a card (one whose cards are its own) overrides too_large
+and no_script_link to put each inside a card: nothing sits on the canvas
+outside a box.
 {% endcomment %}
 <div id="{{ region_id }}"{% if not is_loaded %} aria-busy="true"{% endif %}>
     {% block region_content %}
         {% if too_large_message %}
-            <c-panel-callout tone="warning">{{ too_large_message }}</c-panel-callout>
+            {% block too_large %}<c-panel-callout tone="warning">{{ too_large_message }}</c-panel-callout>{% endblock too_large %}
         {% elif is_loaded %}
             {% block as_of %}{% if show_as_of %}{% include "panel_framework/partials/as_of.html" %}{% endif %}{% endblock as_of %}
             {% block loaded_body %}{% endblock loaded_body %}
@@ -20,7 +23,7 @@ includes partials/as_of.html itself when the panel shows the stamp.
                 {% block skeleton_body %}
                     <c-panel-skeleton :shape="skeleton_shape" :lines="skeleton_lines" />
                 {% endblock skeleton_body %}
-                <noscript><c-panel-button variant="link" size="small" href="{{ loaded_url }}">{{ load_label }}</c-panel-button></noscript>
+                <noscript>{% block no_script_link %}<c-panel-button variant="link" size="small" href="{{ loaded_url }}">{{ load_label }}</c-panel-button>{% endblock no_script_link %}</noscript>
             </div>
         {% endif %}
     {% endblock region_content %}

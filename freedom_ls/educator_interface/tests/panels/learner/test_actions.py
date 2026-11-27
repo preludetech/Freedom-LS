@@ -115,7 +115,7 @@ def test_the_learner_name_form_puts_each_field_error_under_its_own_field(
     )
 
     document = lxml.html.fromstring(f"<div>{response.content.decode()}</div>")
-    alerts = document.cssselect("form [role=alert]")
+    alerts = document.cssselect("form [role=alert]:not([hidden])")
     assert response.status_code == 422
     assert len(alerts) == 2
     for field_name in ("first_name", "last_name"):
@@ -1446,7 +1446,7 @@ def test_a_course_the_register_dialog_does_not_offer_leaves_the_question_open(
     )
 
     assert _dialog_title(document) == "Register Ada Lovelace for a course?"
-    assert document.cssselect("[role='alert']") == []
+    assert document.cssselect("[role='alert']:not([hidden])") == []
     assert document.cssselect("option[selected]:not([value=''])") == []
 
 

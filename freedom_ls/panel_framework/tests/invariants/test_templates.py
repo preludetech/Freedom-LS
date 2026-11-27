@@ -592,6 +592,54 @@ def test_no_framework_template_calls_the_host_callout() -> None:
     )
 
 
+# The templates that own an alert role, error-coloured text or an error or
+# warning tint. Everything else shows an error through one of the first two.
+ALERT_OWNERS = frozenset(
+    {
+        "cotton/panel-callout.html",
+        "panel_framework/partials/field_error.html",
+        # A destructive control and a count of failures take the error colour.
+        "cotton/panel-button.html",
+        "cotton/panel-stat-tile.html",
+        # The toast region of the framework's own shell.
+        "panel_framework/minimal_shell.html",
+    }
+)
+REQUEST_ERROR_PARTIAL = "panel_framework/partials/request_error.html"
+
+
+def test_only_the_callout_and_the_field_error_draw_an_alert() -> None:
+    offenders = template_rules.hand_drawn_alerts(TEMPLATES_DIR, ALERT_OWNERS)
+
+    assert offenders == [], (
+        "an error or warning is <c-panel-callout>, and a field's own error is "
+        'partials/field_error.html: no template writes role="alert", '
+        "text-error or an error or warning tint itself"
+    )
+
+
+def test_every_request_error_holder_is_the_shared_partial() -> None:
+    offenders = template_rules.request_error_holders(
+        TEMPLATES_DIR, frozenset({REQUEST_ERROR_PARTIAL})
+    )
+
+    assert offenders == [], (
+        "a failed request shows in partials/request_error.html, an error "
+        "callout: include it, never write a [data-request-error] element"
+    )
+
+
+def test_the_request_error_script_builds_no_markup() -> None:
+    script = FRAMEWORK_SCRIPT.read_text()
+    start = script.index("function showRequestError(")
+    body = script[start : script.index("\n}\n", start)]
+
+    assert "createElement" not in body, (
+        "showRequestError fills the callout partials/request_error.html "
+        "renders; it never builds the message's markup"
+    )
+
+
 def test_every_dialog_loading_text_ends_in_the_ellipsis_character() -> None:
     offenders = template_rules.loading_texts_ending_in_three_dots(
         (*DIALOG_BODIES, INLINE_FORM)

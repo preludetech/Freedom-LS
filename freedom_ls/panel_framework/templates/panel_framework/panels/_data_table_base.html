@@ -1,5 +1,12 @@
 {% extends "panel_framework/panels/panel.html" %}
 
+{% comment %}
+A list page's intro (ListViewConfig.intro_template_name) renders here, inside
+the card and above the toolbar, so it never sits on the canvas. The card is
+flush, so the intro template pads itself.
+{% endcomment %}
+{% block panel_header %}{% if intro_template_name %}{% include intro_template_name with intro=intro request=request only %}{% endif %}{% endblock panel_header %}
+
 {% block panel_body %}
     {% include region_template_name %}
 {% endblock panel_body %}

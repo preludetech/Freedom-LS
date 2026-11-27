@@ -1,6 +1,7 @@
 {% comment %}
 The dashboard has no card around it: its tiles and lists are cards of their
-own, so the section only carries the panel plumbing.
+own, so the section only carries the panel plumbing. Everything its region
+draws therefore sits inside one of those tiles or cards.
 {% endcomment %}
 <section data-panel="{{ name }}">
     {% include region_template_name %}

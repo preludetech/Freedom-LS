@@ -46,7 +46,7 @@ generated before the cohort grew is still offered.
                             {% elif over_limit_message %}
                                 <span class="text-muted">Not generated</span>
                             {% else %}
-                                <span role="alert" class="text-error">{{ row.report.error_message }}</span>
+                                <c-panel-status-badge tone="error" label="Failed" /> <span data-report-error>{{ row.report.error_message }}</span>
                             {% endif %}
                         </td>
                     </tr>

@@ -17,7 +17,7 @@ replaces the form with that sentence and a Close button.
       hx-disabled-elt="#app-modal-body button[type='submit']"{% if form.is_multipart %} hx-encoding="multipart/form-data" enctype="multipart/form-data"{% endif %}>
     {% for name, value in hidden_fields.items %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
     <c-modal-body>
-<div data-request-error tabindex="-1" hidden class="text-error [&_p]:text-error"></div>
+{% include "panel_framework/partials/request_error.html" only %}
 {% if status_message %}
     <c-panel-callout tone="success" data-status-message>{{ status_message }}</c-panel-callout>
 {% endif %}

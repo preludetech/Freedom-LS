@@ -26,6 +26,10 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.panel_framework.tests.playwright.assertions import (
+    assert_canvas_holds_only_boxes,
+)
+from freedom_ls.tests.playwright_helpers import QA_VIEWPORTS
 
 from .helpers import interface_url, no_console_errors
 
@@ -96,3 +100,6 @@ def test_section_loads_without_console_errors(
             page.get_by_text(row_text.format(email=educator_user.email)).first
         ).to_be_visible()
         page.wait_for_load_state("networkidle")
+        for viewport in QA_VIEWPORTS:
+            page.set_viewport_size(viewport)
+            assert_canvas_holds_only_boxes(page)

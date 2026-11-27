@@ -1,0 +1,7 @@
+{% comment %}
+A field's own error: one line under the field, the message alone. Every other
+error on a panel-framework page is a <c-panel-callout>. Context: field (a
+bound field); optional extra_class. The id is "<field id>_error", which the
+input names with aria-describedby.
+{% endcomment %}
+{% if field.errors %}<p id="{{ field.auto_id }}_error" role="alert" class="text-error {{ extra_class }}">{{ field.errors|join:" " }}</p>{% endif %}

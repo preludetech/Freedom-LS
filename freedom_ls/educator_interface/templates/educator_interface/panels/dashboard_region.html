@@ -6,15 +6,21 @@ The tiles that need no gather sit in region_content, outside the loaded and
 skeleton states, so the skeleton state shows them too. Required context:
 cohorts, inline, is_organisation_admin; when loaded, figures and avatars
 (each flagged learner's avatar by learner id).
+
+The region has no card of its own, so everything it draws sits inside a tile
+or a card: the date the figures are from is each card's description, and a
+cohort left out of the figures is a notice in the Cohort progress card.
 {% endcomment %}
 
 {% block region_content %}
     {% if not cohorts %}
-        {% if is_organisation_admin %}
-            <c-panel-empty-state message="You have no cohorts yet." />
-        {% else %}
-            <c-panel-empty-state message="No cohorts are assigned to you." />
-        {% endif %}
+        <c-panel-card>
+            {% if is_organisation_admin %}
+                <c-panel-empty-state message="You have no cohorts yet." />
+            {% else %}
+                <c-panel-empty-state message="No cohorts are assigned to you." />
+            {% endif %}
+        </c-panel-card>
     {% else %}
         <div class="space-y-6">
             <c-panel-stat-row>
@@ -37,21 +43,17 @@ cohorts, inline, is_organisation_admin; when loaded, figures and avatars
                 {% endif %}
             </c-panel-stat-row>
 
-            {% if is_loaded %}
-                {% if figures.figures_as_of %}<p class="text-sm text-muted">Figures as of <c-datetime :value="figures.figures_as_of" /></p>{% endif %}
-                {% for excluded in figures.excluded %}
-                    {% resolve_url_path_template excluded 'educator_interface:interface' 'cohorts/{cohort.pk}' as excluded_url %}
-                    <c-panel-callout tone="warning"><a href="{{ excluded_url }}" class="font-bold text-on-surface no-underline hover:text-primary">{{ excluded.cohort.name }}</a> {{ excluded.reason }}</c-panel-callout>
-                {% endfor %}
-            {% endif %}
-
             {{ block.super }}
         </div>
     {% endif %}
 {% endblock region_content %}
 
+{% block too_large %}<c-panel-card>{{ block.super }}</c-panel-card>{% endblock too_large %}
+
+{% block no_script_link %}<c-panel-card>{{ block.super }}</c-panel-card>{% endblock no_script_link %}
+
 {% block loaded_body %}
-    <c-panel-card title="Needs attention" landmark="true">
+    <c-panel-card title="Needs attention" landmark="true" description="{% if figures.figures_as_of %}Figures as of {{ figures.figures_as_of|display_datetime }}{% endif %}">
         {% if figures.attention_rows %}
             <c-panel-attention-list>
                 {% for row in figures.attention_rows %}
@@ -85,7 +87,12 @@ cohorts, inline, is_organisation_admin; when loaded, figures and avatars
         {% endif %}
     </c-panel-card>
 
-    <c-panel-card title="Cohort progress" landmark="true">
+    <c-panel-card title="Cohort progress" landmark="true" description="{% if figures.figures_as_of %}Figures as of {{ figures.figures_as_of|display_datetime }}{% endif %}">
+        <div class="space-y-4">
+        {% for excluded in figures.excluded %}
+            {% resolve_url_path_template excluded 'educator_interface:interface' 'cohorts/{cohort.pk}' as excluded_url %}
+            <c-panel-callout tone="warning" data-excluded-cohort><a href="{{ excluded_url }}" class="font-bold text-on-surface no-underline hover:text-primary">{{ excluded.cohort.name }}</a> {{ excluded.reason }}</c-panel-callout>
+        {% endfor %}
         {% if figures.cohort_rows %}
             <c-panel-list>
                 {% for row in figures.cohort_rows %}
@@ -105,6 +112,7 @@ cohorts, inline, is_organisation_admin; when loaded, figures and avatars
         {% else %}
             <c-panel-empty-state message="No cohorts could be included in these figures." />
         {% endif %}
+        </div>
     </c-panel-card>
 {% endblock loaded_body %}
 

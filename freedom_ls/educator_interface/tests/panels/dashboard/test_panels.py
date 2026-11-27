@@ -360,6 +360,62 @@ def test_an_over_limit_cohort_is_counted_inline_and_named_in_a_notice(
     )
 
 
+def _card(document: lxml.html.HtmlElement, title: str) -> lxml.html.HtmlElement:
+    """The dashboard card whose heading is `title`."""
+    (card,) = [
+        box
+        for box in document.cssselect("section[data-panel-box]")
+        if box.cssselect("header h2")[0].text_content().strip() == title
+    ]
+    return card
+
+
+@pytest.mark.django_db
+@override_settings(REPORTS_MAX_LEARNERS=2)
+def test_the_over_limit_notice_and_the_figures_date_sit_inside_the_cards(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    """Both used to sit between the tiles and the cards, on the bare canvas."""
+    organisation, user = educator
+    _members(_registered_cohort(organisation, name="Big"), ["A", "B", "C"])
+    _members(_registered_cohort(organisation, name="Small"), ["D"])
+
+    loaded = _load_region(logged_in_client(user), organisation)
+
+    document = lxml.html.fromstring(loaded.content.decode())
+    progress = _card(document, "Cohort progress")
+    (notice,) = document.cssselect("[data-excluded-cohort]")
+    assert notice in progress.cssselect("[data-excluded-cohort]")
+    for title in ("Needs attention", "Cohort progress"):
+        (description,) = _card(document, title).cssselect("header p")
+        assert description.text_content().startswith("Figures as of ")
+    loose = [
+        element
+        for element in document.xpath(
+            "//*[starts-with(normalize-space(text()), 'Figures as of')]"
+        )
+        if not element.xpath("ancestor::*[@data-panel-box]")
+    ]
+    assert loose == []
+
+
+@pytest.mark.django_db
+def test_the_no_cohorts_message_sits_inside_a_card(
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    organisation, user = educator
+
+    response = logged_in_client(user).get(_dashboard_url(organisation))
+
+    document = lxml.html.fromstring(response.content.decode())
+    (message,) = document.xpath(
+        "//*[normalize-space(text())='You have no cohorts yet.']"
+    )
+    assert message.xpath("ancestor::*[@data-panel-box]")
+
+
 @pytest.mark.django_db
 @override_settings(REPORTS_MAX_LEARNERS=1)
 def test_no_figures_date_is_shown_when_every_cohort_is_over_the_limit(

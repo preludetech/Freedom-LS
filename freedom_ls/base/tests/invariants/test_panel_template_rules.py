@@ -91,26 +91,16 @@ ACCOUNTS_TEMPLATES_DIR: Path = (
 EDUCATOR_TEMPLATES_DIR: Path = (
     FREEDOM_LS_PACKAGE_DIR / "educator_interface" / "templates" / "educator_interface"
 )
-# Rendered on a standalone educator page (the import steps), outside the panel
-# framework's dispatch, where <c-callout> is the site's notice.
-STANDALONE_PAGE_PARTIALS = frozenset({"import_error_block.html"})
 TEMPLATE_COMMENT = re.compile(
     r"{%\s*comment\s*%}.*?{%\s*endcomment\s*%}|{#.*?#}", re.DOTALL
 )
 
 
 def test_no_fls_panel_template_calls_the_site_callout() -> None:
-    """An FLS panel, dialog or partial used <c-callout> where <c-panel-callout> belongs."""
+    """An FLS panel-framework template used <c-callout> where <c-panel-callout> belongs."""
     paths = [
         *ACCOUNTS_TEMPLATES_DIR.rglob("*.html"),
-        *(EDUCATOR_TEMPLATES_DIR / "modal").rglob("*.html"),
-        *(EDUCATOR_TEMPLATES_DIR / "panels").rglob("*.html"),
-        *(EDUCATOR_TEMPLATES_DIR / "quick_views").rglob("*.html"),
-        *(
-            path
-            for path in (EDUCATOR_TEMPLATES_DIR / "partials").rglob("*.html")
-            if path.name not in STANDALONE_PAGE_PARTIALS
-        ),
+        *EDUCATOR_TEMPLATES_DIR.rglob("*.html"),
     ]
     offenders = [
         str(path.relative_to(FREEDOM_LS_PACKAGE_DIR))
@@ -121,4 +111,53 @@ def test_no_fls_panel_template_calls_the_site_callout() -> None:
     assert offenders == [], (
         "a notice on a panel-framework page is <c-panel-callout>; "
         "<c-callout> is for pages outside the panel framework"
+    )
+
+
+ACCOUNTS_TEMPLATES_ROOT: Path = FREEDOM_LS_PACKAGE_DIR / "accounts" / "templates"
+EDUCATOR_TEMPLATES_ROOT: Path = (
+    FREEDOM_LS_PACKAGE_DIR / "educator_interface" / "templates"
+)
+# Signup pages, outside the panel framework: they draw their own field errors.
+ACCOUNTS_ALERT_OWNERS = frozenset(
+    {
+        "accounts/complete_registration.html",
+        "cotton/consent-checkboxes.html",
+    }
+)
+
+
+@pytest.mark.parametrize(
+    ("root", "allowed"),
+    [
+        (ACCOUNTS_TEMPLATES_ROOT, ACCOUNTS_ALERT_OWNERS),
+        (EDUCATOR_TEMPLATES_ROOT, frozenset()),
+    ],
+    ids=["accounts", "educator_interface"],
+)
+def test_only_the_callout_and_the_field_error_draw_an_alert(
+    root: Path, allowed: frozenset[str]
+) -> None:
+    """An FLS panel-framework template drew an error or warning by hand."""
+    offenders = template_rules.hand_drawn_alerts(root, allowed)
+
+    assert offenders == [], (
+        "an error or warning is <c-panel-callout>, and a field's own error is "
+        "panel_framework/partials/field_error.html: no template writes "
+        'role="alert", text-error or an error or warning tint itself'
+    )
+
+
+@pytest.mark.parametrize(
+    "root",
+    [ACCOUNTS_TEMPLATES_ROOT, EDUCATOR_TEMPLATES_ROOT],
+    ids=["accounts", "educator_interface"],
+)
+def test_every_request_error_holder_is_the_shared_partial(root: Path) -> None:
+    """An FLS template wrote a request-error holder of its own."""
+    offenders = template_rules.request_error_holders(root, frozenset())
+
+    assert offenders == [], (
+        "a failed request shows in panel_framework/partials/request_error.html: "
+        "include it, never write a [data-request-error] element"
     )

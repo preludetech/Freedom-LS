@@ -1692,11 +1692,14 @@ def test_a_result_shows_the_summary_and_the_error_rows_in_separate_panels(
 ):
     page = _finished_result_page(import_world, "a@example.com,,,", "nonsense,,,")
 
-    (summary,) = page.cssselect("#run-status .panel-surface")
+    summary, errors = page.cssselect("#run-status [data-panel-box]")
     (error_block,) = page.cssselect("#run-status [data-error-block]")
     assert "Added 1 learner." in summary.text_content()
     assert not summary.cssselect("[data-error-block]")
-    assert not [a for a in error_block.iterancestors() if "panel-surface" in a.classes]
+    # The error rows have a card of their own: nothing sits on the canvas.
+    assert errors.cssselect("[data-error-block]") == [error_block]
+    # The follow-up actions are in the summary card's footer.
+    assert "Import another file" in summary.cssselect("footer")[0].text_content()
 
 
 @pytest.mark.django_db

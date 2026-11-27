@@ -1,15 +1,11 @@
 {% extends "educator_interface/standalone_page.html" %}
 
+{% block standalone_header %}
+    <div class="mt-4">{% include "educator_interface/partials/import_stepper.html" with step=3 %}</div>
+{% endblock standalone_header %}
+
 {% block standalone_main %}
-    {% include "educator_interface/partials/import_stepper.html" with step=3 %}
     <div class="mx-auto w-full md:max-w-2xl">
-        {% if in_progress %}
-            <c-panel-card>
-                <h2 class="font-display text-lg font-semibold">Importing learners</h2>
-                <div class="mt-3">{% include "educator_interface/partials/run_status.html" %}</div>
-            </c-panel-card>
-        {% else %}
-            {% include "educator_interface/partials/run_status.html" %}
-        {% endif %}
+        {% include "educator_interface/partials/run_status.html" with progress_title="Importing learners" %}
     </div>
 {% endblock standalone_main %}

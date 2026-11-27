@@ -97,7 +97,9 @@ def test_the_request_error_holder_is_empty_and_inside_the_form() -> None:
     (holder,) = root.cssselect("[data-request-error]")
     assert holder.get("tabindex") == "-1"
     assert holder.get("hidden") is not None
-    assert holder.text_content() == ""
+    assert holder.text_content().strip() == ""
+    assert holder.get("role") == "alert"
+    assert holder.cssselect("[data-request-error-text]")
 
 
 def test_the_form_holds_no_submit_button() -> None:

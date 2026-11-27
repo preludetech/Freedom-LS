@@ -291,6 +291,8 @@ def test_the_request_error_holder_is_empty_and_inside_the_modal_body() -> None:
     (holder,) = document.cssselect("form [data-request-error]")
     assert holder.get("tabindex") == "-1"
     assert holder.get("hidden") is not None
-    assert holder.text_content() == ""
+    assert holder.text_content().strip() == ""
+    assert holder.get("role") == "alert"
+    assert holder.cssselect("[data-request-error-text]")
     assert document.cssselect("[data-modal-scroll] [data-request-error]") == [holder]
     assert document.cssselect("footer [data-request-error]") == []
