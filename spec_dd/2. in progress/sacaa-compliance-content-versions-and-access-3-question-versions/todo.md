@@ -16,7 +16,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/sdd:do_qa` to execute the QA plan
+- [x] (cmd) Run `/sdd:do_qa` to execute the QA plan
 - [ ] (cmd) Run `/sdd:qa_fix` to decide and fix what QA left open
 - [ ] (user) Review the code and the QA report
 - [ ] (user) Decide whether `content_save` should print the `Question versions: N new, M revised, K unchanged` line on a run that saves no questions (it now prints only when at least one question was saved, because printing it always broke an existing post-transaction output test); if yes, make it unconditional and update that test
