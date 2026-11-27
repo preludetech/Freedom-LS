@@ -13,11 +13,16 @@ from django.db.models import QuerySet
 
 from freedom_ls.content_engine.models import Course
 from freedom_ls.form_engine.exports import (
+    AnswerColumn,
     answer_cell,
     answer_columns,
     off_path_question_ids,
 )
-from freedom_ls.form_engine.models import QuestionAnswer
+from freedom_ls.form_engine.models import (
+    FormQuestion,
+    QuestionAnswer,
+    answered_questions,
+)
 from freedom_ls.site_aware_models.admin_exports import (
     IsoDateTimeWidget,
     SiteAwareModelResource,
@@ -63,6 +68,9 @@ class CourseApplicationResource(SiteAwareModelResource):
         # Answers by sitting, then by question, built once per export.
         self._answers: dict[UUID, dict[UUID, QuestionAnswer]] = {}
         self._off_path: dict[UUID, frozenset[UUID]] = {}
+        # The question each answer was given on, by sitting, then by question.
+        self._answered: dict[UUID, dict[UUID, FormQuestion]] = {}
+        self._export_order: tuple[str, ...] = APPLICATION_EXPORT_FIELDS
 
     def filter_export(
         self, queryset: QuerySet[CourseApplication], **kwargs: object
@@ -72,6 +80,7 @@ class CourseApplicationResource(SiteAwareModelResource):
         ).prefetch_related(
             "form_progress__form",
             "form_progress__answers__question",
+            "form_progress__answers__question_version",
             "form_progress__answers__selected_options",
             "form_progress__answers__answer_file",
         )
@@ -93,16 +102,33 @@ class CourseApplicationResource(SiteAwareModelResource):
             sitting.pk: {answer.question_id: answer for answer in sitting.answers.all()}
             for sitting in sittings
         }
+        self._answered = {
+            sitting.pk: answered_questions(sitting.answers.all())
+            for sitting in sittings
+        }
         self._off_path = off_path_question_ids(sittings)
         # A question titled like a fixed column must not share its header: the
         # package drops a field whose column name is already in the order.
+        export_order = list(APPLICATION_EXPORT_FIELDS)
         for column in answer_columns(sittings, APPLICATION_EXPORT_FIELDS):
-            self.fields[f"question_{column.question.id}"] = Field(
+            field_name = f"question_{column.question.id}"
+            self.fields[field_name] = Field(
                 column_name=column.header,
+                dehydrate_method=partial(self._answer_cell, column=column),
+            )
+            self.fields[f"{field_name}_version"] = Field(
+                column_name=f"{column.header} (version)",
                 dehydrate_method=partial(
-                    self._answer_cell, question_id=column.question.id
+                    self._version_cell, question_id=column.question.id
                 ),
             )
+            export_order += [field_name, f"{field_name}_version"]
+        # Each version column sits right after its question's column. Kept on the
+        # instance: the options object is shared by every export.
+        self._export_order = tuple(export_order)
+
+    def get_export_order(self) -> tuple[str, ...]:
+        return self._export_order
 
     def iter_queryset(
         self, queryset: QuerySet[CourseApplication]
@@ -112,11 +138,21 @@ class CourseApplicationResource(SiteAwareModelResource):
         # same rows a second time.
         return iter(self._applications)
 
-    def _answer_cell(self, application: CourseApplication, question_id: UUID) -> str:
+    def _answer_cell(self, application: CourseApplication, column: AnswerColumn) -> str:
         if application.form_progress is None:
             return ""
         pk = application.form_progress.pk
+        question_id = column.question.id
         return answer_cell(
             self._answers[pk].get(question_id),
+            self._answered[pk].get(question_id, column.question),
             is_asked=question_id not in self._off_path[pk],
         )
+
+    def _version_cell(self, application: CourseApplication, question_id: UUID) -> str:
+        if application.form_progress is None:
+            return ""
+        question = self._answered[application.form_progress.pk].get(question_id)
+        if question is None or question.pinned_version is None:
+            return ""
+        return str(question.pinned_version.number)

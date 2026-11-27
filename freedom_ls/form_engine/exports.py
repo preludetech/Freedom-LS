@@ -14,7 +14,13 @@ from django.db.models import prefetch_related_objects
 
 from .conditions import SERVED_TREE_LOOKUPS, sitting_path
 from .enums import OPTION_QUESTION_TYPES, QuestionType
-from .models import Form, FormProgress, FormQuestion, QuestionAnswer
+from .models import (
+    Form,
+    FormProgress,
+    FormQuestion,
+    QuestionAnswer,
+    answered_options,
+)
 from .queries import form_questions
 
 
@@ -140,17 +146,21 @@ def off_path_question_ids(
     }
 
 
-def answer_value(answer: QuestionAnswer) -> str | list[str] | None:
-    """An answer's value by question type; None when the row holds nothing.
+def answer_value(
+    answer: QuestionAnswer, question: FormQuestion
+) -> str | list[str] | None:
+    """An answer's value by `question`'s type; None when the row holds nothing.
+
+    `question` is the one the answer was given on, so option text and type read
+    from the answered version rather than the live question.
 
     Checkboxes give a list, because several options can be selected; a single
     choice gives one string. Dates and times stay as their stored ISO text: a
     sheet parses that where it would not parse the locale-formatted display text.
     """
-    question_type = answer.question.type
+    question_type = question.type
     if question_type in OPTION_QUESTION_TYPES:
-        options = sorted(answer.selected_options.all(), key=lambda option: option.order)
-        texts = [option.text for option in options]
+        texts = [option.text for option in answered_options(answer, question)]
         if not texts:
             return None
         if question_type == QuestionType.CHECKBOXES:
@@ -167,7 +177,9 @@ def answer_value(answer: QuestionAnswer) -> str | list[str] | None:
     return answer.text_answer or None
 
 
-def answer_cell(answer: QuestionAnswer | None, *, is_asked: bool = True) -> str:
+def answer_cell(
+    answer: QuestionAnswer | None, question: FormQuestion, *, is_asked: bool = True
+) -> str:
     """One answer as spreadsheet text.
 
     "Not asked" for a question the sitting's path never reached; an empty cell
@@ -177,7 +189,7 @@ def answer_cell(answer: QuestionAnswer | None, *, is_asked: bool = True) -> str:
         return "Not asked"
     if answer is None:
         return ""
-    value = answer_value(answer)
+    value = answer_value(answer, question)
     if value is None:
         return ""
     if isinstance(value, list):

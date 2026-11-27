@@ -38,7 +38,7 @@ class QuestionAnswerApiSerializer(serializers.Serializer):
 
     @extend_schema_field(ANSWER_VALUE_SCHEMA)
     def get_value(self, answer: QuestionAnswer) -> str | list[str] | None:
-        return answer_value(answer)
+        return answer_value(answer, answer.question)
 
 
 class CourseApplicationApiSerializer(serializers.ModelSerializer):
