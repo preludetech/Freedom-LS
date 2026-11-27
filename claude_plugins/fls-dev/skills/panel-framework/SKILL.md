@@ -583,6 +583,14 @@ page of an app holds which action is that app's skill.
   table's Courses cell): `space-y-2`, at least 8px, with no rule or box between rows.
 - On a phone a button is as wide as its label and as tall as at desktop; its 44px hit area is
   invisible (see Triggers and buttons).
+- A standalone text link (a name alone on its line or in a row, not part of a sentence) gets an
+  invisible 44px-tall hit area on a phone, the way a button does, and sits far enough from the
+  control beside it (a quick view icon) that the two hit areas never overlap. A link inside a
+  sentence or a comma-separated list stays inline text at its text height (the inline exception
+  of WCAG 2.5.8).
+- A status badge stays on one line, so its label is short: a few words naming the state, short
+  enough to fit a 375px phone card's value cell. The detail goes in the flag's reason beside it,
+  never in the label.
 - Vertical space follows one scale, and the components own it:
   - 4px (`space-y-1`) inside one field: the items of one list value (8px, `space-y-2`, for course
     rows).
@@ -702,6 +710,9 @@ What QA checks in a screenshot of a panel-framework page, at every viewport.
   its text, side by side, each as wide as its label.
 - Every control has padding on all sides and a select's chevron sits clear of its edge; at the
   phone viewport a button is as wide as its label.
+- At the phone viewport a standalone text link (a name in a row) has a 44px-tall tap area that
+  does not overlap its neighbouring icon's; a link inside a sentence or a comma list is exempt.
+  Every status badge sits on one line inside its card, no edge past the card's border.
 - In a card, the fields have clear space between them, more than between the items of one value,
   and the title block stands apart from the fields.
 - A dialog's Cancel sits at the left and its actions at the right (a stepping dialog has Previous
