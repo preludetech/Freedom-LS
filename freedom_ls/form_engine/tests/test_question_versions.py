@@ -7,7 +7,7 @@ from typing import cast
 import pytest
 from pydantic import ValidationError
 
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, ProgrammingError, connection, transaction
 from django.db.models import ProtectedError
 
 from freedom_ls.form_engine.factories import (
@@ -134,6 +134,54 @@ def test_delete_question_versions_empties_the_given_questions_only(saved):
 
     remaining = FormQuestionVersion.unfiltered.values_list("pk", flat=True)
     assert list(remaining) == [other_version.pk]
+
+
+# The database trigger
+
+
+# transaction=True: the trigger's error aborts the transaction it is raised in.
+@pytest.mark.django_db(transaction=True)
+def test_raw_update_of_a_version_is_refused_by_the_database(saved):
+    with (
+        pytest.raises(ProgrammingError, match="immutable"),
+        connection.cursor() as cursor,
+    ):
+        cursor.execute(
+            "UPDATE freedom_ls_form_engine_formquestionversion SET number = 9"
+        )
+
+
+# transaction=True: the trigger's error aborts the transaction it is raised in.
+@pytest.mark.django_db(transaction=True)
+def test_raw_delete_of_a_version_is_refused_by_the_database(saved):
+    with (
+        pytest.raises(ProgrammingError, match="immutable"),
+        connection.cursor() as cursor,
+    ):
+        cursor.execute("DELETE FROM freedom_ls_form_engine_formquestionversion")
+
+
+# transaction=True: the trigger's error aborts the transaction it is raised in.
+@pytest.mark.django_db(transaction=True)
+def test_delete_question_versions_empties_the_table(saved):
+    delete_question_versions([saved.question])
+
+    assert FormQuestionVersion.unfiltered.count() == 0
+
+
+# transaction=True: the trigger's error aborts the transaction it is raised in.
+@pytest.mark.django_db(transaction=True)
+def test_trigger_is_enabled_again_after_delete_question_versions(question):
+    first = save_question_version(question, _options(question), "").version
+    assert first is not None
+    delete_question_versions([question])
+    save_question_version(question, _options(question), "")
+
+    with (
+        pytest.raises(ProgrammingError, match="immutable"),
+        connection.cursor() as cursor,
+    ):
+        cursor.execute("DELETE FROM freedom_ls_form_engine_formquestionversion")
 
 
 # Change detection

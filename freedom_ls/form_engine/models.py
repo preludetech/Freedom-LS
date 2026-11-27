@@ -485,6 +485,10 @@ def version_options(options: Iterable[QuestionOption]) -> list[dict[str, object]
     ]
 
 
+# The database trigger that refuses UPDATE and DELETE on the version table; the
+# migration that creates it uses the same name.
+TRIGGER_NAME = "form_question_version_immutable"
+
 _IMMUTABLE_MESSAGE = "FormQuestionVersion is immutable: a saved version cannot change"
 
 
@@ -616,13 +620,22 @@ def delete_question_versions(questions: Iterable[FormQuestion]) -> None:
         return
     table = connection.ops.quote_name(FormQuestionVersion._meta.db_table)
     with transaction.atomic(), connection.cursor() as cursor:
-        # The queryset guard refuses an ORM delete.
-        # The table name is quoted from the model's own db_table and the ids are a
-        # bound parameter, so nothing user-supplied reaches the SQL string.
+        # Deferred foreign-key checks queue trigger events, and ALTER TABLE refuses a
+        # table with pending ones, so they are checked now.
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+        # The queryset guard refuses an ORM delete and the trigger refuses this one,
+        # so the trigger is off for this transaction alone.
+        # The table name is quoted from the model's own db_table, the trigger name is
+        # a module constant and the ids are a bound parameter, so nothing
+        # user-supplied reaches the SQL string.
+        cursor.execute(f"ALTER TABLE {table} DISABLE TRIGGER {TRIGGER_NAME}")  # nosec B608
         cursor.execute(
             f"DELETE FROM {table} WHERE question_id = ANY(%s::uuid[])",  # noqa: S608  # nosec B608
             [ids],
         )
+        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+        cursor.execute(f"ALTER TABLE {table} ENABLE TRIGGER {TRIGGER_NAME}")  # nosec B608
+        cursor.execute("SET CONSTRAINTS ALL DEFERRED")
 
 
 User = get_user_model()
