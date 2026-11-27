@@ -1,87 +1,105 @@
-# QA report: question access
+# Frontend QA report: question access
+
+Result: all 14 tests passed at desktop; the tablet and mobile focus checks passed. No failures and no bugs.
 
 ## Methodology
 
-Screenshots were collected into `screenshots/` beside this report, and every image referenced below exists there. Tests ran against the rebuilt dev DB at desktop, mobile (375px) and tablet (768px) viewports. JavaScript-off checks were also run for tests 9 and 12.
+Screenshots were collected into `screenshots/` beside this report. Every image linked below exists there. Before QA the branch was rebased onto main (3 new main commits, no conflicts). A targeted test run had one flaky failure (the educator_interface playwright `test_section_smoke` Dashboard case). It passed on re-run, and the branch was force-pushed.
 
 ## Diff scoping
 
-Class: FULL. The change touched 57 files (templates, css, py). Nothing was skipped, so every plan section, viewport and role ran.
+Class: **FULL**. The diff touches 112 files, including educator_interface templates, reports templates and `print.css`. Nothing was skipped. The desktop, tablet and mobile passes all ran. Tablet and mobile covered the tests with responsive layout: Tests 1, 3, 8 and 11.
 
 ## Smoke gate
 
-Outcome: pass. Pages loaded: `/` and `/educator/organisations/demodev/courses/2de9e8dd-3823-4c14-8800-9b1c2704e422`.
-
-## Design check
-
-No design states tested.
+Passed. Pages loaded: `/` and `/educator/organisations/demodev/courses/0010389b-6138-4d43-96ef-b08b72df9002`.
 
 ## Test results
 
-| Test | Viewport | Status | Screenshot | Notes |
-|---|---|---|---|---|
-| 1 | desktop | pass | [shot](screenshots/page-2026-11-26T08-18-47-370Z.png), [filter](screenshots/page-2026-11-26T08-19-18-848Z.png), [audit](screenshots/page-2026-11-26T08-19-59-586Z.png) | Question bank viewer role offered with its description. Grant and deactivate both work. Audit log shows Role assigned x2 and Role deactivated. |
-| 1-side-effect | desktop | pass | none | A user with only the question bank viewer role gets 404 for Cohorts, Learners and Courses. |
-| 2 | desktop | pass | [shot](screenshots/page-2026-11-26T08-22-12-928Z.png) | A cohort admin is not offered the role anywhere. The Staff section returns 404. |
-| 3 | desktop | FAIL (B1) | [shot](screenshots/page-2026-11-26T08-20-31-201Z.png) | Withheld Preview works correctly, but the layout is bloated. See B1. |
-| 3-stepping | desktop | pass | none | Next skips the withheld quiz. No question text appears in any preview. |
-| 3 | mobile | pass | [shot](screenshots/page-2026-11-26T08-30-11-749Z.png) | Rows render as cards with the full reason. No overflow. |
-| 3 | tablet | pass | [shot](screenshots/page-tablet-outline-1795681851316.png) | Cards at 768px. No overflow. |
-| 4 | desktop | pass | [shot](screenshots/page-2026-11-26T08-21-36-852Z.png) | A direct GET returns 404. An htmx request shows the "Your role doesn't allow it" dialog. No audit entry. |
-| 5 | desktop | pass | [shot](screenshots/page-2026-11-26T08-22-55-363Z.png) | The holder sees all 13 Previews enabled. Exactly 4 "Question detail viewed" entries. |
-| 6 | desktop | pass | none | A superuser sees questions. One audit entry. |
-| 7 | desktop | pass | [shot](screenshots/page-2026-11-26T08-23-24-314Z.png) | A non-holder sees the hidden-detail callout. Scores are still present. |
-| 7 | mobile | pass | [shot](screenshots/page-mobile-report-1795681827023.png) | The callout is full width and readable. |
-| 7 | tablet | pass | [shot](screenshots/page-tablet-report-1795681862024.png) | Callout renders. |
-| 8 | desktop | pass | none | A holder sees confusion cards. The load and refresh wrote 2 entries. The clean cohort wrote none. |
-| 9 | desktop | pass | none | With JS off, the callout "loads only with JavaScript" shows. No entry written. |
-| 10 | desktop | pass | none | The non-holder PDF and the holder PDF (11 pages each) contain no question text and no section 3. Neither wrote an entry. |
-| 11 | desktop | pass | [shot](screenshots/page-2026-11-26T08-26-21-537Z.png) | The holder's attempt review loads the paper lazily. Entries are logged on the Learner History tab and the Audit log. The quick view adds none. |
-| 12 | desktop | pass | [shot](screenshots/page-nonholder-paper-1795681649424.png) | A non-holder and a cohort viewer see the callout. A holder with JS off sees the JS message. No new entries. |
-| 12 | mobile | pass | [shot](screenshots/page-mobile-paper-1795681830656.png) | The callout fits. |
-| 12 | tablet | pass | [shot](screenshots/page-tablet-paper-1795681865872.png) | The callout renders. No overflow. |
-| 13 | desktop | pass | [shot](screenshots/page-2026-11-26T08-28-47-519Z.png) | The Django admin shows no QUIZ answers. Survey answers are still shown. The quiz answer change URL redirects without a 500. |
-| 14 | desktop | pass | none | Regression sweep as the holder. Everything renders as before. |
-| 1 | mobile | pass | [shot](screenshots/page-mobile-addrole-1795681833851.png) | The Add role sheet fits 375px. |
+| Test | Viewport | Result | Summary |
+|---|---|---|---|
+| 1 | desktop | pass | The grant, role filter, badge, Audit log entries and deactivation all work. A staff member holding only Question bank viewer gets a 404 on the org's educator pages. |
+| 1 | tablet, mobile | pass | The Add role dialog fits at 768 (centred, 512px) and at 375 (bottom sheet, scrolls, Cancel and Next visible). |
+| 2 | desktop | pass | A cohort admin gets a 404 on Staff, and the role is not offered anywhere. |
+| 3 | desktop | pass | Every quiz row shows one disabled "Needs permission" button. Clicking it opens no dialog and sends no request. Next and Previous skip quizzes. |
+| 3 | tablet, mobile | pass | Cards show the "Type" label with no colon. The button sits 12px below the Type line. Nothing overflows (scrollWidth 768 and 375). |
+| 4 | desktop | pass | A pasted URL gives a 404. `htmx.ajax` opens the "You can't use Preview here any more" dialog with no question text, and no audit entry is written. |
+| 5 | desktop | pass | The holder sees enabled Previews. Exactly 4 "Question detail viewed" entries were written, with the right descriptions. The entry sits under OTHER in the What filter. |
+| 6 | desktop | pass | The superuser's preview is logged. |
+| 7 | desktop | pass | The non-holder sees one plain sentence with no box or icon. No question text appears, and scores and Downloads are present. |
+| 8 | desktop | pass | The holder sees confusion cards, and the load and the refresh each write an entry. The cohort History tab lists them. A clean cohort writes no entry. The non-holder still sees only the sentence. |
+| 8 | tablet, mobile | pass | Tables fit at 768. At 375 they sit in horizontal scroll regions and the page does not overflow. |
+| 9 | desktop | pass | With JavaScript off, the holder sees the plain JS note, with no question text and no entry. |
+| 10 | desktop | pass | The holder's and the non-holder's PDFs (21 pages each) have no confusions section and no question text. The layout is intact and no audit entry is written. |
+| 11 | desktop | pass | The full paper loads, with all four notes, the learner History entry and the Audit log entry. A second open adds a second entry. The quick view adds none. |
+| 11 | tablet, mobile | pass | The paper reads cleanly at 768. At 375 the options stack and nothing overflows. |
+| 12 | desktop | pass | The non-holder and educator E see the plain sentence, with no paper and no entry. With JavaScript off the holder sees the JS note. |
+| 13 | desktop | pass | The admin hides quiz answers. Survey and application answers and the file download are unchanged. A quiz answer's change URL redirects to /admin/ and there is no 500. |
+| 14 | desktop | pass | The unchanged pages (Course content, previews, Report tab, Learner Courses tab, Staff section, Audit log) still render and work. |
 
-## B1: Withheld quiz row's reason squeezed into the narrow Actions column on desktop
+Screenshots:
 
-Manifestations:
-- test 3, desktop
+![](screenshots/page-2026-11-27T04-03-14-823Z.png)
+![](screenshots/page-2026-11-27T04-08-54-959Z.png)
+![](screenshots/page-2026-11-27T04-10-37-503Z.png)
+![](screenshots/page-2026-11-27T04-11-09-646Z.png)
+![](screenshots/page-2026-11-27T04-13-56-667Z.png)
+![](screenshots/page-2026-11-27T04-15-00-000Z.png)
+![](screenshots/page-2026-11-27T04-16-00-000Z.png)
+![](screenshots/page-2026-11-27T04-17-00-000Z.png)
+![](screenshots/page-2026-11-27T04-17-24-995Z.png)
+![](screenshots/page-2026-11-27T04-19-00-000Z.png)
+![](screenshots/page-2026-11-27T04-20-00-000Z.png)
+![](screenshots/page-2026-11-27T04-23-00-000Z.png)
+![](screenshots/page-2026-11-27T04-26-00-000Z.png)
+![](screenshots/page-2026-11-27T04-26-30-000Z.png)
+![](screenshots/page-2026-11-27T04-27-02-000Z.png)
+![](screenshots/page-2026-11-27T04-27-05-000Z.png)
 
-![](screenshots/page-2026-11-26T08-20-31-201Z.png)
+## Design check
 
-Expected: On the desktop course outline table, the reason "Previewing a quiz needs the question bank viewer role." sits beside (or neatly with) the disabled Preview button without bloating the row. The plan says to widen the Actions column in `CourseOutlineTable.get_columns` if the reason does not fit beside the button.
-
-Actual: At 1920px the Actions cell is 112px wide. The reason wraps to five lines under the button, so every withheld quiz row is 129px tall against 41px for other rows. This affects the Course content and Reference panels.
+No design records exist this run: no design states tested.
 
 ## Layout probe
 
+All rows are clean. No flags.
+
 | Test | Viewport | URL | Screenshot | Result |
 |---|---|---|---|---|
-| 3 | desktop | `/educator/organisations/demodev/courses/2de9e8dd-3823-4c14-8800-9b1c2704e422/__tabs/content` | [shot](screenshots/page-2026-11-26T08-20-31-201Z.png) | clean (the probe raised no flags, but the row height problem in B1 was found by inspection) |
-| 3 | mobile | `/educator/organisations/demodev/courses/2de9e8dd-3823-4c14-8800-9b1c2704e422/__tabs/content` | [shot](screenshots/page-2026-11-26T08-30-11-749Z.png) | clean |
-| 7 | mobile | `/educator/organisations/demodev/cohorts/b72ad90d-5f00-46da-8801-81967e6dea05/__tabs/report` | [shot](screenshots/page-mobile-report-1795681827023.png) | clean |
-| 12 | mobile | `/educator/organisations/demodev/quiz-attempts/631381b7-1e4b-4331-8659-2aee2911b479` | [shot](screenshots/page-mobile-paper-1795681830656.png) | clean |
+| 1 | desktop | `/educator/organisations/demodev/staff?staff-role=question_bank_viewer` | [shot](screenshots/page-2026-11-27T04-03-30-572Z.png) | clean |
+| 1 | desktop | `/educator/organisations/demodev/audit-log` | [shot](screenshots/page-2026-11-27T04-03-54-355Z.png) | clean |
+| 1 | desktop | `/educator/organisations/demodev/staff` | [shot](screenshots/page-2026-11-27T04-02-49-404Z.png) | clean |
+| 3 | desktop | `/educator/organisations/demodev/courses/0010389b-6138-4d43-96ef-b08b72df9002/__tabs/content` | [shot](screenshots/page-2026-11-27T04-08-54-959Z.png) | clean |
+| 4 | desktop | same course content URL | [shot](screenshots/page-2026-11-27T04-10-37-503Z.png) | clean |
+| 5 | desktop | `/educator/organisations/demodev/audit-log` | [shot](screenshots/page-2026-11-27T04-11-41-128Z.png) | clean |
+| 7 | desktop | `/educator/organisations/demodev/cohorts/b72ad90d-5f00-46da-8801-81967e6dea05/__tabs/report` | [shot](screenshots/page-2026-11-27T04-13-56-667Z.png) | clean |
+| 11 | desktop | `/educator/organisations/demodev/quiz-attempts/d731d434-8005-47f4-8936-3cac841dec69` | [shot](screenshots/page-2026-11-27T04-17-24-995Z.png) | clean |
+| 12 | desktop | same quiz-attempts URL | [shot](screenshots/page-2026-11-27T04-19-00-000Z.png) | clean |
+| 13 | desktop | `/admin/freedom_ls_form_engine/formprogress/17fd13ed-5877-4a65-87db-689543f36e6a/change/` | [shot](screenshots/page-2026-11-27T04-20-00-000Z.png) | clean |
+| 3 | tablet | course content URL | [shot](screenshots/page-2026-11-27T04-26-00-000Z.png) | clean |
+| 3 | mobile | course content URL | [shot](screenshots/page-2026-11-27T04-26-30-000Z.png) | clean |
+| 8 | tablet | cohort report URL | [shot](screenshots/page-2026-11-27T04-27-00-000Z.png) | clean |
+| 8 | mobile | cohort report URL | [shot](screenshots/page-2026-11-27T04-27-03-000Z.png) | clean |
+| 11 | tablet | quiz-attempts URL | [shot](screenshots/page-2026-11-27T04-27-01-000Z.png) | clean |
+| 11 | mobile | quiz-attempts URL | [shot](screenshots/page-2026-11-27T04-27-04-000Z.png) | clean |
 
 ## Data changes
 
-| What changed | Made by | Files written |
-|---|---|---|
-| The dev DB had no DemoDev site. It was wiped and rebuilt, then `create_demo_data --yes` and the plan's seeds were run. | DB drop / DB create / Migrate | none |
-| New command `qa_create_question_access_scenario`. It creates qa.nonholder, qa.holder and qa.third (org admins on demodev) and qa.cohortadmin (cohort_admin on QA Preview Cohort). It also creates the QA Multi-page quiz (2 pages), the QA Reference quiz in a Reference part, QA Report Cohort (wrong answers), QA Report Clean Cohort and a survey answer file. `qa_create_application_review_states` was run as well. | `sdd:qa-data-helper` | `freedom_ls/qa_helpers/management/commands/qa_create_question_access_scenario.py` |
+No data_change records exist this run: no data changes.
 
 ## Bug status
 
-| Bug | Title | Status |
-|---|---|---|
-| B1 | Withheld quiz row's reason squeezed into the narrow Actions column on desktop | **FIXED** (commit: cc8687bb1). Actions column widened, reason sits beside the button; re-verified at 1920 (withheld row 49px vs 41px topic row) and 375 (cards unchanged, no overflow). After the fix: ![](screenshots/page-reverify-desktop-1795682386593.png) |
+No bug records exist this run: no bugs to track.
 
 ## General notes
 
-- Each question on the attempt review paper shows its id in monospace under the text. This is a pre-existing deliberate feature (`form_engine/answers/question.html`, commit 6d019e2ad), so no bug was raised.
-- The only console error seen was Django admin's own `RelatedObjectLookups.js` unload policy warning. It is pre-existing.
-- The Layout probe reported no flags for the desktop outline page, yet B1 is a real layout problem. The probe is blind to row-height bloat.
-- Everything in the plan ran. Nothing was left untested.
+Non-bug observations, with no action attached:
 
-status: ok · reason: 1 bug — 1 fixed, 0 unresolved; report rendered, screenshots verified
+- The generic "You can't use Preview here any more" denial dialog (Test 4) lists the viewer themself (Nolan Nonholder) among the organisation admins to ask. This comes from the generic denial dialog, not from this spec.
+- "QA Report Cohort" holds 15 learners with several duplicate names, left over from repeated seed runs. This is seed residue, not a display fault.
+- The first desktop screenshot (`page-2026-11-27T04-02-49-404Z.png`) has the debug toolbar open over the right edge. Screenshot prep was applied afterwards, so later shots are clean.
+- The full-page admin shot (Test 13) shows the admin's sticky Close bar mid-image. This is an artefact of full-page capture.
+- An earlier tablet and mobile shot of Test 3 caught the navigation bottom sheet open, because the QA script clicked the nav toggle. They were re-shot with it closed and the probe was clean.
+- The question id shown under each question text on the attempt paper is pre-existing design from the attempt-review spec.
+
+status: ok · reason: report rendered, 0 bugs documented
