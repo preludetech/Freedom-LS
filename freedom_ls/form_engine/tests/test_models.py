@@ -44,8 +44,11 @@ from freedom_ls.form_engine.models import (
     FormProgress,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
     QuestionAnswerFile,
     QuestionOption,
+    answered_options,
+    answered_questions,
     latest_versions,
     marking_options,
     question_answer_file_upload_to,
@@ -53,6 +56,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.signals import form_attempt_completed
 from freedom_ls.form_engine.tests.helpers import (
+    VersionedQuiz,
     revise_question,
     revise_to_version_two,
     versioned_quiz,
@@ -2001,3 +2005,126 @@ def test_get_incorrect_quiz_answers_names_the_correct_options_of_the_pinned_vers
     (item,) = progress.get_incorrect_quiz_answers()
 
     assert [o.text for o in item["correct_options"]] == ["Original right"]
+
+
+def _answer_on_version_one(
+    quiz: VersionedQuiz, option: QuestionOption
+) -> QuestionAnswer:
+    """An answer that selects `option` and records the question's version 1."""
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        form_progress=FormProgressFactory(form=quiz.form),
+        question=quiz.question,
+        question_version=quiz.question.versions.get(number=1),
+    )
+    answer.selected_options.add(option)
+    return answer
+
+
+@pytest.mark.django_db
+def test_answered_questions_returns_the_pinned_question_for_a_pinned_answer(
+    mock_site_context: object,
+) -> None:
+    quiz = versioned_quiz()
+    answer = _answer_on_version_one(quiz, quiz.right)
+    revise_to_version_two(quiz)
+    loaded = QuestionAnswer.objects.select_related("question").get(pk=answer.pk)
+
+    question = answered_questions([loaded])[quiz.question.id]
+
+    assert question.question == "Original wording"
+
+
+@pytest.mark.django_db
+def test_answered_questions_returns_the_live_question_for_an_unpinned_answer(
+    mock_site_context: object,
+) -> None:
+    question = FormQuestionFactory(question="Live wording")
+    answer = QuestionAnswerFactory(question=question)
+    loaded = QuestionAnswer.objects.select_related("question").get(pk=answer.pk)
+
+    answered = answered_questions([loaded])[question.id]
+
+    assert answered.question == "Live wording"
+    assert answered.pinned_version is None
+
+
+@pytest.mark.django_db
+def test_answered_questions_loads_the_versions_of_many_answers_in_one_query(
+    mock_site_context: object, django_assert_max_num_queries: DjangoAssertNumQueries
+) -> None:
+    progress = FormProgressFactory()
+    for _ in range(4):
+        question = FormQuestionFactory()
+        version = save_question_version(question, [], "c1").version
+        QuestionAnswerFactory(
+            form_progress=progress, question=question, question_version=version
+        )
+    answers = list(QuestionAnswer.objects.select_related("question").all())
+
+    with django_assert_max_num_queries(1):
+        answered_questions(answers)
+
+
+@pytest.mark.django_db
+def test_answered_questions_costs_no_query_when_the_versions_are_selected(
+    mock_site_context: object, django_assert_max_num_queries: DjangoAssertNumQueries
+) -> None:
+    quiz = versioned_quiz()
+    _answer_on_version_one(quiz, quiz.right)
+    answers = list(
+        QuestionAnswer.objects.select_related("question", "question_version").all()
+    )
+
+    with django_assert_max_num_queries(0):
+        answered_questions(answers)
+
+
+@pytest.mark.django_db
+def test_answered_options_return_the_text_of_the_version(
+    mock_site_context: object,
+) -> None:
+    quiz = versioned_quiz()
+    answer = _answer_on_version_one(quiz, quiz.right)
+    revise_to_version_two(quiz)
+    loaded = QuestionAnswer.objects.select_related("question").get(pk=answer.pk)
+    question = answered_questions([loaded])[quiz.question.id]
+
+    options = answered_options(loaded, question)
+
+    assert [option.text for option in options] == ["Original right"]
+
+
+@pytest.mark.django_db
+def test_answered_options_fall_back_to_the_live_row_an_option_the_version_lacks(
+    mock_site_context: object,
+) -> None:
+    quiz = versioned_quiz()
+    answer = _answer_on_version_one(quiz, quiz.right)
+    added = QuestionOptionFactory(question=quiz.question, text="Added later", order=2)
+    answer.selected_options.add(added)
+    loaded = QuestionAnswer.objects.select_related("question").get(pk=answer.pk)
+    question = answered_questions([loaded])[quiz.question.id]
+
+    options = answered_options(loaded, question)
+
+    assert [option.text for option in options] == ["Original right", "Added later"]
+
+
+@pytest.mark.django_db
+def test_answered_options_of_an_unpinned_answer_cost_no_query_when_prefetched(
+    mock_site_context: object, django_assert_max_num_queries: DjangoAssertNumQueries
+) -> None:
+    question = FormQuestionFactory(type="multiple_choice")
+    option = QuestionOptionFactory(question=question)
+    QuestionAnswerFactory(question=question).selected_options.add(option)
+    answer = (
+        QuestionAnswer.objects.select_related("question")
+        .prefetch_related("selected_options")
+        .get()
+    )
+    answered = answered_questions([answer])[question.id]
+
+    with django_assert_max_num_queries(0):
+        options = answered_options(answer, answered)
+
+    assert options == [option]

@@ -1466,6 +1466,42 @@ class QuestionAnswer(SiteAwareModel, TimestampedModel):
         return f"{self.form_progress.user} - {self.question}"
 
 
+def answered_questions(answers: Iterable[QuestionAnswer]) -> dict[UUID, FormQuestion]:
+    """The question each of one sitting's answers was given on: the version-backed
+    question for an answer that records a version, else the live question. Expects
+    each answer's question to be loaded; a version already loaded costs no query."""
+    answers = list(answers)
+    versions: dict[UUID, FormQuestionVersion] = {}
+    for a in answers:
+        if a.question_version_id and QuestionAnswer.question_version.is_cached(a):
+            loaded = a.question_version
+            if loaded is not None:
+                versions[a.question_version_id] = loaded
+    wanted = {a.question_version_id for a in answers if a.question_version_id}
+    wanted -= versions.keys()
+    if wanted:
+        versions |= FormQuestionVersion.unfiltered.in_bulk(wanted)
+    return {
+        a.question_id: versions[a.question_version_id].as_question(a.question)
+        if a.question_version_id
+        else a.question
+        for a in answers
+    }
+
+
+def answered_options(
+    answer: QuestionAnswer, question: FormQuestion
+) -> list[QuestionOption]:
+    """The options the answer selected, in order, with the wording of `question`'s
+    version when it is version-backed. An option the version lacks keeps its live
+    row."""
+    selected = list(answer.selected_options.all())
+    if question.pinned_version is not None:
+        held = {option.id: option for option in question.options.all()}
+        selected = [held.get(option.id, option) for option in selected]
+    return sorted(selected, key=lambda option: option.order)
+
+
 def get_user_uploads_storage() -> Storage:
     """The fixed `user_uploads` alias; no setting names it, so it names itself."""
     return storage_for_alias("user_uploads", "STORAGES['user_uploads']")

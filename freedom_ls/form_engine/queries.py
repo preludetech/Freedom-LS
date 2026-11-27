@@ -21,6 +21,9 @@ from .models import (
     FormQuestion,
     FormStrategy,
     QuestionAnswer,
+    QuestionOption,
+    answered_options,
+    answered_questions,
 )
 from .units import shuffle_units, unit_question_counts
 
@@ -216,6 +219,8 @@ class AnswerRow:
     question_retired: bool = False
     # The ids of the chosen options a content save has retired.
     retired_option_ids: frozenset[UUID] = frozenset()
+    # The chosen options as the answered version words them.
+    selected_options: tuple[QuestionOption, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -240,6 +245,9 @@ def _row(
         is_asked,
         question_retired=question.is_retired,
         retired_option_ids=retired_option_ids,
+        selected_options=(
+            tuple(answered_options(answer, question)) if answer is not None else ()
+        ),
     )
 
 
@@ -247,11 +255,14 @@ def _answer_row(
     question: FormQuestion,
     answers: dict[UUID, QuestionAnswer],
     path: SittingPath,
+    answered: dict[UUID, FormQuestion],
 ) -> AnswerRow:
     answer = answers.get(question.id)
     # Every kind of path keeps a retired question the sitting was asked, so the
     # path alone says whether it was.
     is_asked = path.has_question(question.id)
+    if answer is not None and is_asked:
+        question = answered[question.id]
     return _row(question, answer if is_asked else None, is_asked)
 
 
@@ -259,8 +270,8 @@ def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
     """The sitting's answers, laid out the way the form lays out its questions.
 
     Walks the form's current pages, so a question the applicant skipped still
-    has a row and a question edited since shows its current wording. The join
-    is to the live form definition, not a snapshot. A question the sitting's
+    has a row. An answered question shows the version its answer records; an
+    unanswered one shows the live question. A question the sitting's
     path never reached is marked not asked. Answers whose question is on no
     page follow in a final group.
     """
@@ -269,11 +280,13 @@ def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
         "answers__selected_options",
         "answers__answer_file",
         "answers__question",
+        "answers__question_version",
         *(f"form__{lookup}" for lookup in FORM_TREE_LOOKUPS),
     )
     # One dict for the whole sitting rather than existing_answers_dict per page:
     # the final group needs the answers no page accounts for.
     answers = {answer.question_id: answer for answer in form_progress.answers.all()}
+    answered = answered_questions(form_progress.answers.all())
     path = sitting_path(form_progress, answers)
     groups: list[AnswerGroup] = []
     page_question_ids: set[UUID] = set()
@@ -283,13 +296,16 @@ def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
         groups.append(
             AnswerGroup(
                 title=page.title,
-                rows=[_answer_row(question, answers, path) for question in questions],
+                rows=[
+                    _answer_row(question, answers, path, answered)
+                    for question in questions
+                ],
             )
         )
     # A question can leave every page but never be deleted while answered (the
     # answer's FK protects it), so an answer with no page is still an answer.
     off_page_rows = [
-        _row(answer.question, answer)
+        _row(answered[answer.question_id], answer)
         for answer in form_progress.answers.all()
         if answer.question_id not in page_question_ids
     ]

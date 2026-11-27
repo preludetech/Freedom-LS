@@ -17,7 +17,7 @@
                         {% elif row.answer.text_answer %}
                             <span class="answer-text">{{ row.answer.text_answer|answer_display:row.question.type }}</span>
                         {% elif row.answer %}
-                            {% for option in row.answer.selected_options.all %}{{ option.text }}{% if option.pk in row.retired_option_ids %} <span class="text-font-subtle-light dark:text-font-subtle-dark">Retired</span>{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}
+                            {% for option in row.selected_options %}{{ option.text }}{% if option.pk in row.retired_option_ids %} <span class="text-font-subtle-light dark:text-font-subtle-dark">Retired</span>{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}
                         {% elif not row.is_asked %}
                             <span class="text-font-subtle-light dark:text-font-subtle-dark">Not asked</span>
                         {% else %}

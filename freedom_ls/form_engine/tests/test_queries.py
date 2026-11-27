@@ -10,11 +10,16 @@ from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.contrib.sites.models import Site
 from django.db import connection
+from django.http import QueryDict
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.form_engine.conditions import answers_by_question, sitting_path
+from freedom_ls.form_engine.conditions import (
+    answers_by_question,
+    current_path,
+    sitting_path,
+)
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
@@ -35,7 +40,9 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
     QuestionAnswerFile,
     QuestionOption,
+    save_question_version,
 )
+from freedom_ls.form_engine.page_flow import PageSubmission, page_context, resolve_page
 from freedom_ls.form_engine.queries import (
     FINAL_GROUP_TITLE,
     DrawingPageCounts,
@@ -50,6 +57,11 @@ from freedom_ls.form_engine.queries import (
     quiz_verdict,
     stored_score_outdated,
     without_quiz_answers,
+)
+from freedom_ls.form_engine.tests.helpers import (
+    revise_question,
+    revise_to_version_two,
+    versioned_quiz,
 )
 from freedom_ls.tests.retire import retired
 
@@ -795,3 +807,133 @@ def test_without_quiz_answers_drops_quiz_rows_and_keeps_the_other_strategies(
 )
 def test_format_quiz_time_limit_words(minutes: int, text: str) -> None:
     assert format_quiz_time_limit(minutes) == text
+
+
+def _quiz_sitting_answered_on_version_one() -> tuple[FormProgress, FormQuestion]:
+    quiz = versioned_quiz()
+    version = quiz.question.versions.get(number=1)
+    progress: FormProgress = FormProgressFactory(
+        form=quiz.form, served_paper=quiz.paper
+    )
+    answer = QuestionAnswerFactory(
+        form_progress=progress, question=quiz.question, question_version=version
+    )
+    answer.selected_options.add(quiz.right)
+    revise_to_version_two(quiz)
+    return FormProgress.objects.get(pk=progress.pk), quiz.question
+
+
+@pytest.mark.django_db
+def test_answer_groups_show_the_wording_of_the_answered_version(
+    mock_site_context: object,
+) -> None:
+    progress, _question = _quiz_sitting_answered_on_version_one()
+
+    ((group),) = answer_groups(progress)
+
+    assert group.rows[0].question.question == "Original wording"
+
+
+@pytest.mark.django_db
+def test_answer_groups_show_the_option_text_of_the_answered_version(
+    mock_site_context: object,
+) -> None:
+    progress, _question = _quiz_sitting_answered_on_version_one()
+
+    ((group),) = answer_groups(progress)
+
+    assert [o.text for o in group.rows[0].selected_options] == ["Original right"]
+
+
+@pytest.mark.django_db
+def test_answer_groups_query_count_with_versioned_answers_does_not_grow(
+    mock_site_context: object, django_assert_max_num_queries: DjangoAssertNumQueries
+) -> None:
+    def build(question_count: int) -> FormProgress:
+        form = FormFactory()
+        progress: FormProgress = FormProgressFactory(form=form)
+        page = FormPageFactory(form=form, order=0)
+        for order in range(question_count):
+            question = FormQuestionFactory(
+                form_page=page, type="multiple_choice", order=order
+            )
+            option = QuestionOptionFactory(question=question, order=0)
+            version = save_question_version(
+                question, list(question.options.all()), "c1"
+            ).version
+            QuestionAnswerFactory(
+                form_progress=progress, question=question, question_version=version
+            ).selected_options.add(option)
+        reloaded: FormProgress = FormProgress.objects.get(pk=progress.pk)
+        return reloaded
+
+    small = build(2)
+    large = build(6)
+
+    with CaptureQueriesContext(connection) as small_queries:
+        answer_groups(small)
+    with django_assert_max_num_queries(len(small_queries)):
+        answer_groups(large)
+
+
+@pytest.fixture
+def revised_survey_question(mock_site_context: object) -> FormQuestion:
+    """A survey question answered on version 1 and revised to version 2 since."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=0, question="Version one wording"
+    )
+    version_one = save_question_version(question, [], "c1").version
+    progress: FormProgress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(
+        form_progress=progress,
+        question=question,
+        question_version=version_one,
+        text_answer="Typed",
+    )
+    revise_question(question, question="Version two wording")
+    return question
+
+
+@pytest.mark.django_db
+def test_a_survey_runner_page_holds_the_revised_wording(
+    revised_survey_question: FormQuestion,
+) -> None:
+    form = Form.objects.get(pk=revised_survey_question.form_page.form_id)
+    sitting = FormProgress.objects.get(form=form)
+
+    current = resolve_page(current_path(sitting), 1)
+    context = page_context(form, current, sitting, PageSubmission(), lambda n: "")
+
+    (question,) = [c for c in context["page_children"] if isinstance(c, FormQuestion)]
+    assert question.question == "Version two wording"
+
+
+@pytest.mark.django_db
+def test_answer_groups_of_a_survey_answered_on_version_one_show_version_one(
+    revised_survey_question: FormQuestion,
+) -> None:
+    sitting = FormProgress.objects.get(
+        form_id=revised_survey_question.form_page.form_id
+    )
+
+    ((group),) = answer_groups(sitting)
+
+    assert group.rows[0].question.question == "Version one wording"
+
+
+@pytest.mark.django_db
+def test_answer_groups_show_version_two_after_the_survey_answer_is_saved_again(
+    revised_survey_question: FormQuestion,
+) -> None:
+    sitting = FormProgress.objects.get(
+        form_id=revised_survey_question.form_page.form_id
+    )
+    current = resolve_page(current_path(sitting), 1)
+    post = QueryDict(f"question_{revised_survey_question.id}=Retyped")
+    sitting.save_answers(current.questions, post)
+
+    ((group),) = answer_groups(FormProgress.objects.get(pk=sitting.pk))
+
+    assert group.rows[0].question.question == "Version two wording"
