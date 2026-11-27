@@ -991,7 +991,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
 
     # An answer is shown on the version it was given on, so a question revised
     # since then still reads as the applicant saw it; unanswered rows show the
-    # live question.
+    # path's question, which a quiz-scored sitting's served paper pins to a version.
     answered = answered_questions(form_progress.answers.all())
     sections = []
     for position, (number, page) in enumerate(path.numbered_pages(), start=1):
