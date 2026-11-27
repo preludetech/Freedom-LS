@@ -21,7 +21,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report
 - [x] (user) Decide whether to fix tests/test_select_tests.py::test_malformed_remote_entry_exits_2_naming_the_key: its 3 cases fail whenever DS_TEST_REMOTE=off is set (as the local full-suite run sets it) because the test does not clear that variable; it is unrelated to this spec and also fails on main. A one-line monkeypatch.delenv in the test would fix it.
 - [x] (cmd) QA feedback round 2: 'Needs permission' disabled button with no reason text, labelled 'Type' on outline cards with 12px footer gap, plain hidden-detail sentence; screenshots in screenshots/fixed
-- [ ] (user) Decide whether card labels should show a colon ('Type: Form') across all panel cards; the shared inline definition list draws a bold label with no colon ('Type Form')
+- [x] (user) Decide whether card labels should show a colon ('Type: Form') across all panel cards; the shared inline definition list draws a bold label with no colon ('Type Form')
 
 ## 4. Documentation and pull request
 
