@@ -138,13 +138,11 @@ def test_an_upload_moves_an_existing_answer_to_the_latest_version(
     mock_site_context, client, sitting
 ):
     form_progress, question = sitting
-    save_question_version(question, [], "c1")
-    client.force_login(form_progress.user)
-    client.post(
-        _upload_url(form_progress, question),
-        {"file": _png_upload()},
-        HTTP_HX_REQUEST="true",
+    first = save_question_version(question, [], "c1").version
+    QuestionAnswerFactory(
+        form_progress=form_progress, question=question, question_version=first
     )
+    client.force_login(form_progress.user)
     question.question = "Changed"
     question.save()
     latest = save_question_version(question, [], "c2").version

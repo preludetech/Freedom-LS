@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import cast
+from unittest.mock import patch
 
 import pytest
 import time_machine
@@ -17,7 +18,6 @@ from django.db import connection, transaction
 from django.db.models import ProtectedError, RestrictedError
 from django.http import QueryDict
 from django.test import override_settings
-from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -44,7 +44,6 @@ from freedom_ls.form_engine.models import (
     FormPage,
     FormProgress,
     FormQuestion,
-    FormQuestionVersion,
     FormStrategy,
     QuestionAnswerFile,
     QuestionOption,
@@ -1787,9 +1786,11 @@ def test_save_answers_rerecords_the_latest_version_on_a_later_save(
 ) -> None:
     form: Form = FormFactory()
     question = _text_question(form)
-    save_question_version(question, [], "c1")
+    first = save_question_version(question, [], "c1").version
     progress: FormProgress = FormProgressFactory(form=form)
-    progress.save_answers([question], _post([question]))
+    QuestionAnswerFactory(
+        form_progress=progress, question=question, question_version=first
+    )
     question.question = "Changed"
     question.save()
     latest = save_question_version(question, [], "c2").version
@@ -1832,7 +1833,7 @@ def test_save_answers_records_the_pinned_version_over_a_later_one(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("count", [2, 6])
-def test_save_answers_reads_the_version_table_once_however_many_questions(
+def test_save_answers_looks_up_the_latest_versions_in_one_batch(
     mock_site_context: Site, count: int
 ) -> None:
     form: Form = FormFactory()
@@ -1841,14 +1842,11 @@ def test_save_answers_reads_the_version_table_once_however_many_questions(
         save_question_version(question, [], "c1")
     progress: FormProgress = FormProgressFactory(form=form)
     post = _post(questions)
-    version_table = FormQuestionVersion._meta.db_table
 
-    with CaptureQueriesContext(connection) as queries:
+    with patch(
+        "freedom_ls.form_engine.models.latest_versions", wraps=latest_versions
+    ) as lookup:
         progress.save_answers(questions, post)
 
-    version_reads = [
-        q["sql"]
-        for q in queries.captured_queries
-        if f'FROM "{version_table}"' in q["sql"]
-    ]
-    assert len(version_reads) == 1
+    lookup.assert_called_once()
+    assert progress.answers.count() == count
