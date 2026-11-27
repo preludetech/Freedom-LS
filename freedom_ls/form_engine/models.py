@@ -1330,6 +1330,11 @@ class FormProgress(SiteAwareModel):
             else {question.id: n for n, question in enumerate(questions, start=1)}
         )
 
+        # Local import: conditions imports this module.
+        from .conditions import answers_by_question
+
+        # Loaded once, so the cost does not grow with the number of questions.
+        answers = answers_by_question(self)
         for question in questions:
             # A free-text question has no options, so there is nothing to
             # show as either the selected or the correct answer — it would
@@ -1342,12 +1347,10 @@ class FormProgress(SiteAwareModel):
             # counts toward max_score — so it has to be judged here as an
             # empty selection, or the learner is marked down for a question
             # the review list never names.
-            try:
-                answer = self.answers.get(question_id=question.id)
-            except QuestionAnswer.DoesNotExist:
-                selected_options = []
-            else:
-                selected_options = list(answer.selected_options.all())
+            answer = answers.get(question.id)
+            selected_options = (
+                list(answer.selected_options.all()) if answer is not None else []
+            )
             selected_option_ids = {o.id for o in selected_options}
 
             # The same options the score is computed against, so the list

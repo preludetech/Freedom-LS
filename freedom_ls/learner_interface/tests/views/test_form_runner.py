@@ -4,12 +4,13 @@ import html
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
 import lxml.html
 import pytest
 import time_machine
+from pytest_django.fixtures import DjangoAssertNumQueries
 
 from django.db.models import F
 from django.http import HttpResponse
@@ -50,7 +51,12 @@ from freedom_ls.form_engine.models import (
     save_question_version,
 )
 from freedom_ls.form_engine.queries import count_form_questions
-from freedom_ls.form_engine.tests.helpers import revise_question
+from freedom_ls.form_engine.served_paper import build_served_paper
+from freedom_ls.form_engine.tests.helpers import (
+    revise_question,
+    revise_to_version_two,
+    versioned_quiz,
+)
 from freedom_ls.learner_interface.tests.helpers import (
     course_with_form,
     form_attempt,
@@ -67,6 +73,11 @@ from freedom_ls.learner_progress.attempts import (
 from freedom_ls.learner_progress.models import CourseFormAttempt
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.tests.retire import retire
+
+if TYPE_CHECKING:
+    # Stub-only: the test client's response carries `context`, which a plain
+    # HttpResponse does not.
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 # Form-runner view tests: stale-attempt safety net, runner context, form_submit_and_exit.
 
@@ -5248,3 +5259,117 @@ def test_a_sitting_started_after_a_revision_shows_version_two_wording(
 
     assert b"Revised wording" in body
     assert b"Original wording" not in body
+
+
+# ---------------------------------------------------------------------------
+# The results page of a sitting answered on a since-revised question
+# ---------------------------------------------------------------------------
+
+
+def _results_url(course: Course) -> str:
+    return reverse(
+        "learner_interface:course_form_complete",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+
+def _revised_after_a_wrong_answer(client: Client) -> _MonkeyPatchedWSGIResponse:
+    """The results page of a completed sitting that chose the wrong option on version 1
+    of its question, after the question was revised to version 2."""
+    quiz = versioned_quiz()
+    user = UserFactory()
+    course = course_with_form(quiz.form)
+    register_user_for_course(course, user)
+    progress = form_attempt(
+        course,
+        user,
+        quiz.form,
+        completed_time=timezone.now(),
+        served_paper=quiz.paper,
+        scores={"score": 0, "max_score": 1},
+    )
+    QuestionAnswerFactory(
+        form_progress=progress, question=quiz.question
+    ).selected_options.add(quiz.wrong)
+    revise_to_version_two(quiz)
+    client.force_login(user)
+    return client.get(_results_url(course))
+
+
+@pytest.mark.django_db
+def test_results_page_shows_the_wording_of_the_version_the_sitting_was_served(
+    mock_site_context: object, client: Client
+) -> None:
+    response = _revised_after_a_wrong_answer(client)
+
+    assert b"Original wording" in response.content
+    assert b"Revised wording" not in response.content
+
+
+@pytest.mark.django_db
+def test_results_page_lists_the_correct_answers_of_the_version_the_sitting_was_served(
+    mock_site_context: object, client: Client
+) -> None:
+    response = _revised_after_a_wrong_answer(client)
+
+    (item,) = response.context["incorrect_answers"]
+    assert [o.text for o in item["correct_options"]] == ["Original right"]
+
+
+@pytest.mark.django_db
+def test_results_page_of_a_revised_question_does_not_flag_the_score_as_outdated(
+    mock_site_context: object, client: Client
+) -> None:
+    response = _revised_after_a_wrong_answer(client)
+
+    assert response.context["stored_score_outdated"] is False
+
+
+@pytest.mark.django_db
+def test_results_page_query_count_has_the_same_bound_for_two_and_six_questions(
+    mock_site_context: object,
+    client: Client,
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
+    def results_page_with(question_count: int) -> tuple[Course, User]:
+        form: Form = FormFactory(strategy=FormStrategy.QUIZ, quiz_show_incorrect=True)
+        page = FormPageFactory(form=form, order=0)
+        questions = [
+            FormQuestionFactory(form_page=page, type="multiple_choice", order=i)
+            for i in range(question_count)
+        ]
+        chosen = []
+        for question in questions:
+            QuestionOptionFactory(question=question, correct=True, order=0)
+            chosen.append(QuestionOptionFactory(question=question, order=1))
+            save_question_version(question, list(question.options.all()), "c1")
+        user = cast(User, UserFactory())
+        course = course_with_form(form, slug=f"results-{question_count}")
+        register_user_for_course(course, user)
+        progress = form_attempt(
+            course,
+            user,
+            form,
+            completed_time=timezone.now(),
+            served_paper=build_served_paper(Form.objects.get(pk=form.pk)),
+            scores={"score": 0, "max_score": question_count},
+        )
+        for question, option in zip(questions, chosen, strict=True):
+            QuestionAnswerFactory(
+                form_progress=progress, question=question
+            ).selected_options.add(option)
+        for question in questions:
+            revise_question(question, question="Revised")
+        return course, user
+
+    two, two_user = results_page_with(2)
+    six, six_user = results_page_with(6)
+
+    client.force_login(two_user)
+    with django_assert_max_num_queries(67):
+        two_response = client.get(_results_url(two))
+    client.force_login(six_user)
+    with django_assert_max_num_queries(67):
+        six_response = client.get(_results_url(six))
+
+    assert (two_response.status_code, six_response.status_code) == (200, 200)

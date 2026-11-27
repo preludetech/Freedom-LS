@@ -52,7 +52,11 @@ from freedom_ls.form_engine.models import (
     save_question_version,
 )
 from freedom_ls.form_engine.signals import form_attempt_completed
-from freedom_ls.form_engine.tests.helpers import revise_question
+from freedom_ls.form_engine.tests.helpers import (
+    revise_question,
+    revise_to_version_two,
+    versioned_quiz,
+)
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.retire import retire
 from freedom_ls.tests.site_context import site_context
@@ -1961,3 +1965,42 @@ def test_marking_options_of_a_pinned_question_hold_no_option_added_later(
     options = marking_options(backed, None)
 
     assert [o.id for o in options] == [o.id for o in backed.options.all()]
+
+
+# A sitting answered on version 1 is marked on version 1 after a revision.
+
+
+def _answered_on_version_one(chosen: str) -> FormProgress:
+    """A completed sitting on a paper pinned to version 1, whose learner chose the
+    "right" or "wrong" option, with the question revised to version 2 afterwards."""
+    quiz = versioned_quiz()
+    progress: FormProgress = FormProgressFactory(
+        form=quiz.form,
+        served_paper=quiz.paper,
+        scores={"score": 1 if chosen == "right" else 0, "max_score": 1},
+    )
+    QuestionAnswerFactory(
+        form_progress=progress, question=quiz.question
+    ).selected_options.add(quiz.right if chosen == "right" else quiz.wrong)
+    revise_to_version_two(quiz)
+    return progress
+
+
+@pytest.mark.django_db
+def test_compute_quiz_scores_of_a_sitting_on_a_revised_question_equals_the_stored_score(
+    mock_site_context: object,
+) -> None:
+    progress = _answered_on_version_one("right")
+
+    assert progress.compute_quiz_scores() == progress.scores
+
+
+@pytest.mark.django_db
+def test_get_incorrect_quiz_answers_names_the_correct_options_of_the_pinned_version(
+    mock_site_context: object,
+) -> None:
+    progress = _answered_on_version_one("wrong")
+
+    (item,) = progress.get_incorrect_quiz_answers()
+
+    assert [o.text for o in item["correct_options"]] == ["Original right"]
