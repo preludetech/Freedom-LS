@@ -7,6 +7,7 @@ The framework stylesheet reaches the build through the generated
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from io import StringIO
 from pathlib import Path
@@ -14,11 +15,15 @@ from pathlib import Path
 import panel_framework
 import pytest
 
+from django.apps import apps
 from django.conf import settings
 from django.core.management import call_command
 from django.test import override_settings
 
-from freedom_ls.base.tests.tailwind_build import run_tailwind
+from freedom_ls.base.tests.tailwind_build import (
+    build_fls_css_with_theme,
+    run_tailwind,
+)
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
 
 pytestmark = pytest.mark.fls_internal
@@ -30,6 +35,7 @@ REFERENCE_THEME: Path = (
 # Used by a framework template and by no FLS template, so it is emitted only if
 # the build reads the framework's templates.
 GENERATED_FILE_NAME = "tailwind.panel_framework.css"
+DEFAULT_THEME_SLUG = "default"
 FRAMEWORK_ONLY_CLASS = r".shadow-\[inset_0_-1px_0_var\(--color-border\)\]"
 
 
@@ -94,3 +100,42 @@ def test_a_generated_stylesheet_is_gitignored() -> None:
     )
 
     assert result.returncode == 0
+
+
+@pytest.fixture(scope="module")
+def temporary_copy_build(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, str]:
+    """FLS's stylesheet built with the framework read from a directory outside the project.
+
+    A framework linked from a package worktree lives at an absolute path
+    the project does not contain, and the generated file then names that
+    path instead of a relative one. Returns the copy's directory and the build."""
+    copy_dir = tmp_path_factory.mktemp("framework_copy") / "panel_framework"
+    shutil.copytree(Path(panel_framework.__file__).parent, copy_dir)
+    build_dir = tmp_path_factory.mktemp("temporary_copy_build")
+    app_config = apps.get_app_config("panel_framework")
+    with pytest.MonkeyPatch.context() as patch, override_settings(BASE_DIR=build_dir):
+        patch.setattr(app_config, "path", str(copy_dir))
+        call_command("write_panel_framework_css", stdout=StringIO())
+    css = build_fls_css_with_theme(
+        build_dir, DEFAULT_THEME_SLUG, keep_relative=frozenset({GENERATED_FILE_NAME})
+    )
+    return build_dir, css
+
+
+def test_the_generated_file_for_a_copy_outside_the_project_names_the_copy_absolutely(
+    temporary_copy_build: tuple[Path, str],
+) -> None:
+    build_dir, _ = temporary_copy_build
+    generated = (build_dir / GENERATED_FILE_NAME).read_text()
+
+    assert '@import "/' in generated
+    assert "/framework_copy" in generated
+
+
+@pytest.mark.parametrize("rule", [".panel-surface", FRAMEWORK_ONLY_CLASS])
+def test_a_build_with_a_framework_copy_outside_the_project_produces_the_framework_rule(
+    temporary_copy_build: tuple[Path, str], rule: str
+) -> None:
+    _, css = temporary_copy_build
+
+    assert rule in css

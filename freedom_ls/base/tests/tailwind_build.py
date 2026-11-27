@@ -36,12 +36,18 @@ def run_tailwind(build_dir: Path, input_css: Path) -> str:
     return output_css.read_text()
 
 
-def build_fls_css_with_theme(build_dir: Path, theme_slug: str) -> str:
+def build_fls_css_with_theme(
+    build_dir: Path,
+    theme_slug: str,
+    keep_relative: frozenset[str] = frozenset(),
+) -> str:
     """FLS's `tailwind.input.css` compiled with `theme_slug` as the active theme.
 
     The input is copied into `build_dir` with every relative path made absolute,
     and the active-theme file is written there for `theme_slug`, so the cascade
-    is the one a real build with that theme produces.
+    is the one a real build with that theme produces. A relative path named in
+    `keep_relative` stays relative, so it resolves beside the copied input in
+    `build_dir`.
     """
     base_dir = Path(settings.BASE_DIR)
     theme_css = (
@@ -53,6 +59,8 @@ def build_fls_css_with_theme(build_dir: Path, theme_slug: str) -> str:
 
     def absolute(match: re.Match[str]) -> str:
         relative = match.group(1)
+        if relative in keep_relative:
+            return match.group(0)
         if relative == _ACTIVE_THEME_FILE:
             return f'"{active_theme.as_posix()}"'
         return f'"{(base_dir / relative).as_posix()}"'
