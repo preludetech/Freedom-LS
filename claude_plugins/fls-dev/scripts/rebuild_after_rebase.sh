@@ -8,6 +8,8 @@
 set -eu
 
 uv sync
+# shellcheck disable=SC1091 # the path is only known at run time
+. "$(dirname "$0")/link_panel_framework.sh"
 npm i
 npm run tailwind_build
 "$(dirname "$0")/dev_db_init.sh"
