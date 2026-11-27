@@ -16,15 +16,15 @@
 <text x="40.0" y="121.5" fill="#111827">multi-step-course-</text>
 <text x="40.0" y="136.5" fill="#111827">applications-2-reviewers-and-</text>
 <text x="40.0" y="151.5" fill="#111827">inbox</text>
+<rect x="24.0" y="182.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,182.5 H30.0 A6,6 0 0 0 24.0,188.5 V226.5 A6,6 0 0 0 30.0,232.5 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="204.5" fill="#111827">multi-step-course-</text>
+<text x="40.0" y="219.5" fill="#111827">applications-4-reopen-form</text>
 <rect x="354.0" y="58.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V117.0 A6,6 0 0 0 360.0,123.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="80.0" fill="#111827">multi-step-course-</text>
 <text x="370.0" y="95.0" fill="#111827">applications-3-approval-</text>
 <text x="370.0" y="110.0" fill="#111827">outcome</text>
-<rect x="24.0" y="182.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,182.5 H30.0 A6,6 0 0 0 24.0,188.5 V226.5 A6,6 0 0 0 30.0,232.5 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="204.5" fill="#111827">multi-step-course-</text>
-<text x="40.0" y="219.5" fill="#111827">applications-4-reopen-form</text>
 <rect x="354.0" y="209.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,209.0 H360.0 A6,6 0 0 0 354.0,215.0 V268.0 A6,6 0 0 0 360.0,274.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="231.0" fill="#111827">multi-step-course-</text>

@@ -48,15 +48,6 @@
 <text x="40.0" y="339.5" fill="#111827">sacaa-compliance-content-</text>
 <text x="40.0" y="354.5" fill="#111827">versions-and-access-4-</text>
 <text x="40.0" y="369.5" fill="#111827">question-access</text>
-<rect x="354.0" y="58.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V117.0 A6,6 0 0 0 360.0,123.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="80.0" fill="#111827">sacaa-compliance-content-</text>
-<text x="370.0" y="95.0" fill="#111827">versions-and-access-5-</text>
-<text x="370.0" y="110.0" fill="#111827">answered-version-review</text>
-<rect x="354.0" y="277.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,277.0 H360.0 A6,6 0 0 0 354.0,283.0 V321.0 A6,6 0 0 0 360.0,327.0 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="299.0" fill="#111827">sacaa-compliance-assessment-</text>
-<text x="370.0" y="314.0" fill="#111827">controls-1-score-moderation</text>
 <rect x="24.0" y="891.5" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,891.5 H30.0 A6,6 0 0 0 24.0,897.5 V935.5 A6,6 0 0 0 30.0,941.5 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="913.5" fill="#111827">sacaa-compliance-assessment-</text>
@@ -66,6 +57,15 @@
 <text x="40.0" y="981.5" fill="#111827">sacaa-compliance-assessment-</text>
 <text x="40.0" y="996.5" fill="#111827">controls-4-inactivity-auto-</text>
 <text x="40.0" y="1011.5" fill="#111827">exit</text>
+<rect x="354.0" y="58.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V117.0 A6,6 0 0 0 360.0,123.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="80.0" fill="#111827">sacaa-compliance-content-</text>
+<text x="370.0" y="95.0" fill="#111827">versions-and-access-5-</text>
+<text x="370.0" y="110.0" fill="#111827">answered-version-review</text>
+<rect x="354.0" y="277.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,277.0 H360.0 A6,6 0 0 0 354.0,283.0 V321.0 A6,6 0 0 0 360.0,327.0 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="299.0" fill="#111827">sacaa-compliance-assessment-</text>
+<text x="370.0" y="314.0" fill="#111827">controls-1-score-moderation</text>
 <rect x="354.0" y="879.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,879.0 H360.0 A6,6 0 0 0 354.0,885.0 V923.0 A6,6 0 0 0 360.0,929.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="901.0" fill="#111827">sacaa-compliance-assessment-</text>
@@ -111,15 +111,15 @@
 <text x="40.0" y="830.5" fill="#111827">multi-step-course-</text>
 <text x="40.0" y="845.5" fill="#111827">applications-2-reviewers-and-</text>
 <text x="40.0" y="860.5" fill="#111827">inbox</text>
+<rect x="24.0" y="400.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,400.5 H30.0 A6,6 0 0 0 24.0,406.5 V444.5 A6,6 0 0 0 30.0,450.5 H32.0 Z" fill="#991b1b"/>
+<text x="40.0" y="422.5" fill="#111827">multi-step-course-</text>
+<text x="40.0" y="437.5" fill="#111827">applications-4-reopen-form</text>
 <rect x="354.0" y="428.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,428.0 H360.0 A6,6 0 0 0 354.0,434.0 V487.0 A6,6 0 0 0 360.0,493.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="450.0" fill="#111827">multi-step-course-</text>
 <text x="370.0" y="465.0" fill="#111827">applications-3-approval-</text>
 <text x="370.0" y="480.0" fill="#111827">outcome</text>
-<rect x="24.0" y="400.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,400.5 H30.0 A6,6 0 0 0 24.0,406.5 V444.5 A6,6 0 0 0 30.0,450.5 H32.0 Z" fill="#991b1b"/>
-<text x="40.0" y="422.5" fill="#111827">multi-step-course-</text>
-<text x="40.0" y="437.5" fill="#111827">applications-4-reopen-form</text>
 <rect x="354.0" y="345.0" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,345.0 H360.0 A6,6 0 0 0 354.0,351.0 V404.0 A6,6 0 0 0 360.0,410.0 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="367.0" fill="#111827">multi-step-course-</text>
@@ -188,18 +188,10 @@
 <path d="M32.0,468.5 H30.0 A6,6 0 0 0 24.0,474.5 V512.5 A6,6 0 0 0 30.0,518.5 H32.0 Z" fill="#facc15"/>
 <text x="40.0" y="490.5" fill="#111827">faster-test-runs-2-reuse-test-</text>
 <text x="40.0" y="505.5" fill="#111827">database</text>
-<rect x="684.0" y="820.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M692.0,820.5 H690.0 A6,6 0 0 0 684.0,826.5 V864.5 A6,6 0 0 0 690.0,870.5 H692.0 Z" fill="#facc15"/>
-<text x="700.0" y="842.5" fill="#111827">faster-test-runs-7-claude-</text>
-<text x="700.0" y="857.5" fill="#111827">cloud-test-runs</text>
 <rect x="24.0" y="604.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M32.0,604.5 H30.0 A6,6 0 0 0 24.0,610.5 V648.5 A6,6 0 0 0 30.0,654.5 H32.0 Z" fill="#facc15"/>
 <text x="40.0" y="626.5" fill="#111827">faster-test-runs-9-machine-</text>
 <text x="40.0" y="641.5" fill="#111827">wide-test-run-limit</text>
-<rect x="354.0" y="559.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,559.0 H360.0 A6,6 0 0 0 354.0,565.0 V603.0 A6,6 0 0 0 360.0,609.0 H362.0 Z" fill="#facc15"/>
-<text x="370.0" y="581.0" fill="#111827">faster-test-runs-11-record-</text>
-<text x="370.0" y="596.0" fill="#111827">failed-full-runs</text>
 <rect x="24.0" y="672.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
 <path d="M32.0,672.5 H30.0 A6,6 0 0 0 24.0,678.5 V716.5 A6,6 0 0 0 30.0,722.5 H32.0 Z" fill="#facc15"/>
 <text x="40.0" y="694.5" fill="#111827">faster-test-runs-12-reliable-</text>
@@ -208,6 +200,18 @@
 <path d="M32.0,740.5 H30.0 A6,6 0 0 0 24.0,746.5 V784.5 A6,6 0 0 0 30.0,790.5 H32.0 Z" fill="#facc15"/>
 <text x="40.0" y="762.5" fill="#111827">faster-test-runs-13-</text>
 <text x="40.0" y="777.5" fill="#111827">checkpoint-shared-paths</text>
+<rect x="684.0" y="820.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M692.0,820.5 H690.0 A6,6 0 0 0 684.0,826.5 V864.5 A6,6 0 0 0 690.0,870.5 H692.0 Z" fill="#facc15"/>
+<text x="700.0" y="842.5" fill="#111827">faster-test-runs-7-claude-</text>
+<text x="700.0" y="857.5" fill="#111827">cloud-test-runs</text>
+<rect x="354.0" y="559.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,559.0 H360.0 A6,6 0 0 0 354.0,565.0 V603.0 A6,6 0 0 0 360.0,609.0 H362.0 Z" fill="#facc15"/>
+<text x="370.0" y="581.0" fill="#111827">faster-test-runs-11-record-</text>
+<text x="370.0" y="596.0" fill="#111827">failed-full-runs</text>
+<rect x="24.0" y="1367.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,1367.5 H30.0 A6,6 0 0 0 24.0,1373.5 V1411.5 A6,6 0 0 0 30.0,1417.5 H32.0 Z" fill="#facc15"/>
+<text x="40.0" y="1389.5" fill="#111827">educator-interface-staff-</text>
+<text x="40.0" y="1404.5" fill="#111827">invitations-and-cohort-staff</text>
 <rect x="354.0" y="743.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,743.0 H360.0 A6,6 0 0 0 354.0,749.0 V787.0 A6,6 0 0 0 360.0,793.0 H362.0 Z" fill="#facc15"/>
 <text x="370.0" y="765.0" fill="#111827">educator-interface-data-table-</text>
@@ -216,10 +220,6 @@
 <path d="M362.0,811.0 H360.0 A6,6 0 0 0 354.0,817.0 V855.0 A6,6 0 0 0 360.0,861.0 H362.0 Z" fill="#facc15"/>
 <text x="370.0" y="833.0" fill="#111827">educator-interface-contextual-</text>
 <text x="370.0" y="848.0" fill="#111827">help</text>
-<rect x="24.0" y="1367.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,1367.5 H30.0 A6,6 0 0 0 24.0,1373.5 V1411.5 A6,6 0 0 0 30.0,1417.5 H32.0 Z" fill="#facc15"/>
-<text x="40.0" y="1389.5" fill="#111827">educator-interface-staff-</text>
-<text x="40.0" y="1404.5" fill="#111827">invitations-and-cohort-staff</text>
 <rect x="354.0" y="1476.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,1476.0 H360.0 A6,6 0 0 0 354.0,1482.0 V1520.0 A6,6 0 0 0 360.0,1526.0 H362.0 Z" fill="#facc15"/>
 <text x="370.0" y="1498.0" fill="#111827">educator-interface-message-</text>

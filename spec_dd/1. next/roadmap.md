@@ -84,16 +84,24 @@ Priority: 🔴 High
 
 Learner record retention, question versions and access, and assessment controls, for training organisations audited by SACAA. Parents: `sacaa-complianc-deletion-and-declaration`, `sacaa-compliance-content-versions-and-access`, `sacaa-compliance-assessment-controls`.
 
+### In progress
+
 - `sacaa-compliance-content-versions-and-access-3-question-versions` — **in progress** — Every question change saves an immutable version; attempts keep the version served; results, export and admin answers read it.
 - `sacaa-compliance-content-versions-and-access-4-question-access` — **in progress** — A new role may view course questions and answers in the educator interface; each view is audited; admin question pages go.
-- `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
-- `sacaa-compliance-assessment-controls-1-score-moderation` — **blocked** by `sacaa-compliance-content-versions-and-access-4-question-access` — A moderator overrides a learner's mark on one quiz question with a reason; the system mark is kept. Collides with `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-5-answered-version-review`.
 - `sacaa-compliance-assessment-controls-2-attempt-limits` — **in progress** — Quizzes cap attempts and set escalating waits between failed attempts, enforced at the start gate. Collides with `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-5-test-disturbance`.
 - `sacaa-compliance-assessment-controls-3-test-time-limit` — **in progress** — Quizzes get a time limit with a countdown; expired attempts are submitted and marked, with a recorded reason. Collides with `sacaa-compliance-assessment-controls-5-test-disturbance`.
+
+### Ready to start
+
 - `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — **ready** — Topics, forms and course parts require interaction every N minutes, warn, then exit to the dashboard or log out.
+- `sacaa-compliance-assessment-controls-7-course-restart` — **ready** — Staff restart a learner's course with a reason; the earlier run is kept read-only.
+
+### Blocked
+
+- `sacaa-compliance-content-versions-and-access-5-answered-version-review` — **blocked** by `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-4-question-access` — Educators reviewing an attempt see the question version answered, when it changed, and whether it is still served.
+- `sacaa-compliance-assessment-controls-1-score-moderation` — **blocked** by `sacaa-compliance-content-versions-and-access-4-question-access` — A moderator overrides a learner's mark on one quiz question with a reason; the system mark is kept. Collides with `sacaa-compliance-content-versions-and-access-3-question-versions`, `sacaa-compliance-content-versions-and-access-5-answered-version-review`.
 - `sacaa-compliance-assessment-controls-5-test-disturbance` — **blocked** by `sacaa-compliance-assessment-controls-3-test-time-limit`, `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Leaving a quiz (logout, session end, auto exit, leave and return) auto-fails or auto-marks the attempt.
 - `sacaa-compliance-assessment-controls-6-minimum-learning-time` — **blocked** by `sacaa-compliance-assessment-controls-4-inactivity-auto-exit` — Active learning time is recorded; topics, course parts and quizzes require a minimum before learners move on.
-- `sacaa-compliance-assessment-controls-7-course-restart` — **ready** — Staff restart a learner's course with a reason; the earlier run is kept read-only.
 
 ![SACAA compliance](roadmap_diagrams/sacaa-compliance.svg)
 
@@ -115,7 +123,12 @@ Priority: 🔴 High
 
 The panel framework moves into its own installable package, because another Django project needs it. Parent: `extract_panels_framework`.
 
+### In progress
+
 - `extract_panels_framework-5-package-and-install` — **in progress** — The public `django-panel-framework` repo, tagged `v0.1.0`. FLS installs it by git tag and drops the old table.
+
+### Blocked
+
 - `extract_panels_framework-6-claude-plugin` — **blocked** by `extract_panels_framework-5-package-and-install` — A generic `panel-framework` Claude Code plugin and developer doc in the package repo. `fls-dev` keeps only a pointer.
 
 ![Panel framework extraction](roadmap_diagrams/panel-framework-extraction.svg)
@@ -137,7 +150,12 @@ Priority: 🔴 High
 
 Learners publish a profile to help them find work, and visitors browse an index of them. Parent: `learner-public-profile`.
 
+### Ready to start
+
 - `learner-public-profile-2-profile-and-page` — **ready** — Learners switch on a shareable public profile with blurb, work experience, place, open to work and links.
+
+### Blocked
+
 - `learner-public-profile-3-completed-courses` — **blocked** by `learner-public-profile-2-profile-and-page` — Courses a learner completed on the site appear on their public profile. The learner can hide each one. Collides with `learner-public-profile-4-certificates`.
 - `learner-public-profile-4-certificates` — **blocked** by `learner-public-profile-2-profile-and-page` — Learners upload self-reported certificates. Organisation staff upload certificates on the educator-interface learner page.
 - `learner-public-profile-5-index` — **blocked** by `learner-public-profile-3-completed-courses` — A public index of switched-on profiles, named per site, with search, filters and sorts.
@@ -165,9 +183,14 @@ Priority: 🔴 High
 
 Applications become steps an applicant works through over weeks, decided by a deployment's rules and cleared by organisation reviewers. Parent: `multi-step-course-applications`.
 
+### Ready to start
+
 - `multi-step-course-applications-2-reviewers-and-inbox` — **ready** — Organisation reviewers get an applications inbox and review screen, approve or reject, and move applications between organisations.
-- `multi-step-course-applications-3-approval-outcome` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — A deployment seam decides what approval does; FLS's default registers the applicant for the course.
 - `multi-step-course-applications-4-reopen-form` — **ready** — Applicants reopen their submitted application form, answers prefilled, until it is approved.
+
+### Blocked
+
+- `multi-step-course-applications-3-approval-outcome` — **blocked** by `multi-step-course-applications-2-reviewers-and-inbox` — A deployment seam decides what approval does; FLS's default registers the applicant for the course.
 - `multi-step-course-applications-5-requirements-and-resolver` — **blocked** by `multi-step-course-applications-4-reopen-form` — Applicants work through a requirements page; a deployment resolver, or the course's fixed list, decides the requirements.
 - `multi-step-course-applications-6-reviewer-verdicts` — **blocked** by `multi-step-course-applications-5-requirements-and-resolver`, `multi-step-course-applications-10-intake-courses` — Reviewers accept or turn down requirements with a reason, preview the consequence; requirements hold back approval or registration.
 - `multi-step-course-applications-7-upload-requirements` — **blocked** by `multi-step-course-applications-6-reviewer-verdicts` — Applicants upload documents for requirements, re-upload when asked, and see past uploads; reviewers see every version. Collides with `multi-step-course-applications-8-choices`.
@@ -200,6 +223,8 @@ Priority: 🟠 Medium
 
 Gaps in the panel framework's dialogs and responses.
 
+### Ready to start
+
 - `panel-framework-close-and-toast-response` — **ready** — Panel actions get a built-in response that closes the dialog and shows a toast without swapping content.
 - `panel-framework-dialogs-without-javascript` — **ready** — Single-record dialog triggers work with JavaScript off, opening the dialog server-side over its page.
 
@@ -210,6 +235,8 @@ Gaps in the panel framework's dialogs and responses.
 Priority: 🟠 Medium
 
 Test out of sections, revise with spaced repetition and flashcards, and watch access-controlled video. Parent: `learner-interface-features`.
+
+### Ready to start
 
 - `learner-interface-features-2-test-out` — **ready** — Learners take a pretest and skip sections they already know; the skip is recorded as its own kind of completion.
 - `learner-interface-features-4-flashcards` — **ready** — Authors add flashcards to sections; learners rate their confidence and the revision schedule brings them back.
@@ -236,8 +263,13 @@ Priority: 🟠 Medium
 
 Course content that plays audio: clips, say-it-then-reveal practice and audio on revision flashcards. Parent: `content-widget-sayit-reveal`.
 
-- `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
+### Ready to start
+
 - `content-widget-sayit-reveal-4-audio-access-control` — **ready** — Decide and enforce who may play a course's audio through its open redirect link.
+
+### Blocked
+
+- `content-widget-sayit-reveal-3-audio-on-revision-flashcards` — **blocked** by `learner-interface-features-4-flashcards` — Scheduled revision flashcards carry audio that plays when the learner reveals the card.
 
 ![Audio content widgets](roadmap_diagrams/audio-content-widgets.svg)
 
@@ -257,6 +289,8 @@ Course content that plays audio: clips, say-it-then-reveal practice and audio on
 Priority: 🟠 Medium
 
 Due dates and course time limits, with consequences, pause, reminders and at-risk views. Parent: `deadlines`.
+
+### Ready to start
 
 - `deadlines-4-learner-self-pause` — **ready** — Learners pause and resume their own course within the policy's limits, giving a reason.
 - `deadlines-5-reminders` — **ready** — A housekeeping sweep sends learners reminders, educators rolled-up overdue notices, and fires a `deadline.missed` webhook.
@@ -286,6 +320,8 @@ Priority: 🟠 Medium
 
 Form engine features and the course application flow.
 
+### Ready to start
+
 - `form-engine-branch-logic-2-and-conditions` — **ready** — Show a page, question or content block only when several conditions all hold.
 
 ![Forms and applications](roadmap_diagrams/forms-and-applications.svg)
@@ -296,12 +332,17 @@ Priority: 🟠 Medium
 
 Notifications and direct messaging between learners and educators. Parent: `user-communication`.
 
+### Ready to start
+
 - `user-communication-2-notification-email` — **ready** — Email delivery. Per-category immediate, daily, weekly or off preferences, quiet hours, unsubscribe, and a digest sweep in housekeeping.
 - `user-communication-6-moderation` — **ready** — Users report messages or block users. Site admins work a report queue and hide messages. Nothing is hard deleted.
-- `user-communication-8-realtime` — **blocked** by `user-communication-6-moderation` — Optional Django Channels push for the unread badge and open threads. Off by default, with polling as the fallback.
 - `messaging-inbox-polish` — **ready** — Recipient search by email and cohort, one New message flow, staff and cohort chips, full educator conversation history.
 - `messaging-drafts` — **ready** — Unsent messages are saved as drafts, marked in the conversation list and refilled into the message box. Collides with `messaging-inbox-polish`.
 - `user-communication-help-desk` — **ready** — Learners ask for help on specific content from the course player, into a shared queue educators pick up.
+
+### Blocked
+
+- `user-communication-8-realtime` — **blocked** by `user-communication-6-moderation` — Optional Django Channels push for the unread badge and open threads. Off by default, with polling as the fallback.
 
 ![User communication](roadmap_diagrams/user-communication.svg)
 
@@ -323,11 +364,16 @@ Priority: 🟠 Medium
 
 Where signups come from, and what visitors are told about tracking.
 
+### Ready to start
+
 - `referral-tracking-external-referer-first-touch` — **ready** — An opt-in first touch for visitors who arrive untagged from another site.
 - `server-side-conversion-tracking` — **ready** — Send conversions from the server to the Meta, TikTok and Google APIs, deduplicated against the browser tags.
 - `cookie-banner` — **ready** — A cookie banner explains tracking. Once dismissed, it stays dismissed.
 - `landing-page-component-kit` — **ready** — Theme-role cotton components and layouts for building course and campaign landing pages.
 - `lead-capture-forms` — **ready** — Site-aware enquiry forms storing leads with first-touch attribution, with staff notification emails and CSV export.
+
+### Blocked
+
 - `referral-tracking-labelled-referer-hosts` — **blocked** by `referral-tracking-external-referer-first-touch` — Staff label unknown referer hosts in the admin so the channel classifier counts them correctly.
 - `admin-leads-list-and-export` — **blocked** by `lead-capture-forms` — Staff list everyone who showed interest, one row per email, filtered by date and channel, with CSV export.
 
@@ -342,6 +388,8 @@ Where signups come from, and what visitors are told about tracking.
 Priority: 🟠 Medium
 
 Developer tooling, deployment and downstream fixes.
+
+### Ready to start
 
 - `from-address-system-check` — **ready** — A `mail` system check warns when the email backend really delivers but `DEFAULT_FROM_EMAIL` is blank.
 - `housekeeping-sentry-cron-checkin` — **ready** — When a monitor slug is configured, `fls_run_housekeeping` checks in with Sentry Crons.
@@ -361,7 +409,12 @@ Priority: 🟠 Medium
 
 The icons app becomes an installable package another Django project can use and extend with its own icons. Parent: `extract-semantic-icons-app`.
 
+### Ready to start
+
 - `extract-semantic-icons-app-2-host-icons` — **ready** — Host projects add semantic names, point names at their own SVGs, and register whole custom icon sets, all checked at startup.
+
+### Blocked
+
 - `extract-semantic-icons-app-3-package-and-install` — **blocked** by `extract-semantic-icons-app-2-host-icons`, `extract_panels_framework-5-package-and-install` — The public `django-semantic-icons` repo, tagged `v0.1.0`; FLS and First-Class install it by git tag.
 - `extract-semantic-icons-app-4-claude-plugin` — **blocked** by `extract-semantic-icons-app-3-package-and-install`, `extract_panels_framework-6-claude-plugin` — A generic `semantic-icons` Claude Code plugin and host doc in the package repo; `fls-dev:icon-usage` keeps only FLS specifics.
 
@@ -384,6 +437,8 @@ Priority: 🟡 Low
 
 Rules that register or recommend courses based on a learner's HR attributes. Parent: `corporate-job-course-recommendations`.
 
+### Ready to start
+
 - `corporate-job-course-recommendations-4-educator-interface-screens` — **ready** — Educator-interface screens for attribute lists, a learner's attributes, and registration rules with their preview.
 - `corporate-job-course-recommendations-5-attribute-csv-import` — **ready** — Import learners' HR attributes by CSV through the bulk import flow, with a preview, and evaluate rules once per import.
 
@@ -401,12 +456,17 @@ Priority: 🟡 Low
 
 Cut the time and machine load of test runs so several worktrees can work at once. Parent: `faster-test-runs`.
 
+### Ready to start
+
 - `faster-test-runs-2-reuse-test-database` — **ready** — A pytest run reuses the test database and rebuilds it only when migrations change.
-- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
 - `faster-test-runs-9-machine-wide-test-run-limit` — **ready** — Test runs from every worktree share one CPU and memory limit, and a waiting run says so.
-- `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
 - `faster-test-runs-12-reliable-full-run-record` — **ready** — Every full run writes its own record, or prints why it recorded nothing. Collides with `faster-test-runs-9-machine-wide-test-run-limit`.
 - `faster-test-runs-13-checkpoint-shared-paths` — **ready** — A `finish_worktree` checkpoint tests main's change to a file the branch changed earlier as main's change.
+
+### Blocked
+
+- `faster-test-runs-7-claude-cloud-test-runs` — **blocked** by `faster-test-runs-2-reuse-test-database`, `faster-test-runs-9-machine-wide-test-run-limit`, `faster-test-runs-11-record-failed-full-runs`, `faster-test-runs-12-reliable-full-run-record`, `faster-test-runs-13-checkpoint-shared-paths` — Fallback: a test run or SDD batch is handed to a Claude Code cloud session.
+- `faster-test-runs-11-record-failed-full-runs` — **blocked** by `faster-test-runs-12-reliable-full-run-record` — A failed full run records its failed tests, so the next checkpoint re-runs those, not the whole suite.
 
 ![Faster test runs](roadmap_diagrams/faster-test-runs.svg)
 
@@ -428,6 +488,8 @@ Priority: 🟡 Low
 
 Reference parts, such as regulations, that learners consult at any time beside a course's learning path, and courses that are only libraries. Parent: `reference-material-content`.
 
+### Ready to start
+
 - `reference-material-content-4-library-courses` — **ready** — A course with only reference material opens its reference listing, shows no progress anywhere and can never be finished.
 
 ![Reference material](roadmap_diagrams/reference-material.svg)
@@ -447,15 +509,23 @@ Priority: 🟡 Low
 
 Org admins manage learners, cohorts, registrations and staff. Parent: `educator-interface-full-polish`.
 
+### In progress
+
 - `educator-interface-page-polish` — **in progress** — Tidier learner course progress, learner email on Settings, dashboard links, locked Cancel during bulk runs, smaller phone buttons.
-- `educator-interface-data-table-columns-and-filters` — **blocked** by `extract_panels_framework-5-package-and-install` — Data tables get a show and hide Columns control saved per user, and faster filter controls.
-- `educator-interface-contextual-help` — **blocked** by `extract_panels_framework-5-package-and-install` — A click, tap and keyboard help icon on panels, fields and buttons, with help text for educators.
+
+### Ready to start
+
 - `educator-interface-staff-invitations-and-cohort-staff` — **ready** — Staff page shows pending invitations and resends them; cohorts get a Staff tab anyone seeing the cohort can read.
-- `educator-interface-message-from-anywhere` — **blocked** by `educator-interface-staff-invitations-and-cohort-staff` — Educators start a conversation from the learner page header, the staff quick view and the cohort Staff tab. Collides with `educator-interface-page-polish`.
 - `audit-log-coverage-gaps` — **ready** — The audit log also records Django admin edits, system admin role changes and report downloads, and marks where history starts.
 - `bulk-run-audit-summary` — **ready** — Bulk actions write one run summary with folded per-object entries in the Audit log, and take an optional reason.
 - `admin-dashboard-signal-cards` — **ready** — The admin index shows signup, registration, application and interest cards: last 7 days against the previous 7, newest entries.
 - `staff-person-profile-by-email` — **ready** — Staff look up one person by email and see account, attribution, applications, interests, recommendations and registrations with progress.
+
+### Blocked
+
+- `educator-interface-data-table-columns-and-filters` — **blocked** by `extract_panels_framework-5-package-and-install` — Data tables get a show and hide Columns control saved per user, and faster filter controls.
+- `educator-interface-contextual-help` — **blocked** by `extract_panels_framework-5-package-and-install` — A click, tap and keyboard help icon on panels, fields and buttons, with help text for educators.
+- `educator-interface-message-from-anywhere` — **blocked** by `educator-interface-staff-invitations-and-cohort-staff` — Educators start a conversation from the learner page header, the staff quick view and the cohort Staff tab. Collides with `educator-interface-page-polish`.
 
 ![Educator interface](roadmap_diagrams/educator-interface.svg)
 

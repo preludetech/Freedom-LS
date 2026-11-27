@@ -11,6 +11,9 @@ The roadmap's feature sections are the source. Each run:
   and every "Collides with" sentence;
 - retires a feature section that has no spec bullets left, archiving it to
   ``<parent>/spec-order.md`` for each parent it names;
+- groups each feature's spec bullets under ``###`` subheadings by state (in progress, ready to
+  start, waiting on a collision, needs work on main first, blocked), keeping their order inside
+  each group;
 - regenerates the "Up next" section, where a ready spec that collides with an in-progress one
   is listed as waiting on that collision, not as ready to start;
 - reads the priority file (``priority.md`` beside the roadmap), creating it when missing, adds
@@ -74,6 +77,16 @@ no entry of its own. A spec is at least as high as any spec that depends on it. 
 adds anything missing under "Priority not set"; move it from there to the level it belongs in."""
 
 UP_NEXT_LEVELS = 4
+
+# The subheading each display state is listed under, in the order the groups appear.
+STATE_HEADINGS = {
+    "in progress": "In progress",
+    "ready": "Ready to start",
+    "collides": "Waiting on a collision",
+    "needs main": "Needs work on main first",
+    "blocked": "Blocked",
+}
+GROUP_HEADING_LINES = {f"### {h}" for h in STATE_HEADINGS.values()}
 
 # Diagram geometry.
 BOX_W = 250
@@ -627,6 +640,28 @@ def draw_svg(
     return "\n".join(out) + "\n"
 
 
+def group_bullets(lines: list[str], specs: dict[str, Spec]) -> list[str]:
+    """Put a feature's spec bullets under one ``###`` subheading per state, where the first
+    bullet was. Empty groups get no heading."""
+    bullets = [(m.group("dir"), ln) for ln in lines if (m := BULLET_RE.match(ln))]
+    if not bullets:
+        return lines
+    first = next(i for i, ln in enumerate(lines) if BULLET_RE.match(ln))
+    kept = [
+        (i, ln)
+        for i, ln in enumerate(lines)
+        if not BULLET_RE.match(ln) and ln.strip() not in GROUP_HEADING_LINES
+    ]
+    before = [ln for i, ln in kept if i < first]
+    after = [ln for i, ln in kept if i > first]
+    grouped: list[str] = []
+    for state, heading in STATE_HEADINGS.items():
+        members = [ln for name, ln in bullets if specs[name].state == state]
+        if members:
+            grouped += ["", f"### {heading}", "", *members]
+    return [*before, *grouped, "", *after]
+
+
 def feature_graph(
     section: Section, specs: dict[str, Spec]
 ) -> tuple[list[str], list[tuple[str, str]], dict[str, str], dict[str, str]]:
@@ -725,19 +760,19 @@ def build_up_next(
         "",
         f"Priority: {legend}",
         "",
-        "### In progress",
+        f"### {STATE_HEADINGS['in progress']}",
         "",
         *bullets(in_progress),
         "",
-        "### Ready to start",
+        f"### {STATE_HEADINGS['ready']}",
         "",
         *bullets(ready),
         "",
-        "### Waiting on a collision",
+        f"### {STATE_HEADINGS['collides']}",
         "",
         *bullets(colliding),
         "",
-        "### Needs work on main first",
+        f"### {STATE_HEADINGS['needs main']}",
         "",
         *bullets(needs),
         "",
@@ -877,7 +912,7 @@ def main(argv: list[str]) -> int:
             if not IMAGE_RE.match(ln) and not PRIORITY_LINE_RE.match(ln)
         ]
         top = min((ranks[s.dir] for s in section.specs), key=lambda r: r.order)
-        body = [f"Priority: {priority.label(top)}", "", *body]
+        body = [f"Priority: {priority.label(top)}", "", *group_bullets(body, specs)]
         if nodes and not any(
             find_cycles({n: [d for d, s in edges if s == n] for n in nodes})
         ):

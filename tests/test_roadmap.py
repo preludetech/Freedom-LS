@@ -55,3 +55,50 @@ def test_ready_spec_colliding_with_in_progress_spec_is_not_ready_to_start(
     roadmap = (tmp_path / ROADMAP).read_text(encoding="utf-8")
     assert "`quiz-limits`" in up_next_group(roadmap, "Waiting on a collision")
     assert "`quiz-limits`" not in up_next_group(roadmap, "Ready to start")
+
+
+GROUPED_ROADMAP = """\
+# Spec roadmap
+
+## Up next
+
+## Quizzes
+
+Quiz controls.
+
+- `quiz-review` — **blocked** by `quiz-timer` — Educators review quiz attempts.
+- `quiz-limits` — **ready** — Quizzes cap attempts.
+- `quiz-timer` — **in progress** — Quizzes get a time limit.
+"""
+
+
+def test_feature_section_groups_specs_under_status_subheadings(
+    tmp_path: Path,
+) -> None:
+    write_tree(
+        tmp_path,
+        {
+            ROADMAP: GROUPED_ROADMAP,
+            "spec_dd/1. next/quiz-limits/idea.md": "# Limits\n",
+            "spec_dd/1. next/quiz-review/idea.md": "# Review\n",
+            "spec_dd/2. in progress/quiz-timer/idea.md": "# Timer\n",
+            "spec_dd/3. done/.keep": "",
+        },
+    )
+
+    run_script(SCRIPT, tmp_path, ROADMAP)
+    run_script(SCRIPT, tmp_path, ROADMAP)
+
+    feature = (tmp_path / ROADMAP).read_text(encoding="utf-8").split("## Quizzes\n")[1]
+    in_progress = feature.split("### In progress\n")[1].split("###")[0]
+    ready = feature.split("### Ready to start\n")[1].split("###")[0]
+    blocked = feature.split("### Blocked\n")[1].split("###")[0]
+    assert feature.count("### ") == 3
+    assert (
+        feature.index("### In progress")
+        < feature.index("### Ready to start")
+        < feature.index("### Blocked")
+    )
+    assert "`quiz-timer` — **in progress**" in in_progress
+    assert "`quiz-limits` — **ready**" in ready
+    assert "`quiz-review` — **blocked**" in blocked

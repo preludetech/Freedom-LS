@@ -5,6 +5,10 @@
 <path d="M274.0,185.0 C314.0,185.0 314.0,151.0 354.0,151.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,185.0 C314.0,185.0 314.0,219.0 354.0,219.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
 <path d="M274.0,109.5 C314.0,109.5 314.0,83.0 354.0,83.0" fill="none" stroke="#4b5563" stroke-width="1.3" marker-end="url(#arrow)"/>
+<rect x="24.0" y="84.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+<path d="M32.0,84.5 H30.0 A6,6 0 0 0 24.0,90.5 V128.5 A6,6 0 0 0 30.0,134.5 H32.0 Z" fill="#facc15"/>
+<text x="40.0" y="106.5" fill="#111827">educator-interface-staff-</text>
+<text x="40.0" y="121.5" fill="#111827">invitations-and-cohort-staff</text>
 <rect x="354.0" y="126.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,126.0 H360.0 A6,6 0 0 0 354.0,132.0 V170.0 A6,6 0 0 0 360.0,176.0 H362.0 Z" fill="#facc15"/>
 <text x="370.0" y="148.0" fill="#111827">educator-interface-data-table-</text>
@@ -13,10 +17,6 @@
 <path d="M362.0,194.0 H360.0 A6,6 0 0 0 354.0,200.0 V238.0 A6,6 0 0 0 360.0,244.0 H362.0 Z" fill="#facc15"/>
 <text x="370.0" y="216.0" fill="#111827">educator-interface-contextual-</text>
 <text x="370.0" y="231.0" fill="#111827">help</text>
-<rect x="24.0" y="84.5" width="250" height="50" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
-<path d="M32.0,84.5 H30.0 A6,6 0 0 0 24.0,90.5 V128.5 A6,6 0 0 0 30.0,134.5 H32.0 Z" fill="#facc15"/>
-<text x="40.0" y="106.5" fill="#111827">educator-interface-staff-</text>
-<text x="40.0" y="121.5" fill="#111827">invitations-and-cohort-staff</text>
 <rect x="354.0" y="58.0" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,58.0 H360.0 A6,6 0 0 0 354.0,64.0 V102.0 A6,6 0 0 0 360.0,108.0 H362.0 Z" fill="#facc15"/>
 <text x="370.0" y="80.0" fill="#111827">educator-interface-message-</text>

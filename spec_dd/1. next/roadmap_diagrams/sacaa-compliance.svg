@@ -18,15 +18,6 @@
 <text x="40.0" y="163.0" fill="#111827">sacaa-compliance-content-</text>
 <text x="40.0" y="178.0" fill="#111827">versions-and-access-4-</text>
 <text x="40.0" y="193.0" fill="#111827">question-access</text>
-<rect x="354.0" y="65.5" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,65.5 H360.0 A6,6 0 0 0 354.0,71.5 V124.5 A6,6 0 0 0 360.0,130.5 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="87.5" fill="#111827">sacaa-compliance-content-</text>
-<text x="370.0" y="102.5" fill="#111827">versions-and-access-5-</text>
-<text x="370.0" y="117.5" fill="#111827">answered-version-review</text>
-<rect x="354.0" y="148.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
-<path d="M362.0,148.5 H360.0 A6,6 0 0 0 354.0,154.5 V192.5 A6,6 0 0 0 360.0,198.5 H362.0 Z" fill="#991b1b"/>
-<text x="370.0" y="170.5" fill="#111827">sacaa-compliance-assessment-</text>
-<text x="370.0" y="185.5" fill="#111827">controls-1-score-moderation</text>
 <rect x="24.0" y="224.0" width="250" height="50" rx="6" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
 <path d="M32.0,224.0 H30.0 A6,6 0 0 0 24.0,230.0 V268.0 A6,6 0 0 0 30.0,274.0 H32.0 Z" fill="#991b1b"/>
 <text x="40.0" y="246.0" fill="#111827">sacaa-compliance-assessment-</text>
@@ -36,6 +27,15 @@
 <text x="40.0" y="314.0" fill="#111827">sacaa-compliance-assessment-</text>
 <text x="40.0" y="329.0" fill="#111827">controls-4-inactivity-auto-</text>
 <text x="40.0" y="344.0" fill="#111827">exit</text>
+<rect x="354.0" y="65.5" width="250" height="65" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,65.5 H360.0 A6,6 0 0 0 354.0,71.5 V124.5 A6,6 0 0 0 360.0,130.5 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="87.5" fill="#111827">sacaa-compliance-content-</text>
+<text x="370.0" y="102.5" fill="#111827">versions-and-access-5-</text>
+<text x="370.0" y="117.5" fill="#111827">answered-version-review</text>
+<rect x="354.0" y="148.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
+<path d="M362.0,148.5 H360.0 A6,6 0 0 0 354.0,154.5 V192.5 A6,6 0 0 0 360.0,198.5 H362.0 Z" fill="#991b1b"/>
+<text x="370.0" y="170.5" fill="#111827">sacaa-compliance-assessment-</text>
+<text x="370.0" y="185.5" fill="#111827">controls-1-score-moderation</text>
 <rect x="354.0" y="216.5" width="250" height="50" rx="6" fill="#f3f4f6" stroke="#9ca3af" stroke-width="1.5"/>
 <path d="M362.0,216.5 H360.0 A6,6 0 0 0 354.0,222.5 V260.5 A6,6 0 0 0 360.0,266.5 H362.0 Z" fill="#991b1b"/>
 <text x="370.0" y="238.5" fill="#111827">sacaa-compliance-assessment-</text>
