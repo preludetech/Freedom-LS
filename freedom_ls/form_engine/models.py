@@ -260,6 +260,10 @@ class FormQuestion(BaseContent):
 
     CONTENT_TYPE = SchemaContentTypes.FORM_QUESTION
 
+    # The version this instance was built from; None for a live row. A sitting's
+    # answers record this version rather than the latest one.
+    pinned_version: FormQuestionVersion | None = None
+
     form_page = models.ForeignKey(
         FormPage, on_delete=models.CASCADE, related_name="questions"
     )
@@ -612,6 +616,17 @@ def save_question_version(
         return SavedQuestionVersion(version, latest.number if latest else None, changed)
 
 
+def latest_versions(question_ids: Iterable[UUID]) -> dict[UUID, FormQuestionVersion]:
+    """The highest-numbered version of each of these questions, in one query.
+    A question with no version is absent from the result."""
+    versions = (
+        FormQuestionVersion.unfiltered.filter(question_id__in=list(question_ids))
+        .order_by("question_id", "-number")
+        .distinct("question_id")
+    )
+    return {version.question_id: version for version in versions}
+
+
 def delete_question_versions(questions: Iterable[FormQuestion]) -> None:
     """Remove every version of these questions. For development commands only; callers
     delete the answers pinned to the versions first, or the PROTECT foreign key refuses."""
@@ -826,7 +841,7 @@ class FormProgress(SiteAwareModel):
         }
 
     def save_answers(
-        self, questions: Iterable[FormQuestion], post_data: QueryDict
+        self, questions: Sequence[FormQuestion], post_data: QueryDict
     ) -> dict[UUID, RejectedAnswer]:
         """Persist the answers in `post_data` for `questions`.
 
@@ -843,6 +858,8 @@ class FormProgress(SiteAwareModel):
         typed.
         """
         rejected: dict[UUID, RejectedAnswer] = {}
+        questions = list(questions)
+        latest = latest_versions(q.id for q in questions if q.pinned_version is None)
         for question in questions:
             if question.type == QuestionType.FILE_UPLOAD:
                 # A file never rides the page POST, so a page submission carries
@@ -851,7 +868,7 @@ class FormProgress(SiteAwareModel):
                 continue
 
             if not has_submitted_answer(question, post_data):
-                self.answers.filter(question=question).delete()
+                self.answers.filter(question_id=question.id).delete()
                 continue
 
             text: str | None = None
@@ -869,8 +886,9 @@ class FormProgress(SiteAwareModel):
                     text = e164_phone_answer(text, country)
 
             answer, _created = QuestionAnswer.objects.get_or_create(
-                form_progress=self, question=question, site=self.site
+                form_progress=self, question_id=question.id, site=self.site
             )
+            answer.question_version = question.pinned_version or latest.get(question.id)
             if text is not None:
                 answer.text_answer = text
             else:

@@ -15,7 +15,9 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import connection, transaction
 from django.db.models import ProtectedError, RestrictedError
+from django.http import QueryDict
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -42,10 +44,13 @@ from freedom_ls.form_engine.models import (
     FormPage,
     FormProgress,
     FormQuestion,
+    FormQuestionVersion,
     FormStrategy,
     QuestionAnswerFile,
     QuestionOption,
+    latest_versions,
     question_answer_file_upload_to,
+    save_question_version,
 )
 from freedom_ls.form_engine.signals import form_attempt_completed
 from freedom_ls.tests.factories import SiteFactory
@@ -1723,3 +1728,127 @@ def test_two_threads_completing_one_sitting_complete_it_once(mock_site_context):
         form_attempt_completed.disconnect(_record)
 
     assert len(sent) == 1
+
+
+def _text_question(form: Form, order: int = 0) -> FormQuestion:
+    page = FormPageFactory(form=form, order=order)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=order
+    )
+    return question
+
+
+def _post(questions: list[FormQuestion]) -> QueryDict:
+    post = QueryDict(mutable=True)
+    for question in questions:
+        post[f"question_{question.id}"] = "an answer"
+    return post
+
+
+@pytest.mark.django_db
+def test_latest_versions_returns_each_questions_highest_number(
+    mock_site_context: Site, django_assert_max_num_queries: DjangoAssertNumQueries
+) -> None:
+    first: FormQuestion = FormQuestionFactory()
+    second: FormQuestion = FormQuestionFactory()
+    save_question_version(first, [], "c1")
+    first.question = "Changed"
+    first.save()
+    save_question_version(first, [], "c2")
+    save_question_version(second, [], "c1")
+
+    with django_assert_max_num_queries(1):
+        latest = latest_versions([first.id, second.id])
+
+    assert {question_id: v.number for question_id, v in latest.items()} == {
+        first.id: 2,
+        second.id: 1,
+    }
+
+
+@pytest.mark.django_db
+def test_save_answers_records_the_latest_version(mock_site_context: Site) -> None:
+    form: Form = FormFactory()
+    question = _text_question(form)
+    save_question_version(question, [], "c1")
+    question.question = "Changed"
+    question.save()
+    latest = save_question_version(question, [], "c2").version
+    progress: FormProgress = FormProgressFactory(form=form)
+
+    progress.save_answers([question], _post([question]))
+
+    assert progress.answers.get().question_version == latest
+
+
+@pytest.mark.django_db
+def test_save_answers_rerecords_the_latest_version_on_a_later_save(
+    mock_site_context: Site,
+) -> None:
+    form: Form = FormFactory()
+    question = _text_question(form)
+    save_question_version(question, [], "c1")
+    progress: FormProgress = FormProgressFactory(form=form)
+    progress.save_answers([question], _post([question]))
+    question.question = "Changed"
+    question.save()
+    latest = save_question_version(question, [], "c2").version
+
+    progress.save_answers([question], _post([question]))
+
+    assert progress.answers.get().question_version == latest
+
+
+@pytest.mark.django_db
+def test_save_answers_records_none_for_a_question_without_a_version(
+    mock_site_context: Site,
+) -> None:
+    form: Form = FormFactory()
+    question = _text_question(form)
+    progress: FormProgress = FormProgressFactory(form=form)
+
+    progress.save_answers([question], _post([question]))
+
+    assert progress.answers.get().question_version is None
+
+
+@pytest.mark.django_db
+def test_save_answers_records_the_pinned_version_over_a_later_one(
+    mock_site_context: Site,
+) -> None:
+    form: Form = FormFactory()
+    question = _text_question(form)
+    pinned = save_question_version(question, [], "c1").version
+    question.question = "Changed"
+    question.save()
+    save_question_version(question, [], "c2")
+    question.pinned_version = pinned
+    progress: FormProgress = FormProgressFactory(form=form)
+
+    progress.save_answers([question], _post([question]))
+
+    assert progress.answers.get().question_version == pinned
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("count", [2, 6])
+def test_save_answers_reads_the_version_table_once_however_many_questions(
+    mock_site_context: Site, count: int
+) -> None:
+    form: Form = FormFactory()
+    questions = [_text_question(form, order) for order in range(count)]
+    for question in questions:
+        save_question_version(question, [], "c1")
+    progress: FormProgress = FormProgressFactory(form=form)
+    post = _post(questions)
+    version_table = FormQuestionVersion._meta.db_table
+
+    with CaptureQueriesContext(connection) as queries:
+        progress.save_answers(questions, post)
+
+    version_reads = [
+        q["sql"]
+        for q in queries.captured_queries
+        if f'FROM "{version_table}"' in q["sql"]
+    ]
+    assert len(version_reads) == 1

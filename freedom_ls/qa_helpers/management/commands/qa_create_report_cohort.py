@@ -89,6 +89,7 @@ from freedom_ls.learner_progress.signals import recalculate_progress_percentage
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.qa_helpers.answers import pin_to_latest_versions
 from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
     _pin_current_site,
     _site_context,
@@ -391,6 +392,7 @@ def _complete_attempt(
             site=site,
         ).form_progress,
     )
+    answers: list[QuestionAnswer] = []
     for question in questions:
         options = options_by_question[str(question.id)]
         if not options:
@@ -411,6 +413,8 @@ def _complete_attempt(
             QuestionAnswerFactory(form_progress=attempt, question=question, site=site),
         )
         answer.selected_options.set(chosen)
+        answers.append(answer)
+    pin_to_latest_versions(answers)
     attempt.complete()
     # start_time is auto_now_add and complete() stamps completed_time with now(),
     # so backdating has to happen after the save, via the queryset.

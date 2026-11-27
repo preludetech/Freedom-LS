@@ -32,6 +32,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     FormStrategy,
     QuestionAnswerFile,
+    save_question_version,
 )
 from freedom_ls.form_engine.served_paper import ensure_served_paper, served_child_ids
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
@@ -110,6 +111,51 @@ def test_attaching_a_file_stores_it_against_the_answer(
 
     answer = form_progress.answers.get(question=question)
     assert answer.answer_file.original_filename == "id-scan.png"
+
+
+@pytest.mark.django_db
+def test_an_uploads_answer_records_the_questions_latest_version(
+    mock_site_context, client, sitting
+):
+    form_progress, question = sitting
+    save_question_version(question, [], "c1")
+    question.question = "Changed"
+    question.save()
+    latest = save_question_version(question, [], "c2").version
+    client.force_login(form_progress.user)
+
+    client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert form_progress.answers.get(question=question).question_version == latest
+
+
+@pytest.mark.django_db
+def test_an_upload_moves_an_existing_answer_to_the_latest_version(
+    mock_site_context, client, sitting
+):
+    form_progress, question = sitting
+    save_question_version(question, [], "c1")
+    client.force_login(form_progress.user)
+    client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+    question.question = "Changed"
+    question.save()
+    latest = save_question_version(question, [], "c2").version
+
+    client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert form_progress.answers.get(question=question).question_version == latest
 
 
 @pytest.mark.django_db

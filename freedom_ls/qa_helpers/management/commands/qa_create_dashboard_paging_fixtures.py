@@ -81,6 +81,7 @@ from freedom_ls.learner_progress.utils import (
     ensure_course_progress_record,
 )
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.qa_helpers.answers import pin_to_latest_versions
 
 CATEGORY_SLUG = "start-here-demo"
 
@@ -455,6 +456,7 @@ def _complete_form(
     form_progress: FormProgress = ensure_attempt(record, collection_item)
     if form_progress.completed_time:
         return
+    answers: list[QuestionAnswer] = []
     for page in form.pages.all():
         for child in page.children():
             if child.content_type != "FORM_QUESTION":
@@ -467,6 +469,8 @@ def _complete_form(
                 form_progress=form_progress, question=child, site=site
             )
             answer.selected_options.set([chosen])
+            answers.append(answer)
+    pin_to_latest_versions(answers)
     # complete() sets completed_time, scores the form and saves.
     form_progress.complete()
 

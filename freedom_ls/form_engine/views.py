@@ -26,6 +26,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     QuestionAnswer,
     QuestionAnswerFile,
+    latest_versions,
 )
 from freedom_ls.form_engine.permissions import can_download_answer_files
 from freedom_ls.form_engine.queries import without_quiz_answers
@@ -126,9 +127,18 @@ def partial_question_file_upload(
         )
 
     with transaction.atomic():
-        answer, _created = QuestionAnswer.objects.get_or_create(
-            form_progress=form_progress, question=question, site=form_progress.site
+        version = question.pinned_version or latest_versions([question.id]).get(
+            question.id
         )
+        answer, _created = QuestionAnswer.objects.get_or_create(
+            form_progress=form_progress,
+            question_id=question.id,
+            site=form_progress.site,
+            defaults={"question_version": version},
+        )
+        if answer.question_version != version:
+            answer.question_version = version
+            answer.save(update_fields=["question_version"])
         try:
             answer_file = answer.answer_file
         except QuestionAnswerFile.DoesNotExist:
@@ -150,7 +160,7 @@ def partial_question_file_remove(
 
     # Deleting the answer cascades to the file row, whose post_delete receiver
     # removes the stored object.
-    form_progress.answers.filter(question=question).delete()
+    form_progress.answers.filter(question_id=question.id).delete()
 
     notice = (
         "File removed. This question needs a file before you can submit."
