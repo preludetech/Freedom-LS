@@ -113,7 +113,13 @@ components; `Skill(fls-dev:frontend-styling)` owns the theme tokens.
   `mark_orphaned_runs_failed` and `delete_finished_records`, or `sweep_run_records` for all three.
   The framework schedules none of them: the host does.
 - `static/panel_framework/js/`: `alpine-components.js` and `shell-components.js` (`sidePanel`,
-  `refreshTimer`, `visibilityPoller`). A host loads both.
+  `refreshTimer`, `visibilityPoller`). FLS's base templates load both.
+- `templates/panel_framework/shell/`: the package's default shell, which `panel_framework_view`
+  renders when no `template_name` is passed. FLS passes its own shell (`educator_interface/interface.html`,
+  `accounts/account_page.html`) and compiles the framework's CSS into its own Tailwind build, so the
+  default shell, the compiled `static/panel_framework/css/panel_framework.css` and the scripts in
+  `static/panel_framework/vendor/` are unused here. A change to the framework's CSS sources or
+  template classes still needs `npm run panel_framework_css` in the package, or its tests fail.
 - Public names: a framework module lists what a host may import in `__all__`; `tasks`, `checks`,
   `field_display` and `templatetags` are private.
 
@@ -238,7 +244,7 @@ forward to its own `c-button`, `c-back-link` and the rest; the rules here name
 the component an FLS panel template writes. The panel framework's own styles (`.panel-surface`,
 `.panel-canvas`, `.panel-heading`, `.panel-btn`, the modal host, the selection bar and the compact
 table) live in `css/panel_framework.css` in the package, not in `tailwind.components.css`.
-`HOST_CONTRACT.md` in the package lists every primitive and what a host must supply.
+`CUSTOMISING.md` in the package lists every primitive and the hooks an override keeps.
 
 Every anchor in a panel-framework page is a control. The base layer underlines every `<a>`, and
 that underline means "a link inside prose", which these templates never hold. A control takes the

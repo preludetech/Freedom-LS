@@ -22,9 +22,12 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Review the code and the QA report
 - [x] (user) Put `UV_NO_SYNC=1` in your shell profile and in the `env` block of `.claude/settings.local.json`, so `uv run` and the pre-commit hook keep a linked package worktree (spec Requirements §4)
 - [x] (user) Decide whether migration educator_interface 0004 may stop with ProtectedError on a database where an audit_log AuditLogEntry points at the old freedom_ls_panel_framework content type (AuditLogEntry.target_content_type is PROTECT). Check production for such rows before deploying, then either keep the migration or have it handle those rows
-- [ ] (user) Decide how to land the new `DEVELOPING_WITH_A_HOST.md` and README link, uncommitted in the paired django-panel-framework worktree. Committing them here moves the package off the locked `v0.1.0` commit, so the FLS landing check fails until a new tag is pinned. Either commit them on the package's `main` instead, or commit, tag `v0.1.1` and bump the FLS pin
+- [x] (user) Decide how to land the new `DEVELOPING_WITH_A_HOST.md` and README link, uncommitted in the paired django-panel-framework worktree. Committing them here moves the package off the locked `v0.1.0` commit, so the FLS landing check fails until a new tag is pinned. Either commit them on the package's `main` instead, or commit, tag `v0.1.1` and bump the FLS pin
 - [ ] (user) Decide whether FLS needs its own scan for private panel_framework imports. The package dropped test_hosts_import_only_public_names, which scanned FLS, so no guard now stops FLS importing a private framework name. If yes, add an FLS invariant test that imports only names from the package's public lists
 - [ ] (user) Decide whether to keep htmx.config.defaultSettleDelay = 0 in the package's Playwright conftest (django-panel-framework tests/playwright/conftest.py). It stops test_editable_list_flow failing about 1 run in 5 on SQLite, where a click inside htmx's 20ms settle window was dropped. If not, find why htmx drops that request and fix it in the package
+- [ ] (user) Review the package's v0.2.0 change (default shell, committed compiled stylesheet, vendored htmx and Alpine, CUSTOMISING.md) in the paired django-panel-framework worktree, commit cd9351e
+- [ ] (user) Decide whether to fast-forward the package's `main` to `v0.2.0`. The tag is on the branch `extract_panels_framework-5-package-and-install`; `main` is still at the `v0.1.0` commit
+- [ ] (user) Decide whether FLS's educator and account shells should later be rebuilt on the package's `panel_framework/shell/base.html`. They still carry their own copy of the shell
 
 ## 4. Documentation and pull request
 

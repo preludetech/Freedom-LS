@@ -29,9 +29,7 @@ from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
 pytestmark = pytest.mark.fls_internal
 
 COMPILED_CSS: Path = FREEDOM_LS_PACKAGE_DIR.parent / "static/vendor/tailwind.output.css"
-REFERENCE_THEME: Path = (
-    Path(panel_framework.__file__).parent / "css/reference_theme.css"
-)
+REFERENCE_THEME: Path = Path(panel_framework.__file__).parent / "css/default_theme.css"
 # Used by a framework template and by no FLS template, so it is emitted only if
 # the build reads the framework's templates.
 GENERATED_FILE_NAME = "tailwind.panel_framework.css"
@@ -80,7 +78,7 @@ def reference_only_build(tmp_path_factory: pytest.TempPathFactory) -> str:
 
 
 @pytest.mark.parametrize("rule", [".panel-surface", FRAMEWORK_ONLY_CLASS])
-def test_a_build_from_the_reference_theme_alone_produces_the_framework_rule(
+def test_a_build_from_the_default_theme_alone_produces_the_framework_rule(
     reference_only_build: str, rule: str
 ) -> None:
     assert rule in reference_only_build

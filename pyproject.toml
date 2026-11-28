@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "django-panel-framework @ git+https://github.com/preludetech/django-panel-framework.git@v0.1.0",
+    "django-panel-framework @ git+https://github.com/preludetech/django-panel-framework.git@v0.2.0",
     "django>=6.0.4,<6.1",
     "django-allauth[headless]>=65.14.0",
     "django-click>=2.4.1",
