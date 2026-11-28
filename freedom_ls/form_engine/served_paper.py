@@ -23,6 +23,7 @@ from .models import (
     FormQuestion,
     FormStrategy,
     QuestionOption,
+    latest_versions,
 )
 from .units import shuffle_units
 
@@ -98,18 +99,30 @@ def build_served_paper(form: Form) -> ServedPaper:
         _scope_rng(seed, "pages").shuffle(page_rows)
     pages: list[ServedPage] = []
     options: dict[str, list[str]] = {}
+    served_questions: list[FormQuestion] = []
     for page in page_rows:
         children = _served_children(page, form, seed)
         pages.append({"id": str(page.id), "children": [str(c.id) for c in children]})
         for child in children:
             if isinstance(child, FormQuestion):
+                served_questions.append(child)
                 option_ids = [str(o.id) for o in _served_options(child, form, seed)]
                 if option_ids:
                     options[str(child.id)] = option_ids
+    versions = latest_versions(q.id for q in served_questions)
     # The seed drives the one-time draw and shuffle when the paper is written.
     # `random.sample` and `random.shuffle` output is not stable across Python
     # versions, so nothing rebuilds a paper from it; the stored lists are the record.
-    return {"seed": seed, "pages": pages, "options": options}
+    return {
+        "seed": seed,
+        "pages": pages,
+        "options": options,
+        "versions": {
+            str(q.id): str(versions[q.id].id)
+            for q in served_questions
+            if q.id in versions
+        },
+    }
 
 
 def served_child_ids(served_paper: ServedPaper) -> frozenset[UUID]:

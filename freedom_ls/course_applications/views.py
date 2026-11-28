@@ -73,7 +73,12 @@ from freedom_ls.course_applications.queries import (
 )
 from freedom_ls.course_applications.transitions import submit_application
 from freedom_ls.form_engine.conditions import current_path, sitting_path
-from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.form_engine.models import (
+    Form,
+    FormProgress,
+    answered_options,
+    answered_questions,
+)
 from freedom_ls.form_engine.page_flow import (
     PageSubmission,
     off_path_landing,
@@ -946,7 +951,10 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     # existing_answers_dict then reads from it, so the loop below makes no
     # per-row queries.
     prefetch_related_objects(
-        [form_progress], "answers__selected_options", "answers__answer_file"
+        [form_progress],
+        "answers__question_version",
+        "answers__selected_options",
+        "answers__answer_file",
     )
     path = sitting_path(
         form_progress,
@@ -981,21 +989,35 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     elif request.method == "POST":
         return redirect("course_applications:status", pk=app.pk)
 
+    # An answer is shown on the version it was given on, so a question revised
+    # since then still reads as the applicant saw it; unanswered rows show the
+    # path's question, which a quiz-scored sitting's served paper pins to a version.
+    answered = answered_questions(form_progress.answers.all())
     sections = []
     for position, (number, page) in enumerate(path.numbered_pages(), start=1):
         questions = path.questions_of(page)
         if not questions:
             continue
         answers = form_progress.existing_answers_dict(questions)
+        rows = []
+        for question in questions:
+            answer = answers.get(question.id)
+            shown = answered.get(question.id, question) if answer else question
+            rows.append(
+                {
+                    "question": shown,
+                    "answer": answer,
+                    "selected_options": (
+                        answered_options(answer, shown) if answer else []
+                    ),
+                }
+            )
         sections.append(
             {
                 "title": page.title,
                 "number": position,
                 "edit_url": f"{_page_url(app, number)}?return={RETURN_TO_CHECK}",
-                "rows": [
-                    {"question": question, "answer": answers.get(question.id)}
-                    for question in questions
-                ],
+                "rows": rows,
             }
         )
 

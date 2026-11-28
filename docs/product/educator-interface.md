@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-11-27_
+_Last updated: 2026-11-28_
 
 ## Summary
 
@@ -42,7 +42,7 @@ Each learner is **Active**, **Pending** (staff created their account and they ha
 The header shows the name and email, and a badge only while the learner is Pending or Inactive. The tabs are:
 
 - **Overview**: details, cohorts and course registrations. The Cohorts panel is where the learner's cohorts are changed.
-- **Courses**: every registration with its progress, status and any at-risk flags, then a section for each course with the items completed and every quiz attempt with its score and the quiz's pass mark. A completed attempt opens, in a quick view or on its own page, to show the paper the learner was served, in their order, with their answers and how each question was marked, and whether the learner submitted it or [time ran out](./learner-experience.md#quiz-time-limit), with the time limit that applied. The paper is shown only to a question bank viewer; anyone else sees a note in its place. Questions and options use the quiz's current wording, and an attempt sat before FLS recorded the served order says so. This tab is where the learner is registered for a course.
+- **Courses**: every registration with its progress, status and any at-risk flags, then a section for each course with the items completed and every quiz attempt with its score and the quiz's pass mark. A completed attempt opens, in a quick view or on its own page, to show the paper the learner was served, in their order, with their answers and how each question was marked, and whether the learner submitted it or [time ran out](./learner-experience.md#quiz-time-limit), with the time limit that applied. The paper is shown only to a question bank viewer; anyone else sees a note in its place. Questions and options read as the learner saw them, even if the quiz has been edited since, and an attempt sat before FLS recorded the served order says so. This tab is where the learner is registered for a course.
 - **Messages**: when direct messaging is turned on. See [Messaging from a learner](#messaging-from-a-learner).
 - **Settings**: the actions with no home elsewhere: the name (shown with the learner's email, which is read-only here), the setup email, and deactivating or reactivating. Shown to anyone who may take at least one of them.
 - **History**: see [History](#history).

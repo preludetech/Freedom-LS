@@ -1,6 +1,6 @@
 # Learner Tracking
 
-_Last updated: 2026-11-27_
+_Last updated: 2026-11-28_
 
 ## Summary
 
@@ -16,9 +16,9 @@ _Last updated: 2026-11-27_
 
 **Per topic** — one record per position the topic occupies in a learner's pass through a course, created when they first open it. The same topic placed twice in one course, or reused in another course, is tracked separately at each position. It holds when they started, when they last opened it, and when they marked it done.
 
-**Per form or quiz attempt** — one record per attempt, scoped the same way: a quiz reused at another position, or in another course, keeps its own attempt history there. It holds when the attempt started, when it was last saved (forms can span multiple pages and be resumed), when it was submitted, and the raw score data the course's scoring strategy uses to produce a score and a pass/fail result. Because each attempt is its own record, a learner's full attempt history is retained. A quiz attempt also records the paper it was served — which pages, questions and options, in which order — when it starts, and is marked only on the questions it was served, so a question added to or removed from the quiz afterwards does not change how that attempt is scored. It also records why it was completed (the learner submitted, or the quiz time limit ran out) and the time limit in force at that point, so the record stays true after an author changes the quiz. An attempt whose time ran out while the learner was away is still completed and recorded as time ran out.
+**Per form or quiz attempt** — one record per attempt, scoped the same way: a quiz reused at another position, or in another course, keeps its own attempt history there. It holds when the attempt started, when it was last saved (forms can span multiple pages and be resumed), when it was submitted, and the raw score data the course's scoring strategy uses to produce a score and a pass/fail result. Because each attempt is its own record, a learner's full attempt history is retained. A quiz attempt also records the paper it was served — which pages, questions and options, in which order, and which version of each question — when it starts, and is marked only on the questions it was served, so a question added to or removed from the quiz afterwards does not change how that attempt is scored. It also records why it was completed (the learner submitted, or the quiz time limit ran out) and the time limit in force at that point, so the record stays true after an author changes the quiz. An attempt whose time ran out while the learner was away is still completed and recorded as time ran out.
 
-**Per question** — the learner's selected options or free-text answer, stored against the attempt it belongs to.
+**Per question** — the learner's selected options or free-text answer, stored against the attempt it belongs to, along with the version of the question they were given. Editing a question afterwards does not change the wording a learner's record shows. Views that group answers by question use the question as it is now; see [cohort reports](./reports.md).
 
 **Per course** — one record per registration that granted the learner access, created when the registration is made. It holds start time, last-accessed time, completion time, the progress percentage, and a pointer to the item they last viewed, which is what the course player uses to resume them. Last-accessed time is a read timestamp: opening an item stamps it, while submitting a quiz answer does not. Browsing a course without registering leaves no tracking record.
 
@@ -45,6 +45,8 @@ Bulk database updates that bypass the normal save path do not trigger recalculat
 ## Limits
 
 **No time-on-task.** Start and completion timestamps are recorded, but not elapsed time spent on an item.
+
+**Question history starts at versioning.** A question that existed before question versioning was introduced has a first version holding its content at that time, not its original wording. Other form content, such as stimulus text, is not versioned, so a rewritten stimulus leaves no earlier text to show.
 
 **No machine-readable score or grade export.** There is no CSV, API, or other structured export of scores or grades; extraction for integration still requires a direct database query or a custom integration. A staff user can generate a [cohort progress report](./reports.md) covering completion, quiz scores, and per-question answers for a whole cohort, but it is a formatted document for reading, printing, and filing — not structured data.
 

@@ -112,6 +112,8 @@ from freedom_ls.form_engine.models import (
     FormPage,
     FormQuestion,
     QuestionOption,
+    SavedQuestionVersion,
+    save_question_version,
 )
 from freedom_ls.form_engine.schema import Condition
 from freedom_ls.form_engine.signals import form_questions_dropped
@@ -161,6 +163,9 @@ class _RunLedger:
 
     retired_before: dict[type[Model], set[Hashable]] = field(
         default_factory=lambda: defaultdict(set)
+    )
+    question_versions: list[tuple[FormQuestion, SavedQuestionVersion]] = field(
+        default_factory=list
     )
 
     def saw(self, row: Model) -> None:
@@ -968,11 +973,13 @@ def save_form_question(
     base_path: Path,
     order: int = 0,
     condition_option: QuestionOption | None = None,
-) -> tuple[FormQuestion, list[QuestionOption]]:
+    source_commit: str = "",
+) -> tuple[FormQuestion, list[QuestionOption], SavedQuestionVersion]:
     """Save FormQuestion and its options to the database.
 
-    Returns the question and every option this call saved, in order. Two options
-    may share a value, so the list is not keyed by it.
+    Returns the question, every option this call saved, in order, and the version
+    result: a new version when the question is new or changed, else none. Two
+    options may share a value, so the list is not keyed by it.
     """
     # Exclude 'options' since they're handled separately below. slug, group and
     # explanation are written even when the file has none: the dump drops None, so
@@ -1013,7 +1020,8 @@ def save_form_question(
         if any(opt.uuid is None for opt in item.options):
             update_file_with_option_uuids(item.file_path, question.id, option_uuids)
 
-    return question, saved_options
+    saved = save_question_version(question, saved_options, source_commit)
+    return question, saved_options, saved
 
 
 def mark_dropped_questions(
@@ -1481,7 +1489,7 @@ def _items_of[T: BaseBaseContentModel](
 
 
 def _write_source(
-    source: _ParsedSource, site: Site, ledger: _RunLedger
+    source: _ParsedSource, site: Site, ledger: _RunLedger, source_commit: str
 ) -> tuple[list[ImageEncodeStatus], list[str]]:
     """Write a `_ParsedSource`'s files and content rows. Returns its image statuses and
     the lines that report the part placements it removed."""
@@ -1652,7 +1660,7 @@ def _write_source(
                             f"Saved FormContent in {form_page.title} (order={content_order})"
                         )
                     else:
-                        question, saved_options = save_form_question(
+                        question, saved_options, saved_version = save_form_question(
                             item,
                             form_page,
                             site,
@@ -1661,7 +1669,9 @@ def _write_source(
                             condition_option=_resolve_condition(
                                 item.when, options_by_slug, file_path
                             ),
+                            source_commit=source_commit,
                         )
+                        ledger.question_versions.append((question, saved_version))
                         seen_question_ids.add(question.pk)
                         ledger.saw(question)
                         for saved_option in saved_options:
@@ -1849,6 +1859,31 @@ class SourceCommit:
     commit: str  # the HEAD commit read by the git check
 
 
+def _question_version_lines(ledger: _RunLedger) -> list[str]:
+    """The version summary line, then one line per revised question. Empty when the
+    run saved no question."""
+    if not ledger.question_versions:
+        return []
+    new = revised = unchanged = 0
+    detail: list[str] = []
+    for question, saved in ledger.question_versions:
+        if saved.version is None:
+            unchanged += 1
+        elif saved.previous_number is None:
+            new += 1
+        else:
+            revised += 1
+            slug = f" ({question.slug})" if question.slug else ""
+            detail.append(
+                f"  {question.file_path}{slug}: v{saved.previous_number} → "
+                f"v{saved.version.number} ({', '.join(saved.changed)})"
+            )
+    return [
+        f"Question versions: {new} new, {revised} revised, {unchanged} unchanged",
+        *detail,
+    ]
+
+
 def save_content_to_db(
     paths: Path | str | Sequence[Path | str],
     site_name: str,
@@ -1884,6 +1919,8 @@ def save_content_to_db(
         click.echo(line)
     if retire_missing:
         click.echo(_retire_count_line(result.ledger))
+    for line in _question_version_lines(result.ledger):
+        click.echo(line)
     click.echo(f"✓ Successfully saved all content for site: {site_name}")
 
     image_statuses = result.image_statuses
@@ -1972,8 +2009,11 @@ def _write_sources(
         }
     image_statuses: list[ImageEncodeStatus] = []
     removal_lines: list[str] = []
+    commits = {commit.path: commit.commit for commit in source_commits or ()}
     for source in sources:
-        source_statuses, source_removals = _write_source(source, site, ledger)
+        source_statuses, source_removals = _write_source(
+            source, site, ledger, commits.get(source.path, "")
+        )
         image_statuses.extend(source_statuses)
         removal_lines.extend(source_removals)
 

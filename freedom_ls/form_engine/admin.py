@@ -26,6 +26,8 @@ from .models import (
     FormStrategy,
     QuestionAnswer,
     QuestionAnswerFile,
+    answered_options,
+    answered_questions,
 )
 from .permissions import can_download_answer_files
 from .queries import answer_groups, without_quiz_answers
@@ -232,7 +234,7 @@ class FormProgressAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
 class QuestionAnswerAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     list_display = [
         "form_progress",
-        "question",
+        "question_text",
         "answer_preview",
         "updated_at",
     ]
@@ -244,7 +246,7 @@ class QuestionAnswerAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
     )
     ordering = ("-updated_at",)
     readonly_fields = ("updated_at",)
-    list_select_related = ("form_progress", "question")
+    list_select_related = ("form_progress", "question", "question_version")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[QuestionAnswer]:
         return without_quiz_answers(super().get_queryset(request), "form_progress")
@@ -255,13 +257,18 @@ class QuestionAnswerAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
         ("Metadata", {"fields": ("updated_at",)}),
     )
 
+    @admin.display(description="Question", ordering="question")
+    def question_text(self, obj: QuestionAnswer) -> str:
+        return answered_questions([obj])[obj.question_id].question[:50]
+
     @admin.display(description="Answer")
     def answer_preview(self, obj):
+        question = answered_questions([obj])[obj.question_id]
         if obj.text_answer:
-            return format_answer(obj.question.type, obj.text_answer)[:50]
-        elif obj.selected_options.exists():
-            options = ", ".join([opt.text for opt in obj.selected_options.all()])
-            return options[:50]
+            return format_answer(question.type, obj.text_answer)[:50]
+        selected = answered_options(obj, question)
+        if selected:
+            return ", ".join(opt.text for opt in selected)[:50]
         return "-"
 
 
@@ -280,7 +287,11 @@ class QuestionAnswerFileAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
         "created_at",
         "download",
     ]
-    list_select_related = ["answer__form_progress__user", "answer__question"]
+    list_select_related = [
+        "answer__form_progress__user",
+        "answer__question",
+        "answer__question_version",
+    ]
     list_filter = ["created_at"]
 
     def get_list_select_related(self, request: HttpRequest) -> list[str]:
@@ -310,7 +321,7 @@ class QuestionAnswerFileAdmin(ReadOnlyAdminMixin, SiteAwareModelAdmin):
 
     @admin.display(description="Question", ordering="answer__question")
     def question(self, obj: QuestionAnswerFile) -> str:
-        return obj.answer.question.question[:50]
+        return answered_questions([obj.answer])[obj.answer.question_id].question[:50]
 
     @admin.display(description="Download")
     def download(self, obj: QuestionAnswerFile) -> str:

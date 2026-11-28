@@ -34,7 +34,13 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFileFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion
+from freedom_ls.form_engine.models import (
+    Form,
+    FormProgress,
+    FormQuestion,
+    save_question_version,
+)
+from freedom_ls.form_engine.tests.helpers import revise_question
 
 pytestmark = pytest.mark.django_db
 
@@ -213,10 +219,15 @@ def test_export_header_adds_the_forms_question_texts_after_the_fixed_columns(
     assert header == [
         *APPLICATION_EXPORT_FIELDS,
         "Your name",
+        "Your name (version)",
         "Years of experience",
+        "Years of experience (version)",
         "How did you hear about us",
+        "How did you hear about us (version)",
         "Why apply",
+        "Why apply (version)",
         "Upload your ID",
+        "Upload your ID (version)",
     ]
 
 
@@ -446,3 +457,91 @@ def test_an_off_path_question_exports_not_asked_and_an_on_path_blank_exports_emp
 
     assert row["Follow up"] == "Not asked"
     assert row["Years of experience"] == ""
+
+
+def _versioned_choice_application(course, form):
+    """An application answering the choice question on its version 1, with the
+    question reworded and its option retexted since."""
+    application = _application_for(course, form)
+    choice = _form_questions(form)[2]
+    version_one = save_question_version(
+        choice, list(choice.options.all()), "c1"
+    ).version
+    searched = choice.options.get(order=1)
+    _answer(application, choice, question_version=version_one).selected_options.add(
+        searched
+    )
+    revise_question(
+        choice,
+        question="How did you find us",
+        options=[{"id": searched.id, "text": "Web search"}],
+    )
+    return application
+
+
+def test_an_answer_on_an_earlier_version_exports_that_versions_option_text(
+    staff_client,
+):
+    course, form = gated_course_with_form()
+    application = _versioned_choice_application(course, form)
+
+    row = _export_row(staff_client, application)
+
+    assert row["How did you find us"] == "Search"
+
+
+def test_the_version_column_follows_its_question_and_holds_the_version_number(
+    staff_client,
+):
+    course, form = gated_course_with_form()
+    application = _versioned_choice_application(course, form)
+
+    response = _export_selected(
+        staff_client, "courseapplication", [str(application.pk)]
+    )
+
+    header, rows = _rows(response)
+    position = header.index("How did you find us")
+    assert header[position + 1] == "How did you find us (version)"
+    assert rows[0][position + 1] == "1"
+
+
+def test_an_answer_with_no_version_exports_a_blank_version_cell(staff_client):
+    course, form = gated_course_with_form()
+    application = _application_for(course, form)
+    _answer(application, _form_questions(form)[0], text_answer="Ada")
+
+    row = _export_row(staff_client, application)
+
+    assert row["Your name (version)"] == ""
+
+
+def _answer_on_new_versioned_questions(
+    form: Form, application: CourseApplication, count: int
+) -> None:
+    page = FormPageFactory(form=form, order=5)
+    for order in range(count):
+        question = FormQuestionFactory(
+            form_page=page, type="multiple_choice", order=order
+        )
+        option = QuestionOptionFactory(question=question, text="Yes", order=0)
+        version = save_question_version(
+            question, list(question.options.all()), "c1"
+        ).version
+        _answer(application, question, question_version=version).selected_options.add(
+            option
+        )
+
+
+def test_export_query_count_does_not_grow_with_the_number_of_versioned_questions(
+    mock_site_context, django_assert_max_num_queries
+):
+    course, form = gated_course_with_form()
+    application = _application_for(course, form)
+    _answer_on_new_versioned_questions(form, application, 2)
+    with CaptureQueriesContext(connection) as captured:
+        CourseApplicationResource().export(CourseApplication.objects.all())
+    _answer_on_new_versioned_questions(form, application, 4)
+
+    with django_assert_max_num_queries(len(captured)):
+        CourseApplicationResource().export(CourseApplication.objects.all())

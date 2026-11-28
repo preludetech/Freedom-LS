@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from freedom_ls.form_engine.conditions import (
     ServedPaper,
+    SittingPath,
     answers_by_question,
     compute_path,
     current_path,
@@ -37,8 +38,10 @@ from freedom_ls.form_engine.models import (
     FormProgress,
     FormQuestion,
     QuestionOption,
+    save_question_version,
 )
 from freedom_ls.form_engine.served_paper import build_served_paper
+from freedom_ls.form_engine.tests.helpers import revise_question
 from freedom_ls.tests.retire import retire
 
 pytestmark = pytest.mark.django_db
@@ -1072,3 +1075,123 @@ def test_compute_path_keeps_a_retired_page_showing_only_what_the_sitting_answere
     assert [(p.id, [c.id for c in path.children_of(p)]) for p in path.pages] == [
         (page.id, [answered.id])
     ]
+
+
+# Version-backed questions
+
+
+@pytest.fixture
+def versioned_form(served_form: ServedForm) -> ServedForm:
+    """The served form with version 1 saved for every question."""
+    for question in (
+        served_form.q_one,
+        served_form.q_two,
+        served_form.q_three,
+        served_form.q_four,
+    ):
+        save_question_version(question, list(question.options.all()), "c1")
+    return served_form
+
+
+def _pinned_question(path: SittingPath, question: FormQuestion) -> FormQuestion:
+    (found,) = [q for q in path.questions() if q.id == question.id]
+    return found
+
+
+def test_a_paper_pinned_to_version_one_yields_its_wording_after_a_revision(
+    versioned_form: ServedForm,
+) -> None:
+    sf = versioned_form
+    paper = build_served_paper(_fresh(sf.form))
+    original = sf.q_one.question
+    revise_question(sf.q_one, question="Reworded")
+
+    path = served_path(_fresh(sf.form), paper)
+
+    served = _pinned_question(path, sf.q_one)
+    assert served.question == original
+    assert served.pinned_version is not None
+    assert served.pinned_version.number == 1
+
+
+def test_a_paper_pins_its_options_text_and_correct_flags_after_a_revision(
+    versioned_form: ServedForm,
+) -> None:
+    sf = versioned_form
+    revise_question(
+        sf.q_one,
+        options=[
+            {"id": sf.one_a.id, "correct": True, "text": "Held"},
+            {"id": sf.one_b.id, "correct": False},
+        ],
+    )
+    paper = build_served_paper(_fresh(sf.form))
+    revise_question(
+        sf.q_one,
+        options=[
+            {"id": sf.one_a.id, "correct": False, "text": "Changed"},
+            {"id": sf.one_b.id, "correct": True},
+        ],
+    )
+
+    path = served_path(_fresh(sf.form), paper)
+
+    options = path.options_of(_pinned_question(path, sf.q_one))
+    assert options[0].text == "Held"
+    assert [o.correct for o in options[:2]] == [True, False]
+
+
+def test_a_served_option_missing_from_the_version_reads_the_live_row(
+    versioned_form: ServedForm,
+) -> None:
+    sf = versioned_form
+    paper = build_served_paper(_fresh(sf.form))
+    added = QuestionOptionFactory(question=sf.q_one, value="d", order=3)
+    paper["options"][str(sf.q_one.id)].append(str(added.id))
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert [o.id for o in path.options_of(sf.q_one)][-1] == added.id
+    assert path.has_missing_served_items is False
+
+
+def test_a_paper_without_versions_reads_the_live_row(
+    versioned_form: ServedForm,
+) -> None:
+    sf = versioned_form
+    paper = build_served_paper(_fresh(sf.form))
+    del paper["versions"]
+    revise_question(sf.q_one, question="Reworded")
+
+    path = served_path(_fresh(sf.form), paper)
+
+    served = _pinned_question(path, sf.q_one)
+    assert served.pinned_version is None
+    assert served.question == "Reworded"
+
+
+def test_a_question_with_no_versions_entry_reads_the_live_row(
+    versioned_form: ServedForm,
+) -> None:
+    sf = versioned_form
+    paper = build_served_paper(_fresh(sf.form))
+    del paper["versions"][str(sf.q_one.id)]
+    revise_question(sf.q_one, question="Reworded")
+
+    path = served_path(_fresh(sf.form), paper)
+
+    served = _pinned_question(path, sf.q_one)
+    assert served.pinned_version is None
+    assert served.question == "Reworded"
+
+
+def test_options_added_since_is_empty_for_a_pinned_question(
+    versioned_form: ServedForm,
+) -> None:
+    sf = versioned_form
+    paper = build_served_paper(_fresh(sf.form))
+    revise_question(sf.q_one, options=[{"text": "New", "value": "n", "order": 9}])
+
+    path = served_path(_fresh(sf.form), paper)
+
+    assert path.options_added_since(_pinned_question(path, sf.q_one)) == []

@@ -32,8 +32,10 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     FormStrategy,
     QuestionAnswer,
+    answered_questions,
 )
 from freedom_ls.form_engine.queries import form_questions
+from freedom_ls.form_engine.tests.helpers import revise_to_version_two, versioned_quiz
 from freedom_ls.tests.retire import retire
 
 pytestmark = pytest.mark.django_db
@@ -75,11 +77,15 @@ def test_answer_columns_follow_form_questions_order_with_the_question_text_as_he
 
 
 def test_answer_cell_of_no_answer_is_empty(mock_site_context):
-    assert answer_cell(None) == ""
+    question = FormQuestionFactory()
+
+    assert answer_cell(None, question) == ""
 
 
 def test_answer_cell_of_a_question_not_asked_says_so(mock_site_context):
-    assert answer_cell(None, is_asked=False) == "Not asked"
+    question = FormQuestionFactory()
+
+    assert answer_cell(None, question, is_asked=False) == "Not asked"
 
 
 def test_off_path_question_ids_are_per_sitting(mock_site_context):
@@ -144,7 +150,7 @@ def test_answer_cell_of_a_phone_answer_is_its_stored_e164_text(
 ) -> None:
     answer = _answer("phone", text_answer="+27821234567")
 
-    assert answer_cell(answer) == "+27821234567"
+    assert answer_cell(answer, answer.question) == "+27821234567"
 
 
 def test_answer_cell_of_a_multiple_choice_answer_is_the_option_text(
@@ -154,7 +160,7 @@ def test_answer_cell_of_a_multiple_choice_answer_is_the_option_text(
     option = QuestionOptionFactory(question=answer.question, text="Search")
     answer.selected_options.add(option)
 
-    assert answer_cell(answer) == "Search"
+    assert answer_cell(answer, answer.question) == "Search"
 
 
 def test_answer_cell_of_a_checkboxes_answer_joins_option_texts_in_option_order(
@@ -166,7 +172,7 @@ def test_answer_cell_of_a_checkboxes_answer_joins_option_texts_in_option_order(
     second = QuestionOptionFactory(question=answer.question, text="B", order=1)
     answer.selected_options.add(third, first, second)
 
-    assert answer_cell(answer) == "A; B; C"
+    assert answer_cell(answer, answer.question) == "A; B; C"
 
 
 def test_answer_cell_of_a_dropdown_answer_is_the_option_text(mock_site_context):
@@ -174,20 +180,20 @@ def test_answer_cell_of_a_dropdown_answer_is_the_option_text(mock_site_context):
     option = QuestionOptionFactory(question=answer.question, text="Cape Town")
     answer.selected_options.add(option)
 
-    assert answer_cell(answer) == "Cape Town"
+    assert answer_cell(answer, answer.question) == "Cape Town"
 
 
 def test_answer_cell_of_a_file_upload_is_the_original_filename(mock_site_context):
     answer = _answer("file_upload")
     QuestionAnswerFileFactory(answer=answer, original_filename="id-scan.png")
 
-    assert answer_cell(answer) == "id-scan.png"
+    assert answer_cell(answer, answer.question) == "id-scan.png"
 
 
 def test_answer_cell_of_a_file_upload_without_a_file_is_empty(mock_site_context):
     answer = _answer("file_upload")
 
-    assert answer_cell(answer) == ""
+    assert answer_cell(answer, answer.question) == ""
 
 
 @pytest.mark.parametrize(
@@ -198,13 +204,13 @@ def test_answer_cell_of_a_date_or_time_is_the_stored_text(
 ):
     answer = _answer(question_type, text_answer=stored)
 
-    assert answer_cell(answer) == stored
+    assert answer_cell(answer, answer.question) == stored
 
 
 def test_answer_cell_of_a_long_text_answer_keeps_its_newlines(mock_site_context):
     answer = _answer("long_text", text_answer="line one\nline two\n")
 
-    assert answer_cell(answer) == "line one\nline two\n"
+    assert answer_cell(answer, answer.question) == "line one\nline two\n"
 
 
 def _sitting_of(title: str, *question_texts: str) -> FormProgress:
@@ -349,27 +355,27 @@ def test_answer_value_of_an_option_question_follows_option_order(
 ):
     answer = _answer_with_options(question_type, options)
 
-    assert answer_value(answer) == expected
+    assert answer_value(answer, answer.question) == expected
 
 
 def test_answer_value_of_a_file_upload_is_the_original_filename(mock_site_context):
     answer = _answer("file_upload")
     QuestionAnswerFileFactory(answer=answer, original_filename="id-scan.png")
 
-    assert answer_value(answer) == "id-scan.png"
+    assert answer_value(answer, answer.question) == "id-scan.png"
 
 
 def test_answer_value_of_a_file_upload_without_a_file_is_none(mock_site_context):
     answer = _answer("file_upload")
 
-    assert answer_value(answer) is None
+    assert answer_value(answer, answer.question) is None
 
 
 def test_answer_value_of_a_file_upload_with_an_empty_name_is_none(mock_site_context):
     answer = _answer("file_upload")
     QuestionAnswerFileFactory(answer=answer, original_filename="")
 
-    assert answer_value(answer) is None
+    assert answer_value(answer, answer.question) is None
 
 
 @pytest.mark.parametrize(
@@ -385,7 +391,7 @@ def test_answer_value_of_a_text_question_is_the_stored_text(
 ):
     answer = _answer(question_type, text_answer=stored)
 
-    assert answer_value(answer) == expected
+    assert answer_value(answer, answer.question) == expected
 
 
 def _open_quiz_sitting_of_two_questions() -> tuple[
@@ -451,3 +457,46 @@ def test_off_path_question_ids_leave_out_a_retired_question_the_sitting_answered
     off_path = off_path_question_ids(loaded)
 
     assert off_path[sitting.pk] == frozenset({unanswered.id})
+
+
+def _answer_on_version_one() -> QuestionAnswer:
+    quiz = versioned_quiz()
+    version_one = quiz.question.versions.get(number=1)
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        question=quiz.question, question_version=version_one
+    )
+    answer.selected_options.add(quiz.right)
+    revise_to_version_two(quiz)
+    return answer
+
+
+def test_answer_value_reads_the_option_text_of_the_answered_version(
+    mock_site_context,
+):
+    answer = _answer_on_version_one()
+    question = answered_questions([answer])[answer.question_id]
+
+    assert answer_value(answer, question) == "Original right"
+
+
+def test_answer_value_reads_the_type_of_the_answered_version(mock_site_context):
+    quiz = versioned_quiz()
+    answer: QuestionAnswer = QuestionAnswerFactory(
+        question=quiz.question,
+        question_version=quiz.question.versions.get(number=1),
+        text_answer="typed",
+    )
+    quiz.question.type = "short_text"
+    quiz.question.save()
+    question = answered_questions([answer])[answer.question_id]
+
+    assert answer_value(answer, question) is None
+
+
+def test_answer_cell_reads_the_option_text_of_the_answered_version(
+    mock_site_context,
+):
+    answer = _answer_on_version_one()
+    question = answered_questions([answer])[answer.question_id]
+
+    assert answer_cell(answer, question) == "Original right"

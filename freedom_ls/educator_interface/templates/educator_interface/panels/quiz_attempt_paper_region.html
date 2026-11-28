@@ -11,7 +11,6 @@ paper when it may not render), otherwise quiz_attempt_paper_context().
         <p>{{ question_detail_note }}</p>
     {% else %}
         <div class="flex flex-col gap-8">
-            <p class="text-sm text-muted">Question and option wording is the quiz's current wording.</p>
             {% if score_outdated %}
                 <c-panel-callout tone="warning">This quiz has changed since the attempt was marked. The score is the one recorded at submission; the marks below use the current answers.</c-panel-callout>
             {% endif %}

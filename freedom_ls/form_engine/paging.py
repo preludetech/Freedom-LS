@@ -22,7 +22,7 @@ from .submissions import has_submitted_answer
 
 def is_answered(question: FormQuestion, form_progress: FormProgress) -> bool:
     """Whether a stored answer row exists for this question."""
-    return form_progress.answers.filter(question=question).exists()
+    return form_progress.answers.filter(question_id=question.id).exists()
 
 
 def _answered_ids(form_progress: FormProgress) -> set[UUID]:

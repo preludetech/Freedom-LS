@@ -15,6 +15,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     QuestionAnswer,
     QuestionOption,
+    answered_questions,
 )
 
 from .models import CourseApplication
@@ -30,15 +31,25 @@ ANSWER_VALUE_SCHEMA: dict[str, object] = {
 
 class QuestionAnswerApiSerializer(serializers.Serializer):
     question_id = serializers.UUIDField(read_only=True)
-    question_text = serializers.CharField(source="question.question", read_only=True)
-    question_type = serializers.ChoiceField(
-        source="question.type", choices=QuestionType.choices, read_only=True
-    )
+    question_text = serializers.SerializerMethodField()
+    question_type = serializers.SerializerMethodField()
     value = serializers.SerializerMethodField()
+
+    # The serializer context's "answered" maps each question id to the question
+    # the answer was given on, so a reworded question reads as it was asked.
+    @extend_schema_field(serializers.CharField())
+    def get_question_text(self, answer: QuestionAnswer) -> str:
+        question: FormQuestion = self.context["answered"][answer.question_id]
+        return question.question
+
+    @extend_schema_field(serializers.ChoiceField(choices=QuestionType.choices))
+    def get_question_type(self, answer: QuestionAnswer) -> str:
+        question: FormQuestion = self.context["answered"][answer.question_id]
+        return str(question.type)
 
     @extend_schema_field(ANSWER_VALUE_SCHEMA)
     def get_value(self, answer: QuestionAnswer) -> str | list[str] | None:
-        return answer_value(answer)
+        return answer_value(answer, self.context["answered"][answer.question_id])
 
 
 class CourseApplicationApiSerializer(serializers.ModelSerializer):
@@ -94,7 +105,10 @@ class CourseApplicationApiSerializer(serializers.ModelSerializer):
             for answer in form_progress.answers.all()
             if answer.question_id not in off_path
         ]
-        return list(QuestionAnswerApiSerializer(answers, many=True).data)
+        context = {"answered": answered_questions(answers)}
+        return list(
+            QuestionAnswerApiSerializer(answers, many=True, context=context).data
+        )
 
 
 def answers_prefetch() -> Prefetch:
@@ -107,7 +121,7 @@ def answers_prefetch() -> Prefetch:
     """
     options = Prefetch("selected_options", queryset=QuestionOption._base_manager.all())
     answers = (
-        QuestionAnswer._base_manager.select_related("question")
+        QuestionAnswer._base_manager.select_related("question", "question_version")
         .prefetch_related(options, "answer_file")
         .order_by("question__form_page__order", "question__order", "question_id")
     )

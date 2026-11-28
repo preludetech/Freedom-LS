@@ -147,6 +147,8 @@ class FormSpec:
     pages: tuple[PageSpec, ...]
     quiz_pass_percentage: int | None = None
     shuffle: bool = False
+    # The folder the form's plausible source-file paths sit under.
+    file_path_root: str = FILE_PATH_ROOT
 
 
 @dataclass
@@ -413,9 +415,9 @@ C1_NAME = "QA Attempt Review C1"
 C2_NAME = "QA Attempt Review C2"
 
 
-def _file_path(*parts: str) -> str:
+def _file_path(*parts: str, root: str = FILE_PATH_ROOT) -> str:
     """A plausible source-file path; the admin requires one to save a row."""
-    return "/".join([FILE_PATH_ROOT, *parts])
+    return "/".join([root, *parts])
 
 
 def _create_form(spec: FormSpec, site: Site) -> Form:
@@ -425,7 +427,7 @@ def _create_form(spec: FormSpec, site: Site) -> Form:
             title=spec.title,
             slug=spec.slug,
             strategy=spec.strategy,
-            file_path=_file_path(spec.slug, "form.md"),
+            file_path=_file_path(spec.slug, "form.md", root=spec.file_path_root),
             quiz_pass_percentage=spec.quiz_pass_percentage,
             quiz_show_incorrect=spec.strategy == FormStrategy.QUIZ,
             shuffle_pages=spec.shuffle,
@@ -442,7 +444,9 @@ def _create_form(spec: FormSpec, site: Site) -> Form:
                 form=form,
                 title=page_spec.title,
                 slug=page_slug,
-                file_path=_file_path(spec.slug, f"{page_slug}.md"),
+                file_path=_file_path(
+                    spec.slug, f"{page_slug}.md", root=spec.file_path_root
+                ),
                 order=page_order,
                 site=site,
             ),
@@ -452,7 +456,9 @@ def _create_form(spec: FormSpec, site: Site) -> Form:
             FormContentFactory(
                 form_page=page,
                 content=page_spec.content,
-                file_path=_file_path(spec.slug, page_slug, "content-1.md"),
+                file_path=_file_path(
+                    spec.slug, page_slug, "content-1.md", root=spec.file_path_root
+                ),
                 order=child_order,
                 site=site,
             )
@@ -466,7 +472,10 @@ def _create_form(spec: FormSpec, site: Site) -> Form:
                     type=question_spec.type,
                     required=question_spec.required,
                     file_path=_file_path(
-                        spec.slug, page_slug, f"{question_spec.slot}.md"
+                        spec.slug,
+                        page_slug,
+                        f"{question_spec.slot}.md",
+                        root=spec.file_path_root,
                     ),
                     order=child_order,
                     site=site,

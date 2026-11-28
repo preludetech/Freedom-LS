@@ -40,6 +40,7 @@ from freedom_ls.learner_progress.queries import (
 )
 from freedom_ls.learner_progress.utils import calculate_course_progress_percentage
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.qa_helpers.answers import pin_to_latest_versions
 
 LEARNER_EMAIL = "demodev_s1@email.com"
 
@@ -157,6 +158,7 @@ def _attempt_form(
         return fp
 
     question_index = 0
+    answers: list[QuestionAnswer] = []
     for page in form.pages.all():
         for child in page.children():
             if child.content_type != "FORM_QUESTION":
@@ -180,7 +182,10 @@ def _attempt_form(
                 form_progress=fp, question=question, site=site
             )
             answer.selected_options.set([chosen])
+            answers.append(answer)
             question_index += 1
+
+    pin_to_latest_versions(answers)
 
     # complete() sets completed_time, scores the form, and saves.
     fp.complete()

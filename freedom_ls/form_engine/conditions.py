@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TypedDict, cast
+from typing import NotRequired, TypedDict, cast
 from uuid import UUID
 
 from django.db.models import prefetch_related_objects
@@ -24,6 +24,7 @@ from .models import (
     FormPage,
     FormProgress,
     FormQuestion,
+    FormQuestionVersion,
     QuestionAnswer,
     QuestionOption,
 )
@@ -52,6 +53,8 @@ class ServedPaper(TypedDict):
     seed: int
     pages: list[ServedPage]
     options: dict[str, list[str]]
+    # Question id -> the id of the version the question was served as.
+    versions: NotRequired[dict[str, str]]
 
 
 @dataclass(frozen=True, eq=False)
@@ -201,6 +204,8 @@ class SittingPath:
         A reviewer needs them because marking reads the current options; a
         sitting being answered must never be offered them.
         """
+        if question.pinned_version is not None:
+            return []
         served = {option.id for option in self.options_of(question)}
         return [
             option
@@ -369,7 +374,24 @@ def served_path(form: Form, served_paper: ServedPaper) -> SittingPath:
     prefetch_related_objects([form], *SERVED_TREE_LOOKUPS)
     all_pages = tuple(form.pages.all())
     pages_by_id = {str(page.id): page for page in all_pages}
-    children_by_id = {str(c.id): c for page in all_pages for c in page.children()}
+    version_ids = served_paper.get("versions", {})
+    versions = {
+        str(pk): v
+        for pk, v in FormQuestionVersion.unfiltered.in_bulk(
+            version_ids.values()
+        ).items()
+    }
+    live_by_id = {str(c.id): c for page in all_pages for c in page.children()}
+    children_by_id: dict[str, FormChild] = {
+        child_id: (
+            versions[version_ids[child_id]].as_question(child)
+            if isinstance(child, FormQuestion)
+            and child_id in version_ids
+            and version_ids[child_id] in versions
+            else child
+        )
+        for child_id, child in live_by_id.items()
+    }
     served_option_ids = served_paper["options"]
     missing = False
     children_by_page: dict[UUID, tuple[FormChild, ...]] = {}
@@ -391,13 +413,19 @@ def served_path(form: Form, served_paper: ServedPaper) -> SittingPath:
         for child in children:
             if not isinstance(child, FormQuestion):
                 continue
-            current = {str(option.id): option for option in child.options.all()}
+            held = {str(option.id): option for option in child.options.all()}
+            if child.pinned_version is not None:
+                # A served option the version lacks reads the live row, which is never deleted.
+                live = live_by_id[str(child.id)]
+                current = {str(o.id): o for o in live.options.all()} | held
+            else:
+                current = held
             served_ids = served_option_ids.get(str(child.id), [])
             options = tuple(current[i] for i in served_ids if i in current)
             missing = missing or len(options) != len(served_ids)
             # With none of its served options left, the question would offer
             # nothing to choose, so it falls back to the options it has.
-            served_options_by_question[child.id] = options or tuple(current.values())
+            served_options_by_question[child.id] = options or tuple(held.values())
     return _path(all_pages, children_by_page, served_options_by_question, missing)
 
 

@@ -17,6 +17,9 @@ from freedom_ls.content_engine.factories import (
     CourseReferencePartFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.management.commands.content_save import (
+    save_content_to_db,
+)
 from freedom_ls.content_engine.models import (
     Article,
     Course,
@@ -35,6 +38,7 @@ from freedom_ls.form_engine.models import (
     Form,
     FormPage,
     FormQuestion,
+    FormQuestionVersion,
     QuestionAnswer,
     QuestionOption,
 )
@@ -150,3 +154,30 @@ def test_danger_content_delete_counts_and_removes_course_reference_parts(
 
     assert "Course Reference Parts: 1" in capsys.readouterr().out
     assert CourseReferencePart.objects.count() == 0
+
+
+def test_danger_content_delete_empties_versions_pinned_by_a_sitting_answer(
+    mock_site_context, tmp_path
+):
+    """Content loaded by a save, with an answer pinned to a version, is emptied
+    versions included."""
+    form_dir = tmp_path / "form"
+    form_dir.mkdir()
+    (form_dir / "form.md").write_text(
+        "---\ncontent_type: FORM\nstrategy: QUIZ\ntitle: F\nquiz_show_incorrect: true\nquiz_pass_percentage: 70\n"
+        "uuid: 60000000-0000-0000-0000-000000000001\n---\n"
+    )
+    (form_dir / "1. page.yaml").write_text(
+        "---\ncontent_type: FORM_PAGE\ntitle: P\n"
+        "uuid: 60000000-0000-0000-0000-000000000002\n---\n"
+        "question: Q?\ntype: short_text\nrequired: true\n"
+        "uuid: 60000000-0000-0000-0000-000000000003\n"
+    )
+    save_content_to_db(tmp_path, Site.objects.get_current().name)
+    version = FormQuestionVersion.unfiltered.get()
+    QuestionAnswerFactory(question=version.question, question_version=version)
+
+    call_command("danger_content_delete", "--yes")
+
+    assert FormQuestionVersion.unfiltered.count() == 0
+    assert FormQuestion.objects.count() == 0

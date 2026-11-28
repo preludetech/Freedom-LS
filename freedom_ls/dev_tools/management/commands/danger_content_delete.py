@@ -19,7 +19,9 @@ from freedom_ls.form_engine.models import (
     FormContent,
     FormPage,
     FormQuestion,
+    FormQuestionVersion,
     QuestionOption,
+    delete_question_versions,
 )
 
 
@@ -65,6 +67,10 @@ def command(yes: bool) -> None:
         total_count += count
         if count > 0:
             click.secho(f"  {name}: {count}", fg="yellow")
+    version_count = FormQuestionVersion.objects.all().count()
+    total_count += version_count
+    if version_count > 0:
+        click.secho(f"  Question Versions: {version_count}", fg="yellow")
 
     if total_count == 0:
         click.secho("\nNo content found to delete.", fg="green")
@@ -120,6 +126,12 @@ def command(yes: bool) -> None:
             deletion_order.append(("freedom_ls_registration_rules", "RegistrationRule"))
         for app_label, label in deletion_order:
             apps.get_model(app_label, label).objects.all().delete()
+
+        # Versions PROTECT their question and answers are gone by now. Counted
+        # before the delete: the raw delete reports no row count.
+        if version_count:
+            delete_question_versions(FormQuestion._base_manager.all())
+            deleted_counts["Question Versions"] = version_count
 
         # Delete in reverse dependency order to avoid FK issues
         for name, model in models_to_delete:

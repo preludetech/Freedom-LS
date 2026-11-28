@@ -14,6 +14,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.admin import (
     QuestionAnswerAdmin,
+    QuestionAnswerFileAdmin,
     applicant_label,
 )
 from freedom_ls.form_engine.enums import QuestionType
@@ -34,6 +35,10 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
 )
 from freedom_ls.form_engine.queries import FINAL_GROUP_TITLE
+from freedom_ls.form_engine.tests.helpers import (
+    revise_to_version_two,
+    versioned_quiz,
+)
 from freedom_ls.tests.retire import retired
 
 CHANGE_URL_NAME = "admin:freedom_ls_form_engine_formprogress_change"
@@ -353,6 +358,60 @@ def test_answer_preview_truncates_a_long_answer_to_fifty_characters(
     preview = QuestionAnswerAdmin(QuestionAnswer, admin.site).answer_preview(answer)
 
     assert preview == "x" * 50
+
+
+@pytest.mark.django_db
+def test_answer_preview_reads_the_option_text_of_the_answered_version(
+    mock_site_context,
+) -> None:
+    quiz = versioned_quiz()
+    answer = QuestionAnswerFactory(
+        question=quiz.question, question_version=quiz.question.versions.get(number=1)
+    )
+    answer.selected_options.add(quiz.right)
+    revise_to_version_two(quiz)
+    loaded = QuestionAnswer.objects.select_related("question").get(pk=answer.pk)
+
+    preview = QuestionAnswerAdmin(QuestionAnswer, admin.site).answer_preview(loaded)
+
+    assert preview == "Original right"
+
+
+@pytest.mark.django_db
+def test_the_answer_admin_question_column_reads_the_wording_of_the_answered_version(
+    mock_site_context,
+) -> None:
+    """The question column used to show the live wording beside a version-pinned answer."""
+    quiz = versioned_quiz()
+    answer = QuestionAnswerFactory(
+        question=quiz.question, question_version=quiz.question.versions.get(number=1)
+    )
+    revise_to_version_two(quiz)
+    loaded = QuestionAnswer.objects.select_related("question").get(pk=answer.pk)
+
+    question_admin = QuestionAnswerAdmin(QuestionAnswer, admin.site)
+
+    assert "question_text" in question_admin.list_display
+    assert question_admin.question_text(loaded) == "Original wording"
+
+
+@pytest.mark.django_db
+def test_the_answer_file_admin_question_reads_the_wording_of_the_answered_version(
+    mock_site_context,
+) -> None:
+    quiz = versioned_quiz()
+    answer = QuestionAnswerFactory(
+        question=quiz.question, question_version=quiz.question.versions.get(number=1)
+    )
+    answer_file = QuestionAnswerFileFactory(answer=answer)
+    revise_to_version_two(quiz)
+    loaded = QuestionAnswerFile.objects.select_related("answer__question").get(
+        pk=answer_file.pk
+    )
+
+    question = QuestionAnswerFileAdmin(QuestionAnswerFile, admin.site).question(loaded)
+
+    assert question == "Original wording"
 
 
 # ---------------------------------------------------------------------------

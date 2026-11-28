@@ -17,12 +17,13 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
     served_paper_of,
 )
-from freedom_ls.form_engine.models import FormPage, FormQuestion, QuestionOption
+from freedom_ls.form_engine.models import Form, FormPage, FormQuestion, QuestionOption
 from freedom_ls.form_engine.templatetags.form_engine_tags import (
     answer_display,
     phone_field_state,
     question_options,
 )
+from freedom_ls.form_engine.tests.helpers import revise_to_version_two, versioned_quiz
 from freedom_ls.form_engine.typed_answers import RejectedAnswer
 
 # The `answer_display` filter: a stored answer rendered for a reader.
@@ -721,3 +722,31 @@ def test_quiz_time_limit_text_filter_renders_words() -> None:
     ).render(Context({"m": 90}))
 
     assert rendered == "1 hour 30 minutes"
+
+
+@pytest.mark.django_db
+def test_question_options_of_a_version_backed_question_with_a_path_are_the_versions(
+    mock_site_context: object,
+) -> None:
+    quiz = versioned_quiz()
+    revise_to_version_two(quiz)
+    path = served_path(Form.objects.get(pk=quiz.form.pk), quiz.paper)
+    (question,) = path.questions()
+
+    options = question_options(Context({"question": question, "sitting_path": path}))
+
+    assert [option.text for option in options] == ["Original right", "Original wrong"]
+
+
+@pytest.mark.django_db
+def test_question_options_of_a_version_backed_question_with_no_path_are_the_versions(
+    mock_site_context: object,
+) -> None:
+    quiz = versioned_quiz()
+    revise_to_version_two(quiz)
+    path = served_path(Form.objects.get(pk=quiz.form.pk), quiz.paper)
+    (question,) = path.questions()
+
+    options = question_options(Context({"question": question}))
+
+    assert [option.text for option in options] == ["Original right", "Original wrong"]

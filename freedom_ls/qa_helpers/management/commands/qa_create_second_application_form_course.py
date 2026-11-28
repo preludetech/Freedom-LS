@@ -231,5 +231,5 @@ def command(site_name: str) -> None:
     by_question = {answer.question_id: answer for answer in answers}
     for question in ordered:
         click.secho(
-            f"  Answer to '{question.question}': {answer_cell(by_question.get(question.pk))!r}"
+            f"  Answer to '{question.question}': {answer_cell(by_question.get(question.pk), question)!r}"
         )

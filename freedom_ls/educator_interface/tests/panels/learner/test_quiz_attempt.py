@@ -59,6 +59,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
     QuestionOption,
 )
+from freedom_ls.form_engine.tests.helpers import revise_to_version_two, versioned_quiz
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -1153,3 +1154,56 @@ def test_the_header_stats_and_summary_are_the_same_for_a_holder_and_a_non_holder
     assert _text(holder_page.cssselect("section[data-panel='summary']")[0]) == _text(
         admin_page.cssselect("section[data-panel='summary']")[0]
     )
+
+
+def _sitting_answered_on_version_one(organisation: Organisation) -> FormProgress:
+    """A sitting that chose version 1's correct option, after the question was
+    revised to version 2 with the other option correct."""
+    quiz = versioned_quiz()
+    sitting = _paper_sitting(
+        organisation,
+        quiz.form,
+        served_paper=quiz.paper,
+        scores={"score": 1, "max_score": 1},
+    )
+    _answer(sitting, quiz.question, quiz.right)
+    revise_to_version_two(quiz)
+    return sitting
+
+
+def test_the_paper_shows_the_wording_of_the_version_the_sitting_was_served(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting = _sitting_answered_on_version_one(organisation)
+
+    text = _paper_text(
+        _holder_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert "Original wording" in text
+    assert "Original right" in text
+    assert "Revised wording" not in text
+
+
+def test_the_paper_marks_the_answer_on_the_version_the_sitting_was_served(
+    logged_in_client: Callable[[User], Client],
+) -> None:
+    organisation = OrganisationFactory()
+    sitting = _sitting_answered_on_version_one(organisation)
+
+    text = _paper_text(
+        _holder_client(organisation, logged_in_client), organisation, sitting
+    )
+
+    assert "Marked correct" in text
+    assert "Marked incorrect" not in text
+
+
+def test_a_sitting_on_a_revised_question_lists_no_option_added_since() -> None:
+    organisation = OrganisationFactory()
+    sitting = _sitting_answered_on_version_one(organisation)
+
+    context = quiz_attempt_paper_context(sitting)
+
+    assert context["options_added_since"] == {}

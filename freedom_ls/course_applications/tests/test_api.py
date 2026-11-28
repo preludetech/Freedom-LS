@@ -40,7 +40,8 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFileFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import QuestionAnswer
+from freedom_ls.form_engine.models import QuestionAnswer, save_question_version
+from freedom_ls.form_engine.tests.helpers import revise_question
 from freedom_ls.tests.factories import SiteFactory
 from freedom_ls.tests.site_context import site_context
 
@@ -292,6 +293,7 @@ def test_updated_since_returns_only_rows_changed_at_or_after_it(client, auth):
 
 
 QUERY_BOUND = 9
+VERSIONED_QUERY_BOUND = 9
 
 EXPECTED_ANSWER_FIELDS = ["question_id", "question_text", "question_type", "value"]
 
@@ -423,6 +425,70 @@ def test_an_answers_value_by_question_type(client, auth, question_type, fill, ex
     entry = _answers_of(client, auth, application)[0]
 
     assert entry["value"] == expected
+
+
+def _application_answered_on_version_one(
+    question_count: int = 1,
+) -> tuple[CourseApplication, list[QuestionAnswer]]:
+    """An application answering `question_count` choice questions on their version 1,
+    each then reworded and its option retexted."""
+    sitting = FormProgressFactory(user=None)
+    page = FormPageFactory(form=sitting.form)
+    answers: list[QuestionAnswer] = []
+    for order in range(question_count):
+        question = FormQuestionFactory(
+            form_page=page, type="multiple_choice", order=order, question="Original"
+        )
+        option = QuestionOptionFactory(question=question, text="Original yes", order=0)
+        version = save_question_version(
+            question, list(question.options.all()), "c1"
+        ).version
+        answer = cast(
+            QuestionAnswer,
+            QuestionAnswerFactory(
+                form_progress=sitting, question=question, question_version=version
+            ),
+        )
+        answer.selected_options.add(option)
+        revise_question(
+            question,
+            question="Revised",
+            options=[{"id": option.id, "text": "Revised yes"}],
+        )
+        answers.append(answer)
+    application = cast(
+        CourseApplication,
+        CourseApplicationFactory(anonymous=True, form_progress=sitting),
+    )
+    return application, answers
+
+
+def test_question_text_is_the_answered_versions_text(client, auth):
+    application, _ = _application_answered_on_version_one()
+
+    entry = _answers_of(client, auth, application)[0]
+
+    assert entry["question_text"] == "Original"
+
+
+def test_value_reads_the_answered_versions_option_text(client, auth):
+    application, _ = _application_answered_on_version_one()
+
+    entry = _answers_of(client, auth, application)[0]
+
+    assert entry["value"] == "Original yes"
+
+
+@pytest.mark.parametrize("question_count", [2, 6])
+def test_list_query_count_is_bounded_whatever_the_number_of_versioned_questions(
+    client, auth, django_assert_max_num_queries, question_count
+):
+    _application_answered_on_version_one(question_count)
+    # The first request fills process-level caches; later ones are the steady state.
+    client.get(reverse(LIST_URL_NAME), headers=auth)
+
+    with django_assert_max_num_queries(VERSIONED_QUERY_BOUND):
+        client.get(reverse(LIST_URL_NAME), headers=auth)
 
 
 def test_a_file_answer_exposes_no_storage_key_path_or_url(client, auth):
