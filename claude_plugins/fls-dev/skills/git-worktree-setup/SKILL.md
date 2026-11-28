@@ -22,7 +22,7 @@ A batch worktree under `.claude/worktrees/` gets `db_<sanitized_branch>` and `te
 
 ## Panel framework package worktree
 
-`rebuild_after_rebase.sh` sources `link_panel_framework.sh`, which links the package worktree paired with the FLS worktree.
+`rebuild_after_rebase.sh` sources `link_panel_framework.sh`, which links the package worktree paired with the FLS worktree. The package's `DEVELOPING_WITH_A_HOST.md` explains the setup for any host project. The rules below are FLS's version of it.
 
 - An FLS worktree on `<branch>` links `$PANEL_FRAMEWORK_REPO/<branch>` when that worktree exists. `PANEL_FRAMEWORK_REPO` defaults to the `django-panel-framework.git` bare repo. `PANEL_FRAMEWORK_DIR` overrides the whole path. With neither, the locked tag stays in use. FLS `main` pairs with the package's `main`.
 - Create the package worktree by hand: `git -C "$PANEL_FRAMEWORK_REPO" worktree add "<branch>" -b "<branch>"`. The next `rebuild_after_rebase.sh` links it.
