@@ -154,6 +154,10 @@ Each option in `options`:
 | `locked` | `bool` | No (default `false`) | Used in shuffled quizzes: keep this option at its authored position while the others shuffle. Only valid when the form sets `shuffle_options: true` |
 | `uuid` | `str` | No | Written by `content_save --generate-uuids`, then you commit the result |
 
+### Editing a saved question
+
+Each `content_save` that finds a question's question text, type, `required`, `min`, `max`, `decimal_places`, `explanation` or options (text, value, order, `correct`) different from its last saved version records a new version, even for a typo fix. A learner already part-way through an attempt keeps the version they were served, so an edit reaches only attempts started after it, and scores already stored never change. The run prints `Question versions: N new, M revised, K unchanged`, then one line per revised question naming its file, slug and changed fields: check that list matches what you meant to change.
+
 ### Multiple-choice question example
 
 ```yaml
